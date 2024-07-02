@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { IncomingMessage, Server, ServerResponse } from 'http';
-import { getRefreshToken, setAccessToken, setAccessTokenExpirationTime, setRefreshToken } from 'src/storage';
+import { getAccessToken, getAccessTokenExpirationTime, getRefreshToken, setAccessToken, setAccessTokenExpirationTime, setRefreshToken } from 'src/storage';
 import { Platform, Notice } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
@@ -115,4 +115,33 @@ export async function refreshAccessToken(): Promise<string> {
     setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
 
     return token.access_token;
+}
+
+
+export function getGoogleAccessToken(): string {
+	/// Check if the refresh token is set
+	if (!getRefreshToken() || getRefreshToken() == "") {
+		new Notice(
+			"Google  missing settings or not logged in"
+		);
+		return "";
+	}
+
+	/// Check if the access token is set
+	if (getAccessToken() == "") {
+		new Notice(
+			"Google access token is expired"
+		);
+		return "";
+	}
+
+	/// Check if the access token expiration time is not set, or past
+	if (getAccessTokenExpirationTime() == null || getAccessTokenExpirationTime() < Date.now()) {
+		new Notice(
+			"Google access token is expired"
+		);
+		return "";
+	}
+
+	return getAccessToken();
 }
