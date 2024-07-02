@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { getAccessToken, getAccessTokenExpirationTime, getRefreshToken, setLikedVideos } from 'src/storage';
+import { getAccessToken, getAccessTokenExpirationTime, getLikedVideos, getRefreshToken, setLikedVideos } from 'src/storage';
 import { handleGoogleLogin, refreshAccessToken } from 'src/auth';
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { SampleModal } from 'src/views/modals';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
-import { fetchPlaylists, fetchTotalLikedVideoCount, sendRequest } from 'src/api';
+import { fetchLikedVideos, fetchPlaylists, fetchTotalLikedVideoCount, sendRequest } from 'src/api';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	mySetting: 'default',
@@ -213,6 +213,15 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setName('Get the stored liked videos from local storage')
+			.addButton(button => button
+				.setButtonText('Get')
+				.onClick(async () => {
+					const likedVideos: YouTubeVideo[] = getLikedVideos();
+					new Modal(this.app).setTitle('result').setContent(`${likedVideos.length} videos`).open();
+				}));
+
+		new Setting(containerEl)
 			.setName('Fetch All Liked Videos so far and add to LocalStorage')
 			.addButton(button => button
 				.setButtonText('Fetch')
@@ -223,6 +232,30 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 						new Notice(`${totalLikedVideos} videos in total`);
 
 						// repeat fetching liked videos
+						// this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
+						// If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
+						// Then, merge the fetched videos data and save to LocalStorage.
+						let allLikedVideos: YouTubeVideo[] = [];
+						let nextPageToken: string | undefined = undefined;
+						let count = 20;
+
+						do {
+							const response: YouTubeVideosResponse = await fetchLikedVideos(50, nextPageToken);
+							console.log('response is returned', response.items.length);
+							allLikedVideos = allLikedVideos.concat(response.items);
+							if (response.nextPageToken === undefined || response.nextPageToken === '' || response.nextPageToken === null) {
+								console.log('No more liked videos');
+								break;
+							} else {
+								console.log('nextPageToken', response.nextPageToken);
+								nextPageToken = response.nextPageToken;
+							}
+							count--;
+						} while (count > 0);
+
+						// Save the fetched videos to LocalStorage
+						setLikedVideos(allLikedVideos);
+						new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
 
 
 
