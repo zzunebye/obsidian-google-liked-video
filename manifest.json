@@ -1,6 +1,6 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "youtube-liked-video-plugin",
+	"name": "_YouTube Liked Video Plugin",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Demonstrates some of the capabilities of the Obsidian API.",
