@@ -5,7 +5,7 @@ import { handleGoogleLogin, refreshAccessToken } from 'src/auth';
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { SampleModal } from 'src/views/modals';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
-import { fetchPlaylists, fetchTotalLikedVideoCount } from 'src/api';
+import { fetchPlaylists, fetchTotalLikedVideoCount, sendRequest } from 'src/api';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	mySetting: 'default',
@@ -341,6 +341,7 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					try {
 						const data = await fetchPlaylists();
+
 						// show the data in the modal
 						new Modal(this.app).setTitle('result').setContent(JSON.stringify(data, null, 2)).open();
 
