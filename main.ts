@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { getAccessToken, getAccessTokenExpirationTime, getRefreshToken } from 'src/storage';
+import { getAccessToken, getAccessTokenExpirationTime, getRefreshToken, setLikedVideos } from 'src/storage';
 import { handleGoogleLogin, refreshAccessToken } from 'src/auth';
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { SampleModal } from 'src/views/modals';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
+import { fetchPlaylists, fetchTotalLikedVideoCount } from 'src/api';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	mySetting: 'default',
@@ -211,7 +212,74 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 					}
 				}));
 
+		new Setting(containerEl)
+			.setName('Fetch All Liked Videos so far and add to LocalStorage')
+			.addButton(button => button
+				.setButtonText('Fetch')
+				.onClick(async () => {
+					try {
+						/// get number of the videos in the liked videos
+						const totalLikedVideos = await fetchTotalLikedVideoCount();
+						new Notice(`${totalLikedVideos} videos in total`);
 
+						// repeat fetching liked videos
+
+
+
+
+
+						// const url = 'https://youtube.googleapis.com/youtube/v3/videos?'
+						// 	+ 'part=snippet,statistics'
+						// 	+ '&maxResults=50'
+						// 	+ '&myRating=like';
+
+						// const response = await sendRequest(url, {});
+						// const data: YouTubeVideosResponse = await response.json();
+
+						// new Modal(this.app).setTitle('result').setContent(`${data.pageInfo.resultsPerPage} videos found`).open();
+
+						// setLikedVideos(data.items);
+
+
+
+
+
+						// // find daily note folder
+						// const dailyNoteFolder = this.app.vault.getFolderByPath(this.plugin.settings.dailyNotePath);
+						// if (!dailyNoteFolder) {
+						// 	console.log('Daily Note folder not found');
+						// 	return;
+						// }
+						// const dateNow = window.moment();
+
+						// const dailyNotes = getAllDailyNotes();
+						// if (!dailyNotes) {
+						// 	console.log('No daily notes found');
+						// 	return;
+						// }
+						// const todayDailyNote: TFile = getDailyNote(dateNow, dailyNotes);
+						// console.log('todayDailyNote', todayDailyNote);
+
+						// // add liked videos to the daily note
+						// if (todayDailyNote) {
+						// 	const fileContent = await this.app.vault.read(todayDailyNote);
+						// 	const likedVideosContent = data.items.map((video: YouTubeVideo) => {
+						// 		return `- [${video.snippet.title}](https://www.youtube.com/watch?v=${video.id})`;
+						// 	}).join('\n');
+
+						// 	const updatedContent = `${fileContent}\n\n## Liked Videos\n${likedVideosContent}`;
+						// 	await this.app.vault.modify(todayDailyNote, updatedContent);
+						// 	new Notice('Liked videos added to today\'s daily note.');
+						// } else {
+						// 	console.log('Today\'s daily note not found');
+						// }
+
+
+					} catch (error) {
+						console.log('error', error)
+						new Modal(this.app).setTitle('error').setContent("error: " + error).open();
+					}
+				}));
 
 		new Setting(containerEl)
 			.setName('Fetch Today\'s Liked Videos and add to Daily Note')
@@ -272,16 +340,7 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 				.setButtonText('Fetch')
 				.onClick(async () => {
 					try {
-						const url = 'https://youtube.googleapis.com/youtube/v3/playlists?'
-							+ 'part=snippet,contentDetails'
-							+ '&maxResults=25'
-							+ '&mine=true';
-
-						const response = await sendRequest(url, {});
-						const data = await response.json();
-
-
-
+						const data = await fetchPlaylists();
 						// show the data in the modal
 						new Modal(this.app).setTitle('result').setContent(JSON.stringify(data, null, 2)).open();
 
@@ -295,48 +354,7 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 }
 
-/// wrap a request to handle error and refresh access token if needed
-async function sendRequest(url: string, headers: Record<string, string>): Promise<Response> {
-	let accessToken = getGoogleAccessToken();
-	if (!accessToken) {
-		accessToken = await refreshAccessToken();
-	}
 
-	return await fetch(url, {
-		headers: {
-			...headers,
-			'Authorization': `Bearer ${accessToken}`,
-		}
-	});
-}
-
-function getGoogleAccessToken(): string {
-	/// Check if the refresh token is set
-	if (!getRefreshToken() || getRefreshToken() == "") {
-		createNotice(
-			"Google  missing settings or not logged in"
-		);
-		return "";
-	}
-
-	/// Check if the access token is set
-	if (getAccessToken() == "") {
-		createNotice(
-			"Google access token is expired"
-		);
-		return "";
-	}
-
-	/// Check if the access token expiration time is not set, or past
-	if (getAccessTokenExpirationTime() == null || getAccessTokenExpirationTime() < Date.now()) {
-		createNotice(
-			"Google access token is expired"
-		);
-		return "";
-	}
-
-	return getAccessToken();
-}
 
 function createNotice(arg0: string) {
 	new Notice(arg0);
