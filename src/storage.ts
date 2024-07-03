@@ -1,24 +1,35 @@
 import { YouTubeVideo } from "./types";
 
-/// GETTERS
-export const getRefreshToken = (): string => {
-    return window.localStorage.getItem("googleYtbLikedVideoRefreshToken") ?? "";
-};
+class LocalStorageService {
+    /**
+     * Retrieves liked videos from local storage.
+     * @returns {YouTubeVideo[]} An array of liked videos.
+     */
+    getLikedVideos(): YouTubeVideo[] {
+        const likedVideos = window.localStorage.getItem("googleYtbLikedVideoLikedVideos");
+        return likedVideos ? JSON.parse(likedVideos) : [];
+    }
 
-export const getAccessToken = (): string => {
-    return window.localStorage.getItem("googleYtbLikedVideoAccessToken") ?? "";
-};
+    getLastLikedVideoId(): string {
+        const likedVideos = this.getLikedVideos();
+        return likedVideos[0].id;
+    }
 
-export const getAccessTokenExpirationTime = (): number => {
-    const expirationTime = window.localStorage.getItem("googleYtbLikedVideoExpirationTime");
-    return expirationTime ? parseInt(expirationTime) : 0;
-};
+    getRefreshToken(): string {
+        return window.localStorage.getItem("googleYtbLikedVideoRefreshToken") ?? "";
+    }
 
-export const getLikedVideos = (): YouTubeVideo[] => {
-    const likedVideos = window.localStorage.getItem("googleYtbLikedVideoLikedVideos");
-    return likedVideos ? JSON.parse(likedVideos) : [];
-};
+    getAccessToken(): string {
+        return window.localStorage.getItem("googleYtbLikedVideoAccessToken") ?? "";
+    }
 
+    getAccessTokenExpirationTime(): number {
+        const expirationTime = window.localStorage.getItem("googleYtbLikedVideoExpirationTime");
+        return expirationTime ? parseInt(expirationTime) : 0;
+    }
+}
+
+export const localStorageService = new LocalStorageService();
 
 /// SETTERS
 export const setAccessToken = (googleAccessToken: string): void => {
