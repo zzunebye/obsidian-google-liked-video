@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { IncomingMessage, Server, ServerResponse } from 'http';
-import { getAccessToken, getAccessTokenExpirationTime, getRefreshToken, setAccessToken, setAccessTokenExpirationTime, setRefreshToken } from 'src/storage';
+import { localStorageService, setAccessToken, setAccessTokenExpirationTime, setRefreshToken } from 'src/storage';
 import { Platform, Notice } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
@@ -95,7 +95,7 @@ export async function refreshAccessToken(): Promise<string> {
 
     const refreshTokenRequestBody = {
         grant_type: 'refresh_token',
-        refresh_token: getRefreshToken(),
+        refresh_token: localStorageService.getRefreshToken(),
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
     }
@@ -119,29 +119,29 @@ export async function refreshAccessToken(): Promise<string> {
 
 
 export function getGoogleAccessToken(): string {
-	/// Check if the refresh token is set
-	if (!getRefreshToken() || getRefreshToken() == "") {
-		new Notice(
-			"Google  missing settings or not logged in"
-		);
-		return "";
-	}
+    /// Check if the refresh token is set
+    if (!localStorageService.getRefreshToken() || localStorageService.getRefreshToken() == "") {
+        new Notice(
+            "Google  missing settings or not logged in"
+        );
+        return "";
+    }
 
-	/// Check if the access token is set
-	if (getAccessToken() == "") {
-		new Notice(
-			"Google access token is expired"
-		);
-		return "";
-	}
+    /// Check if the access token is set
+    if (localStorageService.getAccessToken() == "") {
+        new Notice(
+            "Google access token is expired"
+        );
+        return "";
+    }
 
-	/// Check if the access token expiration time is not set, or past
-	if (getAccessTokenExpirationTime() == null || getAccessTokenExpirationTime() < Date.now()) {
-		new Notice(
-			"Google access token is expired"
-		);
-		return "";
-	}
+    /// Check if the access token expiration time is not set, or past
+    if (localStorageService.getAccessTokenExpirationTime() == null || localStorageService.getAccessTokenExpirationTime() < Date.now()) {
+        new Notice(
+            "Google access token is expired"
+        );
+        return "";
+    }
 
-	return getAccessToken();
+    return localStorageService.getAccessToken();
 }

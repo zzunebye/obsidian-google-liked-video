@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { getAccessToken, getAccessTokenExpirationTime, getLikedVideos, getRefreshToken, setLikedVideos } from 'src/storage';
-import { handleGoogleLogin, refreshAccessToken } from 'src/auth';
+import { getRefreshToken, localStorageService, setLikedVideos } from 'src/storage';
+import { handleGoogleLogin } from 'src/auth';
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { SampleModal } from 'src/views/modals';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
@@ -127,6 +127,22 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		const likedVideos = localStorageService.getLikedVideos();
+		const likedVideosCount = likedVideos.length;
+		console.log(likedVideosCount);
+		const maxVideos = 5000;
+		const progressValue = likedVideosCount / maxVideos;
+
+		new Setting(containerEl)
+			.setName('Quota')
+			.setDesc('Quota of the liked videos')
+			.addProgressBar(progressBar => progressBar
+				.setValue(progressValue * 100))
+			.addText(text => text
+				.setDisabled(true)
+				.setValue(`${likedVideosCount} / ${maxVideos} (${(progressValue * 100).toFixed(2)}%)`))
+
+
 		new Setting(containerEl)
 			.setHeading()
 			.setName('Setup')
@@ -212,14 +228,7 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 					}
 				}));
 
-		new Setting(containerEl)
-			.setName('Get the stored liked videos from local storage')
-			.addButton(button => button
-				.setButtonText('Get')
-				.onClick(async () => {
-					const likedVideos: YouTubeVideo[] = getLikedVideos();
-					new Modal(this.app).setTitle('result').setContent(`${likedVideos.length} videos`).open();
-				}));
+
 
 		new Setting(containerEl)
 			.setName('Fetch All Liked Videos so far and add to LocalStorage')
@@ -313,6 +322,69 @@ class GoogleLikedVideoSettingTab extends PluginSettingTab {
 						new Modal(this.app).setTitle('error').setContent("error: " + error).open();
 					}
 				}));
+
+		new Setting(containerEl)
+			.setName("Fetch Latest Liked Videos")
+			.addButton(button => button
+				.setButtonText('Fetch')
+				.onClick(async () => {
+
+					const likedVideos = localStorageService.getLikedVideos();
+					const lastLikedVideoId = localStorageService.getLastLikedVideoId();
+
+					// Get the latest liked videos from the API
+					const latestLikedVideosFromAPI = await fetchLikedVideos(10, likedVideos[0]?.id);
+
+					// Compare to the latest liked video saved on LocalStorage. 
+					// If the last Id cannot be found, then fetch all the liked videos from the API
+					// However, maybe the last liked video on local storage is deleted from the API list (If the user unliked it)
+					// In that case, fetch all the liked videos from the API
+
+					let newLikedVideos: YouTubeVideo[] = [];
+
+					// Check if the last liked video ID exists in the latest liked videos from the API
+					const lastLikedVideoExists: boolean = latestLikedVideosFromAPI?.items?.some(video => video.id === lastLikedVideoId) ?? false;
+
+					if (!lastLikedVideoExists) {
+						// If the last liked video ID does not exist, fetch all liked videos from the API
+						const allLikedVideosFromAPI = await fetchLikedVideos();
+						newLikedVideos = allLikedVideosFromAPI.items;
+					} else {
+						// If the last liked video ID exists, find the new liked videos
+						let foundLastLikedVideo = false;
+						for (const video of latestLikedVideosFromAPI.items) {
+							if (video.id === lastLikedVideoId) {
+								foundLastLikedVideo = true;
+								break;
+							}
+							newLikedVideos.push(video);
+						}
+						if (!foundLastLikedVideo) {
+							// If the last liked video ID was not found in the latest liked videos, fetch all liked videos from the API
+							const allLikedVideosFromAPI = await fetchLikedVideos();
+							newLikedVideos = allLikedVideosFromAPI.items;
+						}
+					}
+
+					if (newLikedVideos.length > 0) {
+						likedVideos.unshift(...newLikedVideos);
+					}
+					new Modal(this.app).setTitle('result').setContent(`${likedVideos.length} videos`).open();
+
+					setLikedVideos(likedVideos);
+				}));
+
+
+		new Setting(containerEl)
+			.setName('Get the stored liked videos from local storage')
+			.addButton(button => button
+				.setButtonText('Get')
+				.onClick(async () => {
+					const likedVideos: YouTubeVideo[] = localStorageService.getLikedVideos();
+					new Modal(this.app).setTitle('result').setContent(`${likedVideos.length} videos`).open();
+				}));
+
+
 
 		new Setting(containerEl)
 			.setName('Fetch Today\'s Liked Videos and add to Daily Note')
