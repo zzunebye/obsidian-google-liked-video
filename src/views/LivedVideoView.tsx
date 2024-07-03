@@ -1,3 +1,4 @@
+import { Menu, MenuItem } from 'obsidian';
 import { useEffect, useMemo, useState } from 'react';
 import { YouTubeVideo } from 'src/types';
 
@@ -151,6 +152,31 @@ const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProp
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                e.currentTarget.style.backgroundColor = "transparent";
+                const menu = new Menu();
+                menu.addItem(item => {
+                    item.setTitle("Open in new tab");
+                    item.setIcon("create-new")
+                    item.onClick(() => {
+                        window.open(url, '_blank');
+                    });
+
+                });
+
+                menu.addItem(item => {
+                    item.setTitle("Add to Daily Note");
+                    item.onClick(() => {
+                    });
+
+                });
+                menu.showAtPosition({ x: e.clientX, y: e.clientY });
+
+                // show Obsidian Context Menu
+                // const obsidianContextMenu = new ObsidianContextMenu();
+                // obsidianContextMenu.show(e.clientX, e.clientY);
+            }}
             draggable
             onDragStart={(e) => handleDragStart(e)}
             onDragEnd={(e) => handleDragEnd(e)}
