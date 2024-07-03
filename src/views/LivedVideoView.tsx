@@ -10,6 +10,7 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
 ) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortOption, setSortOption] = useState('addedDate');
     const videosPerPage = 10;
 
     const filteredVideos = useMemo(() => {
@@ -20,18 +21,30 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
         });
     }, [videos, searchTerm]);
 
-    const totalPages = Math.ceil(filteredVideos.length / videosPerPage);
+    const sortedVideos = useMemo(() => {
+        const sorted = [...filteredVideos];
+        if (sortOption === 'title') {
+            sorted.sort((a, b) => a.snippet.title.localeCompare(b.snippet.title));
+        } else if (sortOption === 'date') {
+            sorted.sort((a, b) => new Date(b.snippet.publishedAt).getTime() - new Date(a.snippet.publishedAt).getTime());
+        } else if (sortOption === 'addedDate') {
+            sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
+        }
+        return sorted;
+    }, [filteredVideos, sortOption, videos]);
+
+    const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
     const startIndex = (currentPage - 1) * videosPerPage;
     const endIndex = startIndex + videosPerPage;
 
     const currentVideos = useMemo(() => {
-        return filteredVideos.slice(startIndex, endIndex);
-    }, [filteredVideos, startIndex, endIndex]);
+        return sortedVideos.slice(startIndex, endIndex);
+    }, [sortedVideos, startIndex, endIndex]);
 
-    // Reset currentPage to 1 when searchTerm changes
+    // Reset currentPage to 1 when searchTerm or sortOption changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [searchTerm, sortOption]);
 
     return <div>
         <h1 style={{
@@ -53,6 +66,23 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
         <div>
             {/* show the number of videos */}
             <span>{filteredVideos.length} videos</span>
+        </div>
+        <div style={{ marginTop: "16px" }}>
+            <span>Sorting by: </span>
+            <select
+                aria-label="Sort videos"
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                style={{
+                    padding: "8px",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc"
+                }}
+            >
+                <option value="addedDate">Added Date</option>
+                <option value="date">Date</option>
+                <option value="title">Title</option>
+            </select>
         </div>
         {/* Videos */}
         <div style={{
