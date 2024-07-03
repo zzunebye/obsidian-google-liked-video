@@ -2,7 +2,7 @@ import { ItemView, WorkspaceLeaf } from "obsidian";
 import { localStorageService } from "src/storage";
 import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
-import { LikedVideoView } from "./ReactView";
+import { LikedVideoView } from "./LivedVideoView";
 
 
 export const VIEW_TYPE_LIKED_VIDEO_LIST = "liked-video-list";
