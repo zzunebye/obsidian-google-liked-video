@@ -215,7 +215,7 @@ const VideoCard = (prop: VideoCardProps) => {
                     item.setTitle("Open in new tab");
                     item.setIcon("create-new")
                     item.onClick(() => {
-                        window.open(url, '_blank');
+                        window.open(prop.url, '_blank');
                     });
                 });
 
