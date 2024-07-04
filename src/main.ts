@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { Editor, MarkdownView, Notice, Plugin, WorkspaceLeaf } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginManifest, WorkspaceLeaf } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from 'src/types';
 import { SampleModal } from 'src/views/modals';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListView, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListView';
+import { LikedVideoApi } from './api';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	mySetting: 'default',
@@ -17,6 +18,12 @@ const APP_ID = 'youtube-liked-video-plugin';
 
 export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings;
+	likedVideoApi: LikedVideoApi;
+
+	constructor(app: App, manifest: PluginManifest) {
+		super(app, manifest);
+		this.likedVideoApi = new LikedVideoApi(this?.settings);
+	}
 
 	async onload() {
 		await this.loadSettings();
@@ -25,6 +32,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			VIEW_TYPE_LIKED_VIDEO_LIST,
 			(leaf) => new LikedVideoListView(leaf, this)
 		);
+
+		// This adds a settings tab so the user can configure various aspects of the plugin
+		this.addSettingTab(new GoogleLikedVideoSettingTab(this.app, this));
+
 
 		this.addRibbonIcon("dice", "Activate Liked Video List View", () => {
 			this.activateView();
@@ -79,9 +90,6 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				}
 			}
 		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new GoogleLikedVideoSettingTab(this.app, this));
 
 		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// Using this function will automatically remove the event listener when this plugin is disabled.
