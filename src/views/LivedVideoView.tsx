@@ -114,6 +114,7 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
                     date={new Date(video.snippet.publishedAt).toLocaleDateString()}
                     thumbnail={video.snippet.thumbnails.default.url}
                     url={`https://www.youtube.com/watch?v=${video.id}`}
+                    pulledAt={video.pulled_at}
                     tags={video.snippet.tags}
                 />
             ))}
@@ -160,15 +161,16 @@ interface VideoCardProps {
     title: string;
     channel: string;
     date: string;
+    pulledAt: string;
     thumbnail: string;
     url: string;
     tags: string[];
 }
-const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProps) => {
+const VideoCard = ({ title, channel, date, pulledAt, thumbnail, url, tags }: VideoCardProps) => {
 
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-        e.dataTransfer.setData('text/plain', url);
+        e.dataTransfer.setData('text/plain', `\n[${title}](${url})\n`);
         e.currentTarget.style.opacity = "0.5";
         e.currentTarget.style.border = "2px dashed #000";
     };
@@ -218,10 +220,6 @@ const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProp
 
                 });
                 menu.showAtPosition({ x: e.clientX, y: e.clientY });
-
-                // show Obsidian Context Menu
-                // const obsidianContextMenu = new ObsidianContextMenu();
-                // obsidianContextMenu.show(e.clientX, e.clientY);
             }}
             draggable
             onDragStart={(e) => handleDragStart(e)}
@@ -230,8 +228,7 @@ const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProp
         >
             <div style={{
                 display: "flex", gap: "16px",
-                marginBlockStart: "0px",
-                marginBlockEnd: "0px",
+                marginBlockStart: "0px", marginBlockEnd: "0px",
             }}>
                 <img className="video-thumbnail" style={{
                     borderRadius: "4px",
@@ -269,7 +266,7 @@ const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProp
                         fontSize: "14px",
                         color: "#333",
                     }}>
-                        {tags?.slice(0, 10).map((tag) => <span key={tag} style={{
+                        {tags?.slice(0, 8).map((tag) => <span key={tag} style={{
                             padding: "2px",
                             fontSize: "12px",
                             borderRadius: "4px",
@@ -282,6 +279,14 @@ const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProp
                             margin: "1px",
                         }}>& more</span>}
                     </div>
+                    <p className="video-pulled-at"
+                        style={{
+                            marginBlockStart: "0px",
+                            marginBlockEnd: "0px",
+                            fontSize: "10px",
+                            alignSelf: "flex-end",
+                            color: "#777",
+                        }}>Pulled At {new Date(pulledAt).toLocaleDateString()}</p>
                 </div>
             </div>
         </div >
