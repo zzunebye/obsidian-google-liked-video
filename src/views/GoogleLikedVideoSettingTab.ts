@@ -2,7 +2,7 @@
 import { App, Modal, Notice, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { localStorageService, setLikedVideos } from 'src/storage';
 import { handleGoogleLogin } from 'src/auth';
-import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
+import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
 import { LikedVideoApi, sendRequest } from 'src/api';
 import GoogleLikedVideoPlugin from 'main';
@@ -19,7 +19,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     sendRequestWithSettings = (url: string, headers: Record<string, string>): Promise<Response> => sendRequest(url, headers, this.plugin.settings);
-
+    updateView(): void {
+        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onClose();
+        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onOpen();
+    }
     display(): void {
         const { containerEl } = this;
 
@@ -160,6 +163,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
                         // Save the fetched videos to LocalStorage
                         setLikedVideos(allLikedVideos);
+                        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.setState(
+                            { videos: allLikedVideos },
+                            { history: true });
+                        this.display();
+                        this.updateView()
                         new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
 
                     } catch (error) {
@@ -176,6 +184,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     try {
                         await this.fetchAndUpdateLikedVideos(this.app, 20, false);
                         this.display();
+                        this.updateView()
                     } catch (error) {
                         console.log('error', error)
                         new Modal(this.app).setTitle('error').setContent("error: " + error).open();
@@ -351,8 +360,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
 
         setLikedVideos(updatedLikedVideos);
-        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.setState({ videos: updatedLikedVideos }, { history: true });
-
+        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.setState(
+            { videos: updatedLikedVideos },
+            { history: true });
 
         new Notice(`New liked videos have been fetched and added to LocalStorage - ${newLikedVideos.length} new videos.`);
     }

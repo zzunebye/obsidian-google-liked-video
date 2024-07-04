@@ -1,16 +1,17 @@
 import { Menu, MenuItem } from 'obsidian';
 import { useEffect, useMemo, useState } from 'react';
 import { YouTubeVideo } from 'src/types';
+import { useVideos } from './LikedVideoListView';
 
 interface LikedVideoViewProps {
-    videos: YouTubeVideo[];
 }
 export const LikedVideoView: React.FC<LikedVideoViewProps> = (
-    { videos }
+    { }
 ) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOption, setSortOption] = useState('addedDate');
+    const videos = useVideos();
     const videosPerPage = 10;
 
     const filteredVideos = useMemo(() => {

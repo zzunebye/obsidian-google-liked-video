@@ -1,16 +1,23 @@
-import { ItemView, ViewStateResult, WorkspaceLeaf } from "obsidian";
+import { ItemView, Menu, MenuItem, ViewStateResult, WorkspaceLeaf } from "obsidian";
 import { localStorageService } from "src/storage";
 import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
 import { LikedVideoView } from "./LivedVideoView";
 import { YouTubeVideo } from "src/types";
 import GoogleLikedVideoPlugin from "main";
+import * as React from "react";
 
 interface ILikedVideoListViewPersistedState {
     videos: YouTubeVideo[];
 }
 
 export const VIEW_TYPE_LIKED_VIDEO_LIST = "liked-video-list";
+
+export const VideosContext = React.createContext<YouTubeVideo[]>([]);
+
+export const useVideos = (): YouTubeVideo[] => {
+    return React.useContext(VideosContext);
+};
 
 export class LikedVideoListView extends ItemView implements ILikedVideoListViewPersistedState {
     root: Root | null = null;
@@ -28,10 +35,28 @@ export class LikedVideoListView extends ItemView implements ILikedVideoListViewP
         this.videos = localStorageService.getLikedVideos();
     }
 
-    updateVideos(videos: YouTubeVideo[]) {
-        this.videos = videos;
-        // this.setState({ videos });
+    onPaneMenu(menu: Menu, source: string): void {
+        super.onPaneMenu(menu, source)
+        menu.addItem((item: MenuItem) => {
+            item.setTitle("Refresh");
+            item.setIcon("sync");
+            item.onClick(() => {
+                this.onClose();
+                this.onOpen();
+            });
+        })
+            .addSeparator()
+            .addItem((item) => {
+                item.setTitle(true ? "Hide Settings" : "Settings");
+                item.setIcon("gear");
+                item.onClick(() => {
+                    // this.showSettings = !this.showSettings;
+                    // this.timeline.$set({ showSettings: this.showSettings });
+                });
+
+            });
     }
+
 
     getViewType(): string {
         return VIEW_TYPE_LIKED_VIDEO_LIST;
@@ -48,13 +73,13 @@ export class LikedVideoListView extends ItemView implements ILikedVideoListViewP
     async onOpen() {
         console.log("onOpen!!!");
 
-        const likedVideos = localStorageService.getLikedVideos();
-
         this.root = createRoot(this.containerEl.children[1]);
         this.root.render(
-            <StrictMode>
-                <LikedVideoView videos={this.videos} />
-            </StrictMode>
+            <VideosContext.Provider value={this.videos}>
+                <StrictMode>
+                    <LikedVideoView />
+                </StrictMode>
+            </VideosContext.Provider >
         );
 
         const container = this.containerEl.children[1];
