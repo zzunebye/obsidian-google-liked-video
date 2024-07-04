@@ -3,15 +3,28 @@ import { localStorageService } from "src/storage";
 import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
 import { LikedVideoView } from "./LivedVideoView";
+import { YouTubeVideo } from "src/types";
 
+interface ILikedVideoListViewPersistedState {
+    videos: YouTubeVideo[];
+}
 
 export const VIEW_TYPE_LIKED_VIDEO_LIST = "liked-video-list";
 
 export class LikedVideoListView extends ItemView {
     root: Root | null = null;
 
-    constructor(leaf: WorkspaceLeaf) {
+    /// Persisted State
+    videos: YouTubeVideo[] = [];
+
+    constructor(
+        leaf: WorkspaceLeaf,
+        plugin: GoogleLikedVideoPlugin,
+    ) {
         super(leaf);
+
+        // Initialize the state
+        this.videos = localStorageService.getLikedVideos();
     }
 
     getViewType(): string {
