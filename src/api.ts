@@ -27,6 +27,11 @@ export async function fetchLikedVideos(limit = 50, pageToken?: string): Promise<
     }
     const response = await sendRequest(url, {});
     const data: YouTubeVideosResponse = await response.json();
+
+    data.items.forEach(video => {
+        video.pulled_at = new Date().toISOString();
+    });
+
     return data;
 }
 
