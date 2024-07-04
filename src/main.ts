@@ -141,14 +141,3 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 }
-
-
-
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createNotice(arg0: string) {
-	new Notice(arg0);
-}
-
-
-
