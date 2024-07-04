@@ -37,12 +37,6 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		});
 
 		const ribbonIconOpenSetting = this.addRibbonIcon('cog', 'Open setting of google-ytb-liked-video-plugin', (evt: MouseEvent) => {
-			// Open the setting of google-ytb-liked-video-plugin
-			// new SampleSettingTab(this.app, this).display();
-			// this.addSettingTab(new SampleSettingTab(this.app, this));
-			// console.log('Open setting of google-ytb-liked-video-plugin');
-			// this.addSettingTab(new SampleSettingTab(this.app, this));
-
 			const setting = (this.app as any).setting;
 			setting.open();
 			setting.openTabById(APP_ID);
