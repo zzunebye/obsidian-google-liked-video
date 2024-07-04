@@ -60,6 +60,7 @@ export const LikedVideoView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOption, setSortOption] = useState('addedDate');
+    const [sortOrder, setSortOrder] = useState('ASC');
     const [videos, setVideos] = useContext(VideosContext);
     const plugin = usePlugin();
     const videosPerPage = 10;
@@ -88,8 +89,11 @@ export const LikedVideoView: React.FC = () => {
                 sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
                 break;
         }
+        if (sortOrder === 'DESC') {
+            sorted.reverse();
+        }
         return sorted;
-    }, [filteredVideos, sortOption, videos]);
+    }, [filteredVideos, sortOption, videos, sortOrder]);
 
     const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
     const startIndex = (currentPage - 1) * videosPerPage;
@@ -133,6 +137,19 @@ export const LikedVideoView: React.FC = () => {
                 <option value="date">By Date</option>
                 <option value="title">By Title</option>
             </select>
+            <button
+                onClick={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
+                style={{
+                    marginLeft: "8px",
+                    padding: "4px",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    backgroundColor: sortOrder === 'ASC' ? '#f0f0f0' : '#d0d0d0',
+                }}
+                aria-label="Toggle sort order"
+            >
+                {sortOrder === 'ASC' ? '🔼' : '🔽'}
+            </button>
         </div>
 
         {/* Videos */}
