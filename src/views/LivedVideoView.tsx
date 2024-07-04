@@ -23,12 +23,19 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
 
     const sortedVideos = useMemo(() => {
         const sorted = [...filteredVideos];
-        if (sortOption === 'title') {
-            sorted.sort((a, b) => a.snippet.title.localeCompare(b.snippet.title));
-        } else if (sortOption === 'date') {
-            sorted.sort((a, b) => new Date(b.snippet.publishedAt).getTime() - new Date(a.snippet.publishedAt).getTime());
-        } else if (sortOption === 'addedDate') {
-            sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
+        switch (sortOption) {
+            case 'title':
+                sorted.sort((a, b) => a.snippet.title.localeCompare(b.snippet.title));
+                break;
+            case 'viewCount':
+                sorted.sort((a, b) => b.statistics.viewCount - a.statistics.viewCount);
+                break;
+            case 'date':
+                sorted.sort((a, b) => new Date(b.snippet.publishedAt).getTime() - new Date(a.snippet.publishedAt).getTime());
+                break;
+            case 'addedDate':
+                sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
+                break;
         }
         return sorted;
     }, [filteredVideos, sortOption, videos]);
@@ -86,6 +93,7 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
                 }}
             >
                 <option value="addedDate">Added Date</option>
+                <option value="viewCount">View Count</option>
                 <option value="date">Date</option>
                 <option value="title">Title</option>
             </select>

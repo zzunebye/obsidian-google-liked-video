@@ -62,7 +62,7 @@ export interface YouTubeVideo {
         projection: string;
     };
     statistics: {
-        viewCount: string;
+        viewCount: number;
         likeCount: string;
         favoriteCount: string;
         commentCount: string;
