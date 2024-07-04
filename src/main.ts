@@ -101,8 +101,11 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
-	onunload() {
+	onunload() { }
 
+	reloadView() {
+		this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onClose();
+		this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onload();
 	}
 
 	async activateView() {
