@@ -2,18 +2,23 @@
 import { App, Modal, Notice, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { localStorageService, setLikedVideos } from 'src/storage';
 import { handleGoogleLogin } from 'src/auth';
-import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
+import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
-import { fetchLikedVideos, fetchPlaylists, fetchTotalLikedVideoCount, sendRequest } from 'src/api';
+import { LikedVideoApi, sendRequest } from 'src/api';
 import GoogleLikedVideoPlugin from 'main';
+import { LikedVideoListView } from './LikedVideoListView';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
+    likedVideoApi: LikedVideoApi;
 
     constructor(app: App, plugin: GoogleLikedVideoPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+        this.likedVideoApi = new LikedVideoApi(this.plugin.settings);
     }
+
+    sendRequestWithSettings = (url: string, headers: Record<string, string>): Promise<Response> => sendRequest(url, headers, this.plugin.settings);
 
     display(): void {
         const { containerEl } = this;
@@ -108,7 +113,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     try {
                         const url = 'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&myRating=like';
 
-                        const response = await sendRequest(url, {});
+                        const response = await this.sendRequestWithSettings(url, {});
                         const data = await response.json();
                         console.log(data);
 
@@ -130,7 +135,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .onClick(async () => {
                     try {
                         /// get number of the videos in the liked videos
-                        const totalLikedVideos = await fetchTotalLikedVideoCount();
+                        const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
                         new Notice(`${totalLikedVideos} videos in total`);
 
                         // repeat fetching liked videos
@@ -141,7 +146,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         let nextPageToken: string | undefined = undefined;
 
                         do {
-                            const response: YouTubeVideosResponse = await fetchLikedVideos(50, nextPageToken);
+                            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(50, nextPageToken);
                             console.log('response is returned', response.items.length);
                             allLikedVideos = allLikedVideos.concat(response.items);
                             if (response.nextPageToken === undefined || response.nextPageToken === '' || response.nextPageToken === null) {
@@ -164,6 +169,20 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName('Fetch All Liked Videos so far, compare to the stored videos and filter/add the new videos to LocalStorage')
+            .addButton(button => button
+                .setButtonText('Fetch')
+                .onClick(async () => {
+                    try {
+                        await this.fetchAndUpdateLikedVideos(this.app, 20, false);
+                        this.display();
+                    } catch (error) {
+                        console.log('error', error)
+                        new Modal(this.app).setTitle('error').setContent("error: " + error).open();
+                    }
+                }));
+
+        new Setting(containerEl)
             .setName("Fetch Latest Liked Videos")
             .addButton(button => button
                 .setButtonText('Fetch')
@@ -173,7 +192,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     const lastLikedVideoId = localStorageService.getLastLikedVideoId();
 
                     // Get the latest liked videos from the API
-                    const latestLikedVideosFromAPI = await fetchLikedVideos(10, likedVideos[0]?.id);
+                    const latestLikedVideosFromAPI = await this.likedVideoApi.fetchLikedVideos(10, likedVideos[0]?.id);
 
                     // Compare to the latest liked video saved on LocalStorage. 
                     // If the last Id cannot be found, then fetch all the liked videos from the API
@@ -187,7 +206,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
                     if (!lastLikedVideoExists) {
                         // If the last liked video ID does not exist, fetch all liked videos from the API
-                        const allLikedVideosFromAPI = await fetchLikedVideos();
+                        const allLikedVideosFromAPI = await this.likedVideoApi.fetchLikedVideos();
                         newLikedVideos = allLikedVideosFromAPI.items;
                     } else {
                         // If the last liked video ID exists, find the new liked videos
@@ -201,7 +220,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         }
                         if (!foundLastLikedVideo) {
                             // If the last liked video ID was not found in the latest liked videos, fetch all liked videos from the API
-                            const allLikedVideosFromAPI = await fetchLikedVideos();
+                            const allLikedVideosFromAPI = await this.likedVideoApi.fetchLikedVideos();
                             newLikedVideos = allLikedVideosFromAPI.items;
                         }
                     }
@@ -236,7 +255,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                             + 'part=snippet,statistics'
                             + '&myRating=like';
 
-                        const response = await sendRequest(url, {});
+                        const response = await this.likedVideoApi.sendRequest(url, {});
                         const data: YouTubeVideosResponse = await response.json();
 
                         // show the data in the modal
@@ -285,7 +304,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setButtonText('Fetch')
                 .onClick(async () => {
                     try {
-                        const data = await fetchPlaylists();
+                        const data = await this.likedVideoApi.fetchPlaylists();
 
                         // show the data in the modal
                         new Modal(this.app).setTitle('result').setContent(JSON.stringify(data, null, 2)).open();
@@ -296,6 +315,47 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }
                 }));
     }
-    // https://youtube.googleapis.com/youtube/v3/playlists?part=snippet%2CcontentDetails&maxResults=25&mine=true
+    async fetchAndUpdateLikedVideos(app: App, limit: number = 50, repetitive: boolean = false): Promise<void> {
+        console.log('Fetching all liked videos...');
+        const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
+        console.log(`Total liked videos: ${totalLikedVideos}`);
+        new Notice(`${totalLikedVideos} videos in total`);
+
+        let allLikedVideos: YouTubeVideo[] = [];
+        let nextPageToken: string | undefined = undefined;
+        do {
+            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(limit, nextPageToken);
+            allLikedVideos = allLikedVideos.concat(response.items);
+            nextPageToken = response.nextPageToken;
+        } while (repetitive && nextPageToken);
+
+        const storedLikedVideos = localStorageService.getLikedVideos();
+        const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
+
+        const newLikedVideos = allLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
+        const fetchedLikedVideoIdsSet = new Set(allLikedVideos.map(video => video.id));
+
+        if (newLikedVideos.length > 0) {
+            new Modal(app).setTitle('New Liked Videos').setContent(JSON.stringify(newLikedVideos, null, 2)).open();
+        }
+
+        let updatedLikedVideos;
+        if (repetitive) {
+            const unlikedVideos = storedLikedVideos.filter(video => !fetchedLikedVideoIdsSet.has(video.id));
+            if (unlikedVideos.length > 0) {
+                new Modal(app).setTitle('Unliked Videos').setContent(JSON.stringify(unlikedVideos, null, 2)).open();
+            }
+            updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos.filter(video => fetchedLikedVideoIdsSet.has(video.id))];
+        } else {
+            updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
+        }
+
+        setLikedVideos(updatedLikedVideos);
+        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.setState({ videos: updatedLikedVideos }, { history: true });
+
+
+        new Notice(`New liked videos have been fetched and added to LocalStorage - ${newLikedVideos.length} new videos.`);
+    }
 
 }
+

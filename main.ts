@@ -128,8 +128,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			await leaf?.setViewState({ type: VIEW_TYPE_LIKED_VIDEO_LIST, active: true });
 		}
 		if (leaf) {
-		// "Reveal" the leaf in case it is in a collapsed sidebar
-		workspace.revealLeaf(leaf);
+			// "Reveal" the leaf in case it is in a collapsed sidebar
+			workspace.revealLeaf(leaf);
 		}
 	}
 
