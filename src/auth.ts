@@ -7,7 +7,7 @@ import { ObsidianGoogleLikedVideoSettings } from './types';
 let serverSession: Server;
 
 const PORT = 42813;
-const redirectUri = `http://127.0.0.1:${PORT}/callback`;
+const AUTH_REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`;
 
 export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideoSettings) {
     if (!Platform.isDesktop) {
@@ -25,7 +25,7 @@ export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideo
     const baseAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
     const authQuery = `?client_id=${userClientID.trim()}`
         + `&response_type=code`
-        + `&redirect_uri=${redirectUri}`
+        + `&redirect_uri=${AUTH_REDIRECT_URI}`
         + `&prompt=consent`
         + `&access_type=offline`
         + '&scope=https://www.googleapis.com/auth/youtube.readonly';
@@ -53,7 +53,7 @@ export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideo
                 + `&client_secret=${userClientSecret?.trim()}`
                 + `&access_type=offline`
                 + `&code=${code}`
-                + `&redirect_uri=${redirectUri}`;
+                + `&redirect_uri=${AUTH_REDIRECT_URI}`;
 
             const response = await fetch(tokenUrl, {
                 method: 'POST',
