@@ -23,7 +23,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,
-			(leaf) => new LikedVideoListView(leaf)
+			(leaf) => new LikedVideoListView(leaf, this)
 		);
 
 		this.addRibbonIcon("dice", "Activate Liked Video List View", () => {
@@ -127,9 +127,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			leaf = workspace.getRightLeaf(false);
 			await leaf?.setViewState({ type: VIEW_TYPE_LIKED_VIDEO_LIST, active: true });
 		}
-
+		if (leaf) {
 		// "Reveal" the leaf in case it is in a collapsed sidebar
 		workspace.revealLeaf(leaf);
+		}
 	}
 
 	async loadSettings() {
