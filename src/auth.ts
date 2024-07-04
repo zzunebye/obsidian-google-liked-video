@@ -88,13 +88,13 @@ export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideo
     });
 }
 
-export async function refreshAccessToken(): Promise<string> {
+export async function refreshAccessToken(userClientId: string, userClientSecret: string): Promise<string> {
 
     const refreshTokenRequestBody = {
         grant_type: 'refresh_token',
         refresh_token: localStorageService.getRefreshToken(),
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
+        client_id: userClientId,
+        client_secret: userClientSecret,
     }
 
     const response = await fetch(
