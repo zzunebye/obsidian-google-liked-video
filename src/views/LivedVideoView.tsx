@@ -3,6 +3,59 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { VideosContext, usePlugin } from './LikedVideoListView';
 import { setLikedVideos } from 'src/storage';
 
+export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (searchTerm: string) => void }> = ({ searchTerm, onSearchTermChange }) => {
+    return (
+        <div style={{ position: "relative", width: "100%", marginBottom: "16px" }}>
+            <input
+                type="text"
+                placeholder="Search videos..."
+                value={searchTerm}
+                onChange={(e) => onSearchTermChange(e.target.value)}
+                style={{
+                    width: "100%",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    border: "1px solid #ddd",
+                    fontSize: "16px",
+                    outline: "none",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                    transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                }}
+                onFocus={(e) => {
+                    e.target.style.borderColor = "#007BFF";
+                    e.target.style.boxShadow = "0 2px 8px rgba(0, 123, 255, 0.2)";
+                }}
+                onBlur={(e) => {
+                    e.target.style.borderColor = "#ddd";
+                    e.target.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+                }}
+            />
+            {searchTerm && (
+                <button
+                    onClick={() => onSearchTermChange('')}
+                    style={{
+                        position: "absolute",
+                        right: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        color: "#999",
+                        borderRadius: "36px",
+                        transition: "color 0.3s ease",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "#666"}
+                    onMouseLeave={(e) => e.currentTarget.style.color = "#999"}
+                >
+                    &#x2715;
+                </button>
+            )}
+        </div>
+    );
+};
+
 export const LikedVideoView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -54,46 +107,31 @@ export const LikedVideoView: React.FC = () => {
     return <div>
         <h1 style={{
             fontSize: "24px", fontWeight: "bold", marginBottom: "16px",
-        }}>Liked Videos</h1>
-        <input
-            type="text"
-            placeholder="Search videos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-                width: "100%",
-                padding: "12px 20px",
-                marginBottom: "16px",
-                borderRadius: "16px",
-                border: "1px solid #ccc",
-                // boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                fontSize: "16px",
-                outline: "none",
-                // transition: "border-color 0.3s ease-in-out"
-            }}
-            onFocus={(e) => e.target.style.borderColor = "#007BFF"}
-            onBlur={(e) => e.target.style.borderColor = "#ccc"}
+        }}>My Liked Videos</h1>
+        <SearchBar
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
         />
         <div>
             {/* show the number of videos */}
             <span>{filteredVideos.length} videos</span>
         </div>
-        <div style={{ marginTop: "16px" }}>
-            <span>Sorting by: </span>
+        <div style={{ marginTop: "16px", display: "flex", alignItems: "center" }}>
+            <span style={{ marginRight: "8px" }}>Sort by: </span>
             <select
                 aria-label="Sort videos"
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
                 style={{
-                    padding: "8px",
+                    padding: "4px",
                     borderRadius: "4px",
-                    border: "1px solid #ccc"
+                    border: "1px solid #ccc",
                 }}
             >
-                <option value="addedDate">Added Date</option>
-                <option value="viewCount">View Count</option>
-                <option value="date">Date</option>
-                <option value="title">Title</option>
+                <option value="addedDate">By Liked Date</option>
+                <option value="viewCount">By View Count</option>
+                <option value="date">By Date</option>
+                <option value="title">By Title</option>
             </select>
         </div>
 
