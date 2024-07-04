@@ -159,57 +159,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         setLikedVideos(allLikedVideos);
                         new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
 
-
-
-
-
-                        // const url = 'https://youtube.googleapis.com/youtube/v3/videos?'
-                        // 	+ 'part=snippet,statistics'
-                        // 	+ '&maxResults=50'
-                        // 	+ '&myRating=like';
-
-                        // const response = await sendRequest(url, {});
-                        // const data: YouTubeVideosResponse = await response.json();
-
-                        // new Modal(this.app).setTitle('result').setContent(`${data.pageInfo.resultsPerPage} videos found`).open();
-
-                        // setLikedVideos(data.items);
-
-
-
-
-
-                        // // find daily note folder
-                        // const dailyNoteFolder = this.app.vault.getFolderByPath(this.plugin.settings.dailyNotePath);
-                        // if (!dailyNoteFolder) {
-                        // 	console.log('Daily Note folder not found');
-                        // 	return;
-                        // }
-                        // const dateNow = window.moment();
-
-                        // const dailyNotes = getAllDailyNotes();
-                        // if (!dailyNotes) {
-                        // 	console.log('No daily notes found');
-                        // 	return;
-                        // }
-                        // const todayDailyNote: TFile = getDailyNote(dateNow, dailyNotes);
-                        // console.log('todayDailyNote', todayDailyNote);
-
-                        // // add liked videos to the daily note
-                        // if (todayDailyNote) {
-                        // 	const fileContent = await this.app.vault.read(todayDailyNote);
-                        // 	const likedVideosContent = data.items.map((video: YouTubeVideo) => {
-                        // 		return `- [${video.snippet.title}](https://www.youtube.com/watch?v=${video.id})`;
-                        // 	}).join('\n');
-
-                        // 	const updatedContent = `${fileContent}\n\n## Liked Videos\n${likedVideosContent}`;
-                        // 	await this.app.vault.modify(todayDailyNote, updatedContent);
-                        // 	new Notice('Liked videos added to today\'s daily note.');
-                        // } else {
-                        // 	console.log('Today\'s daily note not found');
-                        // }
-
-
                     } catch (error) {
                         console.log('error', error)
                         new Modal(this.app).setTitle('error').setContent("error: " + error).open();
