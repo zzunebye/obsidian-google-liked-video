@@ -139,7 +139,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         // Then, merge the fetched videos data and save to LocalStorage.
                         let allLikedVideos: YouTubeVideo[] = [];
                         let nextPageToken: string | undefined = undefined;
-                        let count = 20;
 
                         do {
                             const response: YouTubeVideosResponse = await fetchLikedVideos(50, nextPageToken);
@@ -152,8 +151,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                                 console.log('nextPageToken', response.nextPageToken);
                                 nextPageToken = response.nextPageToken;
                             }
-                            count--;
-                        } while (count > 0);
+                        } while (nextPageToken !== undefined);
 
                         // Save the fetched videos to LocalStorage
                         setLikedVideos(allLikedVideos);
