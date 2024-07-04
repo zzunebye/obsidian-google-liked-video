@@ -134,7 +134,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Fetch All Liked Videos so far and add to LocalStorage')
             .addButton(button => button
-                .setButtonText('Fetch')
+                .setButtonText('Full Scan')
                 .onClick(async () => {
                     try {
                         /// get number of the videos in the liked videos
