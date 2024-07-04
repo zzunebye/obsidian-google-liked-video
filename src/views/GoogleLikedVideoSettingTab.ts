@@ -324,7 +324,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }
                 }));
     }
-    async fetchAndUpdateLikedVideos(app: App, limit: number = 50, repetitive: boolean = false): Promise<void> {
+    async fetchAndUpdateLikedVideos(app: App, limit = 50, repetitive = false): Promise<void> {
         console.log('Fetching all liked videos...');
         const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
         console.log(`Total liked videos: ${totalLikedVideos}`);
