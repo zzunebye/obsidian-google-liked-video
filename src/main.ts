@@ -30,23 +30,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			this.activateView();
 		});
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
 		const ribbonIconOpenSetting = this.addRibbonIcon('cog', 'Open setting of google-ytb-liked-video-plugin', (evt: MouseEvent) => {
 			const setting = (this.app as any).setting;
 			setting.open();
 			setting.openTabById(APP_ID);
 
 		});
-		ribbonIconOpenSetting.addClass('my-plugin-ribbon-class-open-setting');
-
 		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
-
+		ribbonIconOpenSetting.addClass('my-plugin-ribbon-class-open-setting');
 
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		const statusBarItemEl = this.addStatusBarItem();
