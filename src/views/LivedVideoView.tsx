@@ -82,6 +82,13 @@ export const LikedVideoView: React.FC = () => {
             case 'viewCount':
                 sorted.sort((a, b) => b.statistics.viewCount - a.statistics.viewCount);
                 break;
+            case 'likeCount':
+                sorted.sort((a, b) => b.statistics.likeCount - a.statistics.likeCount);
+                break;
+            case 'likeViewRatio':
+                sorted.sort((a, b) => b.statistics.likeCount / b.statistics.viewCount - a.statistics.likeCount / a.statistics.viewCount);
+                break;
+
             case 'date':
                 sorted.sort((a, b) => new Date(b.snippet.publishedAt).getTime() - new Date(a.snippet.publishedAt).getTime());
                 break;
@@ -134,6 +141,8 @@ export const LikedVideoView: React.FC = () => {
             >
                 <option value="addedDate">By Liked Date</option>
                 <option value="viewCount">By View Count</option>
+                <option value="likeCount">By Like Count</option>
+                <option value="likeViewRatio">By Like/View Ratio</option>
                 <option value="date">By Date</option>
                 <option value="title">By Title</option>
             </select>

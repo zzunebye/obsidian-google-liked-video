@@ -64,7 +64,7 @@ export interface YouTubeVideo {
     };
     statistics: {
         viewCount: number;
-        likeCount: string;
+        likeCount: number;
         favoriteCount: string;
         commentCount: string;
     };
