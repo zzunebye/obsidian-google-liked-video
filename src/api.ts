@@ -6,17 +6,19 @@ export class LikedVideoApi {
         this.pluginSettings = pluginSettings;
     }
 
-    async sendRequest(url: string, headers: Record<string, string>): Promise<Response> {
+    async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
         let accessToken = getGoogleAccessToken();
         if (!accessToken) {
             accessToken = await refreshAccessToken(this.pluginSettings.googleClientId, this.pluginSettings.googleClientSecret);
         }
 
         return await fetch(url, {
+            method: method,
             headers: {
                 ...headers,
                 'Authorization': `Bearer ${accessToken}`,
-            }
+            },
+            ...options
         });
     }
 
@@ -29,7 +31,7 @@ export class LikedVideoApi {
         if (pageToken) {
             url += `&pageToken=${pageToken}`;
         }
-        const response = await this.sendRequest(url, {});
+        const response = await this.sendRequest('GET', url, {});
         const data: YouTubeVideosResponse = await response.json();
 
         data.items.forEach(video => {
@@ -45,7 +47,7 @@ export class LikedVideoApi {
             + '&maxResults=5'
             + '&mine=true';
 
-        const response = await this.sendRequest(url, {});
+        const response = await this.sendRequest('GET', url, {});
         const data = await response.json();
         return data;
     }
@@ -76,17 +78,16 @@ export class LikedVideoApi {
             + 'part=snippet,statistics'
             + '&maxResults=1'
             + '&myRating=like';
-        const response = await this.sendRequest(url, {});
+        const response = await this.sendRequest('GET', url, {});
         const data: YouTubeVideosResponse = await response.json();
         return data.pageInfo.totalResults;
     }
 
     async unlikeVideo(videoId: string): Promise<void> {
-        const url = `https://www.googleapis.com/youtube/v3/videos/rate?`
-            + `id=${videoId}&rating=none`;
-        const response = await this.sendRequest(url, {});
-        const data = await response.json();
-        return data;
+        const url = `https://youtube.googleapis.com/youtube/v3/videos/rate?id=${videoId}&rating=none`;
+        await this.sendRequest('POST', url, {
+            'Content-Type': 'application/json'
+        });
     }
 }
 

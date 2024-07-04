@@ -28,7 +28,7 @@ export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideo
         + `&redirect_uri=${AUTH_REDIRECT_URI}`
         + `&prompt=consent`
         + `&access_type=offline`
-        + '&scope=https://www.googleapis.com/auth/youtube.readonly';
+        + '&scope=https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.force-ssl';
     const requestAuthUrl = baseAuthUrl + authQuery;
 
 
