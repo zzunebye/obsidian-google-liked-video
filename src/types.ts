@@ -10,6 +10,7 @@ export interface YouTubeVideo {
     kind: string;
     etag: string;
     id: string;
+    pulled_at: string;
     snippet: {
         publishedAt: string;
         channelId: string;
