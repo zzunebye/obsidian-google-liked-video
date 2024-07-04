@@ -3,11 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { YouTubeVideo } from 'src/types';
 import { useVideos } from './LikedVideoListView';
 
-interface LikedVideoViewProps {
-}
-export const LikedVideoView: React.FC<LikedVideoViewProps> = (
-    { }
-) => {
+export const LikedVideoView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOption, setSortOption] = useState('addedDate');
