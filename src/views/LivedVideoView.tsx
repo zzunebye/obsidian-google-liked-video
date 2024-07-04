@@ -95,6 +95,7 @@ export const LikedVideoView: React.FC = () => {
                 <option value="title">Title</option>
             </select>
         </div>
+
         {/* Videos */}
         <div style={{
             display: "flex",
@@ -164,12 +165,13 @@ interface VideoCardProps {
     thumbnail: string;
     url: string;
     tags: string[];
+    onUnlike: () => void;
 }
-const VideoCard = ({ id, title, channel, date, pulledAt, thumbnail, url, tags }: VideoCardProps) => {
+const VideoCard = (prop: VideoCardProps) => {
 
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-        e.dataTransfer.setData('text/plain', `\n[${title}](${url})\n`);
+        e.dataTransfer.setData('text/plain', `\n[${prop.title}](${prop.url})\n`);
         e.currentTarget.style.opacity = "0.5";
         e.currentTarget.style.border = "2px dashed #000";
     };
@@ -195,7 +197,7 @@ const VideoCard = ({ id, title, channel, date, pulledAt, thumbnail, url, tags }:
 
             }}
             onClick={() => {
-                window.open(url, '_blank');
+                window.open(prop.url, '_blank');
             }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
@@ -215,7 +217,7 @@ const VideoCard = ({ id, title, channel, date, pulledAt, thumbnail, url, tags }:
                     item.setTitle("Unlike");
                     item.setIcon("heart-off")
                     item.onClick(() => {
-                        api.unlikeVideo(id);
+                        prop.onUnlike();
                     });
                 });
 
@@ -240,7 +242,7 @@ const VideoCard = ({ id, title, channel, date, pulledAt, thumbnail, url, tags }:
                     borderRadius: "4px",
                     width: "180px", // Set a consistent width for all thumbnails
                     height: "auto",
-                }} src={thumbnail} alt="Video Thumbnail" />
+                }} src={prop.thumbnail} alt="Video Thumbnail" />
                 <div className="video-details" style={{
                     flex: "1",
                     display: "flex", flexDirection: "column", gap: "4px"
@@ -252,34 +254,34 @@ const VideoCard = ({ id, title, channel, date, pulledAt, thumbnail, url, tags }:
                             fontSize: "18px",
                             marginBlockEnd: "0px",
                         }}
-                    >{title}</h2>
+                    >{prop.title}</h2>
                     <p className="video-channel"
                         style={{
                             marginBlockStart: "0px",
                             marginBlockEnd: "0px",
                             fontSize: "14px",
                             color: "#333",
-                        }}>Channel: {channel}</p>
+                        }}>Channel: {prop.channel}</p>
                     <p className="video-date"
                         style={{
                             marginBlockStart: "0px",
                             marginBlockEnd: "0px",
                             fontSize: "14px",
                             color: "#333",
-                        }}>Published: {date}</p>
+                        }}>Published: {prop.date}</p>
                     <div className="video-tags" style={{
                         display: "flex", flexWrap: "wrap",
                         fontSize: "14px",
                         color: "#333",
                     }}>
-                        {tags?.slice(0, 8).map((tag) => <span key={tag} style={{
+                        {prop.tags?.slice(0, 8).map((tag) => <span key={tag} style={{
                             padding: "2px",
                             fontSize: "12px",
                             borderRadius: "4px",
                             margin: "1px",
                             border: "1px solid gray"
                         }}>{tag}</span>)}
-                        {tags && tags.length > 10 && <span style={{
+                        {prop.tags && prop.tags.length > 10 && <span style={{
                             padding: "2px",
                             fontSize: "12px",
                             margin: "1px",
@@ -292,7 +294,7 @@ const VideoCard = ({ id, title, channel, date, pulledAt, thumbnail, url, tags }:
                             fontSize: "10px",
                             alignSelf: "flex-end",
                             color: "#777",
-                        }}>Pulled At {new Date(pulledAt).toLocaleDateString()}</p>
+                        }}>Pulled At {new Date(prop.pulledAt).toLocaleDateString()}</p>
                 </div>
             </div>
         </div >
