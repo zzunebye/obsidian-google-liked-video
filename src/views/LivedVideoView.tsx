@@ -1,13 +1,14 @@
-import { Menu, MenuItem } from 'obsidian';
-import { useEffect, useMemo, useState } from 'react';
-import { YouTubeVideo } from 'src/types';
-import { useVideos } from './LikedVideoListView';
+import { Menu } from 'obsidian';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { VideosContext, usePlugin } from './LikedVideoListView';
+import { setLikedVideos } from 'src/storage';
 
 export const LikedVideoView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOption, setSortOption] = useState('addedDate');
-    const videos = useVideos();
+    const [videos, setVideos] = useContext(VideosContext);
+    const plugin = usePlugin();
     const videosPerPage = 10;
 
     const filteredVideos = useMemo(() => {
@@ -115,6 +116,11 @@ export const LikedVideoView: React.FC = () => {
                     url={`https://www.youtube.com/watch?v=${video.id}`}
                     pulledAt={video.pulled_at}
                     tags={video.snippet.tags}
+                    onUnlike={async () => {
+                        await plugin?.likedVideoApi.unlikeVideo(video.id);
+                        setLikedVideos(videos.filter(v => v.id !== video.id));
+                        setVideos(videos.filter(v => v.id !== video.id));
+                    }}
                 />
             ))}
         </div>
