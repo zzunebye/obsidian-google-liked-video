@@ -46,7 +46,7 @@ export class LikedVideoListView extends ItemView implements ILikedVideoListViewP
     }
 
     async onOpen() {
-        console.log("onOpen!!");
+        console.log("onOpen!!!");
 
         const likedVideos = localStorageService.getLikedVideos();
 
