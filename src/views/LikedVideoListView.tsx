@@ -4,7 +4,7 @@ import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
 import { LikedVideoView } from "./LivedVideoView";
 import { YouTubeVideo } from "src/types";
-import GoogleLikedVideoPlugin from "main";
+import GoogleLikedVideoPlugin from "../main";
 import * as React from "react";
 
 interface ILikedVideoListViewPersistedState {
