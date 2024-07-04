@@ -45,16 +45,6 @@ export class LikedVideoListView extends ItemView implements ILikedVideoListViewP
                 this.onOpen();
             });
         })
-            .addSeparator()
-            .addItem((item) => {
-                item.setTitle(true ? "Hide Settings" : "Settings");
-                item.setIcon("gear");
-                item.onClick(() => {
-                    // this.showSettings = !this.showSettings;
-                    // this.timeline.$set({ showSettings: this.showSettings });
-                });
-
-            });
     }
 
 
