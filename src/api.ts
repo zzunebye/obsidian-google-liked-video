@@ -81,7 +81,13 @@ export class LikedVideoApi {
         return data.pageInfo.totalResults;
     }
 
-
+    async unlikeVideo(videoId: string): Promise<void> {
+        const url = `https://www.googleapis.com/youtube/v3/videos/rate?`
+            + `id=${videoId}&rating=none`;
+        const response = await this.sendRequest(url, {});
+        const data = await response.json();
+        return data;
+    }
 }
 
 /// wrap a request to handle error and refresh access token if needed
