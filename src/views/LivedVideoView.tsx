@@ -110,6 +110,7 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
             {currentVideos.map((video) => (
                 <VideoCard
                     key={video.id}
+                    id={video.id}
                     title={video.snippet.title}
                     channel={video.snippet.channelTitle}
                     date={new Date(video.snippet.publishedAt).toLocaleDateString()}
@@ -159,6 +160,7 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
     </div>;
 };
 interface VideoCardProps {
+    id: string;
     title: string;
     channel: string;
     date: string;
@@ -167,7 +169,7 @@ interface VideoCardProps {
     url: string;
     tags: string[];
 }
-const VideoCard = ({ title, channel, date, pulledAt, thumbnail, url, tags }: VideoCardProps) => {
+const VideoCard = ({ id, title, channel, date, pulledAt, thumbnail, url, tags }: VideoCardProps) => {
 
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -211,7 +213,14 @@ const VideoCard = ({ title, channel, date, pulledAt, thumbnail, url, tags }: Vid
                     item.onClick(() => {
                         window.open(url, '_blank');
                     });
+                });
 
+                menu.addItem(item => {
+                    item.setTitle("Unlike");
+                    item.setIcon("heart-off")
+                    item.onClick(() => {
+                        api.unlikeVideo(id);
+                    });
                 });
 
                 menu.addItem(item => {
