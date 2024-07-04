@@ -57,11 +57,17 @@ export const LikedVideoView: React.FC<LikedVideoViewProps> = (
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
                 width: "100%",
-                padding: "8px",
+                padding: "12px 20px",
                 marginBottom: "16px",
-                borderRadius: "4px",
-                border: "1px solid #ccc"
+                borderRadius: "16px",
+                border: "1px solid #ccc",
+                // boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                fontSize: "16px",
+                outline: "none",
+                // transition: "border-color 0.3s ease-in-out"
             }}
+            onFocus={(e) => e.target.style.borderColor = "#007BFF"}
+            onBlur={(e) => e.target.style.borderColor = "#ccc"}
         />
         <div>
             {/* show the number of videos */}
@@ -169,13 +175,15 @@ const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProp
         <div
             className="video-card"
             style={{
-                border: "1px solid black",
+                border: "1px solid #ddd",
                 borderRadius: "8px",
-                padding: "8px",
+                padding: "16px",
                 display: "flex",
                 gap: "4px",
                 cursor: "pointer",
                 transition: "background-color 0.3s ease",
+                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)"
+
             }}
             onClick={() => {
                 window.open(url, '_blank');
@@ -213,7 +221,7 @@ const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProp
 
         >
             <div style={{
-                display: "flex", gap: "8px",
+                display: "flex", gap: "16px",
                 marginBlockStart: "0px",
                 marginBlockEnd: "0px",
             }}>
@@ -226,33 +234,48 @@ const VideoCard = ({ title, channel, date, thumbnail, url, tags }: VideoCardProp
                     flex: "1",
                     display: "flex", flexDirection: "column", gap: "4px"
                 }}>
-                    <h3 className="video-title"
+                    <h2 className="video-title"
                         style={{
                             marginBlockStart: "0px",
+                            color: "#d4a769",
+                            fontSize: "18px",
                             marginBlockEnd: "0px",
                         }}
-                    >{title}</h3>
+                    >{title}</h2>
                     <p className="video-channel"
                         style={{
                             marginBlockStart: "0px",
                             marginBlockEnd: "0px",
+                            fontSize: "14px",
+                            color: "#333",
                         }}>Channel: {channel}</p>
                     <p className="video-date"
                         style={{
                             marginBlockStart: "0px",
                             marginBlockEnd: "0px",
+                            fontSize: "14px",
+                            color: "#333",
                         }}>Published: {date}</p>
-                    <div className="video-tags" style={{ display: "flex", flexWrap: "wrap" }}>
-                        {tags?.map((tag) => <span key={tag} style={{
+                    <div className="video-tags" style={{
+                        display: "flex", flexWrap: "wrap",
+                        fontSize: "14px",
+                        color: "#333",
+                    }}>
+                        {tags?.slice(0, 10).map((tag) => <span key={tag} style={{
                             padding: "2px",
                             fontSize: "12px",
                             borderRadius: "4px",
                             margin: "1px",
                             border: "1px solid gray"
                         }}>{tag}</span>)}
+                        {tags && tags.length > 10 && <span style={{
+                            padding: "2px",
+                            fontSize: "12px",
+                            margin: "1px",
+                        }}>& more</span>}
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
