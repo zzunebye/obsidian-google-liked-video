@@ -1,7 +1,8 @@
 import { Menu } from 'obsidian';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { VideosContext, usePlugin } from './LikedVideoListView';
-import { setLikedVideos } from 'src/storage';
+import { localStorageService, setLikedVideos } from 'src/storage';
+import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 
 export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (searchTerm: string) => void }> = ({ searchTerm, onSearchTermChange }) => {
     return (
@@ -116,9 +117,43 @@ export const LikedVideoView: React.FC = () => {
     }, [searchTerm, sortOption]);
 
     return <div>
-        <h1 style={{
-            fontSize: "24px", fontWeight: "bold", marginBottom: "16px",
-        }}>My Liked Videos</h1>
+        <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+            marginBottom: "16px"
+        }}>
+            <h1 style={{
+                fontSize: "24px", fontWeight: "bold", marginBottom: "16px",
+            }}>My Liked Videos</h1>
+
+            <button
+                onClick={async () => {
+                    let allLikedVideos: YouTubeVideo[] = [];
+                    let nextPageToken: string | undefined = undefined;
+                    const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(20, nextPageToken);
+                    if (response) {
+                        allLikedVideos = allLikedVideos.concat(response.items);
+                        nextPageToken = response.nextPageToken;
+                    }
+
+                    const storedLikedVideos = localStorageService.getLikedVideos();
+                    const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
+
+                    const newLikedVideos = allLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
+
+                    const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
+
+                    // Batch state updates to avoid unnecessary re-renders
+                    setLikedVideos(updatedLikedVideos);
+                    setVideos(updatedLikedVideos);
+                }}
+                style={{
+                    padding: "4px",
+                    borderRadius: "4px",
+                }}
+            >Refresh 🔃</button>
+        </div>
         <SearchBar
             searchTerm={searchTerm}
             onSearchTermChange={setSearchTerm}
