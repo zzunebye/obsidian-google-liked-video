@@ -6,9 +6,6 @@ import { ObsidianGoogleLikedVideoSettings } from './types';
 
 let serverSession: Server;
 
-const CLIENT_ID = '2833248109-ka2se5l1hdgt69q33bhk847qk9t3cl3v.apps.googleusercontent.com';
-const CLIENT_SECRET = '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';
-
 const PORT = 42813;
 const redirectUri = `http://127.0.0.1:${PORT}/callback`;
 
@@ -22,8 +19,8 @@ export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideo
     setAccessToken("");
     setAccessTokenExpirationTime(0);
 
-    const userClientID = CLIENT_ID || pluginSettings.googleClientId;
-    const userClientSecret = CLIENT_SECRET || pluginSettings.googleClientSecret;
+    const userClientID = pluginSettings.googleClientId;
+    const userClientSecret = pluginSettings.googleClientSecret;
 
     const baseAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
     const authQuery = `?client_id=${userClientID.trim()}`
