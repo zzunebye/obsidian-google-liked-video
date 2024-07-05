@@ -28,12 +28,13 @@ export const VideoCard = (prop: VideoCardProps) => {
         <div
             className="video-card"
             style={{
-                border: "1px solid #ddd",
+                border: "0.5px solid #ddd",
                 borderRadius: "8px",
                 padding: "16px",
                 display: "flex",
                 gap: "4px",
                 cursor: "pointer",
+                fontFamily: "Roboto",
                 transition: "background-color 0.3s ease",
                 boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)"
 
