@@ -16,6 +16,11 @@ export const LikedVideoView: React.FC = () => {
     const plugin = usePlugin();
     const videosPerPage = 10;
 
+    useEffect(() => {
+        localStorageService.setSortOption(sortOption);
+        localStorageService.setSortOrder(sortOrder);
+    }, [sortOption, sortOrder]);
+
     const filteredVideos = useMemo(() => {
         return videos.filter(video => {
             const titleMatch = video.snippet.title.toLowerCase().includes(searchTerm.toLowerCase());
