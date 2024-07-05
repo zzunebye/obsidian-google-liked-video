@@ -125,7 +125,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                             maxHeight: "48px", // Limit to two lines
                             overflow: "hidden"
                         }}>
-                            {prop.tags?.slice(0, 8).map((tag) => <span key={tag} style={{
+                            {prop.tags?.slice(0, 16).map((tag) => <span key={tag} style={{
                                 padding: "2px",
                                 fontSize: "12px",
                                 borderRadius: "4px",
