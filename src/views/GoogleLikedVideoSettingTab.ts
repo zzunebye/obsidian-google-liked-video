@@ -264,7 +264,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                             + 'part=snippet,statistics'
                             + '&myRating=like';
 
-                        const response = await this.likedVideoApi.sendRequest(url, {});
+                        const response = await this.likedVideoApi.sendRequest('GET',url, {}, {});
                         const data: YouTubeVideosResponse = await response.json();
 
                         // show the data in the modal
