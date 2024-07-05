@@ -27,6 +27,23 @@ class LocalStorageService {
         const expirationTime = window.localStorage.getItem("googleYtbLikedVideoExpirationTime");
         return expirationTime ? parseInt(expirationTime) : 0;
     }
+
+    getSortOption(): string {
+        return window.localStorage.getItem("likedVideoViewSortOption") ?? "addedDate";
+    }
+
+    getSortOrder(): string {
+        return window.localStorage.getItem("likedVideoViewSortOrder") ?? "ASC";
+    }
+
+    /// SET
+    setSortOption(sortOption: string): void {
+        window.localStorage.setItem("likedVideoViewSortOption", sortOption);
+    }
+
+    setSortOrder(sortOrder: string): void {
+        window.localStorage.setItem("likedVideoViewSortOrder", sortOrder);
+    }
 }
 
 export const localStorageService = new LocalStorageService();
