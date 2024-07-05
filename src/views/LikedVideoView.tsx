@@ -10,8 +10,8 @@ import { SearchBar } from 'src/ui/SearchBar';
 export const LikedVideoView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [sortOption, setSortOption] = useState('addedDate');
-    const [sortOrder, setSortOrder] = useState('ASC');
+    const [sortOption, setSortOption] = useState(localStorageService.getSortOption());
+    const [sortOrder, setSortOrder] = useState(localStorageService.getSortOrder());
     const [videos, setVideos] = useContext(VideosContext);
     const plugin = usePlugin();
     const videosPerPage = 10;
