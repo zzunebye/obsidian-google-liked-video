@@ -37,7 +37,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.addSettingTab(new GoogleLikedVideoSettingTab(this.app, this));
 
 
-		this.addRibbonIcon("dice", "Activate Liked Video List View", () => {
+		this.addRibbonIcon("youtube", "Activate Liked Video List View", () => {
 			this.activateView();
 		});
 

@@ -75,7 +75,7 @@ export class LikedVideoListView extends ItemView implements ILikedVideoListViewP
     }
 
     getIcon(): string {
-        return "folder-kanban";
+        return "youtube";
     }
 
     async onOpen() {
