@@ -2,7 +2,7 @@ import { ItemView, Menu, MenuItem, ViewStateResult, WorkspaceLeaf } from "obsidi
 import { localStorageService } from "src/storage";
 import { Root, createRoot } from "react-dom/client";
 import { StrictMode, useState } from "react";
-import { LikedVideoView } from "./LivedVideoView";
+import { LikedVideoView } from "./LikedVideoView";
 import { YouTubeVideo } from "src/types";
 import GoogleLikedVideoPlugin from "../main";
 import * as React from "react";
