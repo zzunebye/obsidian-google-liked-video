@@ -3,6 +3,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { VideosContext, usePlugin } from './LikedVideoListView';
 import { localStorageService, setLikedVideos } from 'src/storage';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
+import { Youtube } from 'lucide-react';
 
 export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (searchTerm: string) => void }> = ({ searchTerm, onSearchTermChange }) => {
     return (
@@ -123,9 +124,7 @@ export const LikedVideoView: React.FC = () => {
             alignItems: "baseline",
             marginBottom: "16px"
         }}>
-            <h1 style={{
-                fontSize: "24px", fontWeight: "bold", marginBottom: "16px",
-            }}>My Liked Videos</h1>
+            <div className="liked-videos-view__title">My Liked Videos <Youtube style={{ width: "1.5em", height: "1.5em" }} /></div>
 
             <button
                 onClick={async () => {
