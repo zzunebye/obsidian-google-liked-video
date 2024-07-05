@@ -78,6 +78,7 @@ export const VideoCard = (prop: VideoCardProps) => {
         >
             <div style={{
                 display: "flex", gap: "16px",
+                width: "100%",
                 marginBlockStart: "0px", marginBlockEnd: "0px",
             }}>
                 <img className="video-thumbnail" style={{
@@ -87,47 +88,56 @@ export const VideoCard = (prop: VideoCardProps) => {
                 }} src={prop.thumbnail} alt="Video Thumbnail" />
                 <div className="video-details" style={{
                     flex: "1",
-                    display: "flex", flexDirection: "column", gap: "4px"
+                    display: "flex", flexDirection: "column", gap: "4px",
+                    justifyContent: "space-between"
                 }}>
-                    <h2 className="video-title"
+                    <div
                         style={{
-                            marginBlockStart: "0px",
-                            color: "#d4a769",
-                            fontSize: "18px",
-                            marginBlockEnd: "0px",
+                            display: "flex", flexDirection: "column", gap: "4px",
                         }}
-                    >{prop.title}</h2>
-                    <p className="video-channel"
-                        style={{
-                            marginBlockStart: "0px",
-                            marginBlockEnd: "0px",
+                    >
+                        <h2 className="video-title"
+                            style={{
+                                marginBlockStart: "0px",
+                                color: "#d4a769",
+                                fontSize: "18px",
+                                marginBlockEnd: "0px",
+                            }}
+                        >{prop.title}</h2>
+                        <p className="video-channel"
+                            style={{
+                                marginBlockStart: "0px",
+                                marginBlockEnd: "0px",
+                                fontSize: "14px",
+                                color: "#333",
+                            }}>Channel: {prop.channel}</p>
+                        <p className="video-date"
+                            style={{
+                                marginBlockStart: "0px",
+                                marginBlockEnd: "0px",
+                                fontSize: "14px",
+                                color: "#333",
+                            }}>Published: {prop.date}</p>
+                        <div className="video-tags" style={{
+                            display: "flex", flexWrap: "wrap",
                             fontSize: "14px",
                             color: "#333",
-                        }}>Channel: {prop.channel}</p>
-                    <p className="video-date"
-                        style={{
-                            marginBlockStart: "0px",
-                            marginBlockEnd: "0px",
-                            fontSize: "14px",
-                            color: "#333",
-                        }}>Published: {prop.date}</p>
-                    <div className="video-tags" style={{
-                        display: "flex", flexWrap: "wrap",
-                        fontSize: "14px",
-                        color: "#333",
-                    }}>
-                        {prop.tags?.slice(0, 8).map((tag) => <span key={tag} style={{
-                            padding: "2px",
-                            fontSize: "12px",
-                            borderRadius: "4px",
-                            margin: "1px",
-                            border: "1px solid gray"
-                        }}>{tag}</span>)}
-                        {prop.tags && prop.tags.length > 10 && <span style={{
-                            padding: "2px",
-                            fontSize: "12px",
-                            margin: "1px",
-                        }}>& more</span>}
+                            maxHeight: "48px", // Limit to two lines
+                            overflow: "hidden"
+                        }}>
+                            {prop.tags?.slice(0, 8).map((tag) => <span key={tag} style={{
+                                padding: "2px",
+                                fontSize: "12px",
+                                borderRadius: "4px",
+                                margin: "1px",
+                                border: "1px solid gray"
+                            }}>{tag}</span>)}
+                            {prop.tags && prop.tags.length > 10 && <span style={{
+                                padding: "2px",
+                                fontSize: "12px",
+                                margin: "1px",
+                            }}>& more</span>}
+                        </div>
                     </div>
                     <p className="video-pulled-at"
                         style={{
