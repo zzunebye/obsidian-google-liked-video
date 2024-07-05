@@ -22,11 +22,11 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest);
-		this.likedVideoApi = new LikedVideoApi(this?.settings);
 	}
 
 	async onload() {
 		await this.loadSettings();
+		this.likedVideoApi = new LikedVideoApi(this?.settings);
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,

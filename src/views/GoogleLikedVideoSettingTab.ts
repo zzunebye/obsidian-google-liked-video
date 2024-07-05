@@ -4,7 +4,7 @@ import { localStorageService, setLikedVideos } from 'src/storage';
 import { handleGoogleLogin } from 'src/auth';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
-import { LikedVideoApi, sendRequest } from 'src/api';
+import { LikedVideoApi } from 'src/api';
 import GoogleLikedVideoPlugin from '../main';
 import { LikedVideoListView } from './LikedVideoListView';
 

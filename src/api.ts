@@ -92,19 +92,19 @@ export class LikedVideoApi {
 }
 
 /// wrap a request to handle error and refresh access token if needed
-export async function sendRequest(url: string, headers: Record<string, string>, pluginSettings: ObsidianGoogleLikedVideoSettings): Promise<Response> {
-    let accessToken = getGoogleAccessToken();
-    if (!accessToken) {
-        accessToken = await refreshAccessToken(pluginSettings.googleClientId, pluginSettings.googleClientSecret);
-    }
+// export async function sendRequest(url: string, headers: Record<string, string>, pluginSettings: ObsidianGoogleLikedVideoSettings): Promise<Response> {
+//     let accessToken = getGoogleAccessToken();
+//     if (!accessToken) {
+//         accessToken = await refreshAccessToken(pluginSettings.googleClientId, pluginSettings.googleClientSecret);
+//     }
 
-    return await fetch(url, {
-        headers: {
-            ...headers,
-            'Authorization': `Bearer ${accessToken}`,
-        }
-    });
-}
+//     return await fetch(url, {
+//         headers: {
+//             ...headers,
+//             'Authorization': `Bearer ${accessToken}`,
+//         }
+//     });
+// }
 
 
 
