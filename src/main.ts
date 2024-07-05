@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	dailyNotePath: ''
 }
 
-const APP_ID = 'youtube-liked-video-plugin';
+export const APP_ID = 'youtube-liked-video-plugin';
 
 export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings;
