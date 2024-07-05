@@ -97,7 +97,7 @@ export const LikedVideoView: React.FC = () => {
                 sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
                 break;
         }
-        if (sortOrder === 'DESC') {
+        if (sortOrder === 'ASC') {
             sorted.reverse();
         }
         return sorted;
