@@ -1,6 +1,9 @@
 export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (searchTerm: string) => void }> = ({ searchTerm, onSearchTermChange }) => {
     return (
-        <div style={{ position: "relative", width: "100%", marginBottom: "16px" }}>
+        <div style={{
+            position: "relative", width: "100%", marginBottom: "16px",
+        }}
+        >
             <input
                 type="text"
                 placeholder="Search videos..."
@@ -8,13 +11,13 @@ export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (sear
                 onChange={(e) => onSearchTermChange(e.target.value)}
                 style={{
                     width: "100%",
-                    padding: "12px 20px",
-                    borderRadius: "8px",
-                    border: "1px solid #ddd",
                     fontSize: "16px",
                     outline: "none",
+                    border: "1px solid #ddd",
+                    borderRadius: "8px",
                     boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
                     transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                    padding: "12px 20px",
                 }}
                 onFocus={(e) => {
                     e.target.style.borderColor = "#007BFF";
@@ -30,7 +33,7 @@ export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (sear
                     onClick={() => onSearchTermChange('')}
                     style={{
                         position: "absolute",
-                        right: "10px",
+                        right: "0px",
                         top: "50%",
                         transform: "translateY(-50%)",
                         background: "none",
@@ -38,7 +41,7 @@ export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (sear
                         cursor: "pointer",
                         fontSize: "16px",
                         color: "#999",
-                        borderRadius: "36px",
+                        borderRadius: "0px 8px 8px 0px",
                         transition: "color 0.3s ease",
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.color = "#666"}
