@@ -2,9 +2,10 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { VideosContext, usePlugin } from './LikedVideoListView';
 import { localStorageService, setLikedVideos } from 'src/storage';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
-import { Youtube } from 'lucide-react';
+import { Youtube, Settings, RefreshCcw } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
+import { APP_ID } from 'src/main';
 
 
 export const LikedVideoView: React.FC = () => {
@@ -84,27 +85,27 @@ export const LikedVideoView: React.FC = () => {
         }}>
             <div className="liked-videos-view__title">My Liked Videos <Youtube style={{ width: "1.5em", height: "1.5em" }} /></div>
             <div>
-            <button
-                onClick={async () => {
-                    let allLikedVideos: YouTubeVideo[] = [];
-                    let nextPageToken: string | undefined = undefined;
-                    const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(20, nextPageToken);
-                    if (response) {
-                        allLikedVideos = allLikedVideos.concat(response.items);
-                        nextPageToken = response.nextPageToken;
-                    }
+                <button
+                    onClick={async () => {
+                        let allLikedVideos: YouTubeVideo[] = [];
+                        let nextPageToken: string | undefined = undefined;
+                        const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(20, nextPageToken);
+                        if (response) {
+                            allLikedVideos = allLikedVideos.concat(response.items);
+                            nextPageToken = response.nextPageToken;
+                        }
 
-                    const storedLikedVideos = localStorageService.getLikedVideos();
-                    const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
+                        const storedLikedVideos = localStorageService.getLikedVideos();
+                        const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
 
-                    const newLikedVideos = allLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
+                        const newLikedVideos = allLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
 
-                    const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
+                        const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
 
-                    // Batch state updates to avoid unnecessary re-renders
-                    setLikedVideos(updatedLikedVideos);
-                    setVideos(updatedLikedVideos);
-                }}
+                        // Batch state updates to avoid unnecessary re-renders
+                        setLikedVideos(updatedLikedVideos);
+                        setVideos(updatedLikedVideos);
+                    }}
                 ><RefreshCcw /></button>
                 <button title="Settings"
                     onClick={() => {
@@ -116,15 +117,28 @@ export const LikedVideoView: React.FC = () => {
                 ><Settings /></button>
             </div>
         </div>
-        <SearchBar
-            searchTerm={searchTerm}
-            onSearchTermChange={setSearchTerm}
-        />
-        <div>
-            {/* show the number of videos */}
-            <span>{filteredVideos.length} videos</span>
+        <div style={{
+            display: "flex", alignItems: "center",
+            justifyContent: "space-between", gap: "8px",
+            marginBottom: "8px"
+        }}>
+            <div style={{ flex: "1" }}>
+                <SearchBar
+                    searchTerm={searchTerm}
+                    onSearchTermChange={setSearchTerm}
+                />
+            </div>
+            <div style={{
+                fontSize: "16px", color: "#555",
+                width: "96px"
+            }}>
+                <p>{filteredVideos.length} videos</p>
+            </div>
         </div>
-        <div style={{ marginTop: "16px", display: "flex", alignItems: "center" }}>
+        <div style={{
+            display: "flex", alignItems: "center",
+            marginBottom: "8px"
+        }}>
             <span style={{ marginRight: "8px" }}>Sort by: </span>
             <select
                 aria-label="Sort videos"
