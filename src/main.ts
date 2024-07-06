@@ -42,14 +42,23 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			this.activateView();
 		});
 
-		const ribbonIconOpenSetting = this.addRibbonIcon('cog', 'Open setting of google-ytb-liked-video-plugin', (evt: MouseEvent) => {
-			const setting = (this.app as any).setting;
-			setting.open();
-			setting.openTabById(APP_ID);
-
+		this.addCommand({
+			id: 'open-liked-video-list-view',
+			name: 'Open Youtube Liked Video List View',
+			callback: () => {
+				this.activateView();
+			}
 		});
-		// Perform additional things with the ribbon
-		ribbonIconOpenSetting.addClass('my-plugin-ribbon-class-open-setting');
+
+		this.addCommand({
+			id: 'open-liked-video-setting',
+			name: 'Open Youtube Liked Video Setting',
+			callback: () => {
+				const setting = (this.app as any).setting;
+				setting.open();
+				setting.openTabById(APP_ID);
+			}
+		});
 
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		const statusBarItemEl = this.addStatusBarItem();
