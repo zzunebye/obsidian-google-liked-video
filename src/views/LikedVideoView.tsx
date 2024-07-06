@@ -176,79 +176,79 @@ export const LikedVideoView: React.FC = () => {
             </button>
         </div>
 
-    {/* Videos */ }
-    <div style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "16px",
-        paddingTop: "16px",
-        paddingBottom: "16px"
-    }}>
-        {currentVideos.map((video) => (
-            <VideoCard
-                key={video.id}
-                id={video.id}
-                title={video.snippet.title}
-                channel={video.snippet.channelTitle}
-                date={new Date(video.snippet.publishedAt).toLocaleDateString()}
-                thumbnail={video.snippet.thumbnails.default.url}
-                url={`https://www.youtube.com/watch?v=${video.id}`}
-                pulledAt={video.pulled_at}
-                tags={video.snippet.tags}
-                onUnlike={async () => {
-                    await plugin?.likedVideoApi.unlikeVideo(video.id);
-                    setLikedVideos(videos.filter(v => v.id !== video.id));
-                    setVideos(videos.filter(v => v.id !== video.id));
-                }}
-                onAddToDailyNote={async (videoData, file) => {
-                    console.log(file);
+        {/* Videos */}
+        <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            paddingTop: "16px",
+            paddingBottom: "16px"
+        }}>
+            {currentVideos.map((video) => (
+                <VideoCard
+                    key={video.id}
+                    id={video.id}
+                    title={video.snippet.title}
+                    channel={video.snippet.channelTitle}
+                    date={new Date(video.snippet.publishedAt).toLocaleDateString()}
+                    thumbnail={video.snippet.thumbnails.default.url}
+                    url={`https://www.youtube.com/watch?v=${video.id}`}
+                    pulledAt={video.pulled_at}
+                    tags={video.snippet.tags}
+                    onUnlike={async () => {
+                        await plugin?.likedVideoApi.unlikeVideo(video.id);
+                        setLikedVideos(videos.filter(v => v.id !== video.id));
+                        setVideos(videos.filter(v => v.id !== video.id));
+                    }}
+                    onAddToDailyNote={async (videoData, file) => {
+                        console.log(file);
 
-                    const contentToAppend = `\n${videoData}`;
+                        const contentToAppend = `\n${videoData}`;
 
-                    plugin?.app.vault.process(file,
-                        (data) => {
-                            return data + contentToAppend;
-                        }
-                    )
-                }}
-            />
-        ))}
-    </div>
-
-    {/* Pagination */ }
-    <div style={{
-        display: "flex",
-        justifyContent: "center",
-        gap: "8px",
-        marginTop: "16px"
-    }}>
-        <div style={{ minWidth: "80px", textAlign: "center" }}>
-            {currentPage > 1 && (
-                <>
-                    <button onClick={() => setCurrentPage(1)}>
-                        &lt;--
-                    </button>
-                    <button onClick={() => setCurrentPage(currentPage - 1)}>
-                        &lt;-
-                    </button>
-                </>
-            )}
+                        plugin?.app.vault.process(file,
+                            (data) => {
+                                return data + contentToAppend;
+                            }
+                        )
+                    }}
+                />
+            ))}
         </div>
-        <button disabled>
-            {currentPage}
-        </button>
-        <div style={{ minWidth: "80px", textAlign: "center" }}>
-            {currentPage < totalPages && (
-                <>
-                    <button onClick={() => setCurrentPage(currentPage + 1)}>
-                        -&gt;
-                    </button>
-                    <button onClick={() => setCurrentPage(totalPages)}>
-                        --&gt;
-                    </button>
-                </>
-            )}
+
+        {/* Pagination */}
+        <div style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "8px",
+            marginTop: "16px"
+        }}>
+            <div style={{ minWidth: "80px", textAlign: "center" }}>
+                {currentPage > 1 && (
+                    <>
+                        <button onClick={() => setCurrentPage(1)}>
+                            &lt;--
+                        </button>
+                        <button onClick={() => setCurrentPage(currentPage - 1)}>
+                            &lt;-
+                        </button>
+                    </>
+                )}
+            </div>
+            <button disabled>
+                {currentPage}
+            </button>
+            <div style={{ minWidth: "80px", textAlign: "center" }}>
+                {currentPage < totalPages && (
+                    <>
+                        <button onClick={() => setCurrentPage(currentPage + 1)}>
+                            -&gt;
+                        </button>
+                        <button onClick={() => setCurrentPage(totalPages)}>
+                            --&gt;
+                        </button>
+                    </>
+                )}
+            </div>
         </div>
-    </div>
     </div >;
 };

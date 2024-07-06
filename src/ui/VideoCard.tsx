@@ -51,7 +51,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                 e.currentTarget.style.backgroundColor = "transparent";
                 const menu = new Menu();
                 menu.addItem(item => {
-                    item.setTitle("Open in new tab");
+                    item.setTitle("Open in external browser");
                     item.setIcon("create-new")
                     item.onClick(() => {
                         window.open(prop.url, '_blank');
