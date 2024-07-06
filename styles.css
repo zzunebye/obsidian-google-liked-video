@@ -8,13 +8,31 @@ If your plugin does not need CSS, delete this file.
 */
 .liked-videos-view__title {
 	display: flex; /* Makes the container a flex container */
-    align-items: center;
+	align-items: center;
 	font-weight: 600; /* Semi-bold font weight */
 	font-size: 1.75em; /* Slightly larger font size */
 	color: #2c3e50; /* Elegant dark blue-gray color */
 	font-family: "Georgia", serif; /* Use elegant serif font */
 }
 
-.liked-videos-view__title > * { /* Targets direct children of the container */
+.liked-videos-view__title > * {
+	/* Targets direct children of the container */
 	margin: 0 5px; /* Adds margin to the left and right of children */
+}
+
+/* Video Card */
+
+.video-card {
+	position: relative;
+}
+
+.video-card-options {
+	position: absolute;
+	right: 0;
+	top: 0;
+	visibility: hidden;
+}
+
+.video-card:hover .video-card-options {
+	visibility: visible;
 }

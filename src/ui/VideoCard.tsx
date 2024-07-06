@@ -1,5 +1,6 @@
 import { Menu, TFile, moment } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
+import { MoreHorizontal } from "lucide-react";
 
 interface VideoCardProps {
     id: string;
@@ -90,13 +91,16 @@ export const VideoCard = (prop: VideoCardProps) => {
             onDragEnd={(e) => handleDragEnd(e)}
 
         >
-            <div style={{
-                display: "flex",
-                gap: "16px",
-                width: "100%",
-                marginBlockStart: "0px",
-                marginBlockEnd: "0px",
-            }}>
+            <div
+                className="video-card-inner"
+                style={{
+                    display: "flex",
+                    position: "relative",
+                    gap: "16px",
+                    width: "100%",
+                    marginBlockStart: "0px",
+                    marginBlockEnd: "0px",
+                }}>
                 <img className="video-thumbnail" style={{
                     borderRadius: "4px",
                     width: "180px", // Set a consistent width for all thumbnails
@@ -170,6 +174,36 @@ export const VideoCard = (prop: VideoCardProps) => {
                             alignSelf: "flex-end",
                             color: "#777",
                         }}>Pulled At {new Date(prop.pulledAt).toLocaleDateString()}</p>
+                </div>
+                <div
+                    className="video-card-options"
+                    style={{
+                        position: "absolute",
+                        right: "0",
+                        top: "0",
+                    }}
+                >
+                    <div style={{ alignSelf: "flex-end", placeSelf: "flex-start" }}>
+                        <button
+                            style={{
+                                background: "none",
+                                // border: "none",
+                                cursor: "pointer",
+                                padding: "0",
+                                margin: "0",
+                                borderRadius: "50%", // Circular border
+                                width: "32px", // Set width
+                                height: "32px", // Set height
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                border: "1px solid #ddd" // Optional: Add border
+                            }}
+                            aria-label="More options"
+                        >
+                            <MoreHorizontal size={16} />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div >
