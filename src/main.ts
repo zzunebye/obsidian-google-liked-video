@@ -18,6 +18,8 @@ export const APP_ID = 'youtube-liked-video-plugin';
 
 export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings;
+	editor: Editor;
+	vault: Vault;
 	likedVideoApi: LikedVideoApi;
 
 	constructor(app: App, manifest: PluginManifest) {
@@ -27,6 +29,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.likedVideoApi = new LikedVideoApi(this?.settings);
+		this.vault = this.app.vault;
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,
