@@ -173,6 +173,17 @@ export const LikedVideoView: React.FC = () => {
                         setLikedVideos(videos.filter(v => v.id !== video.id));
                         setVideos(videos.filter(v => v.id !== video.id));
                     }}
+                    onAddToDailyNote={async (videoData, file) => {
+                        console.log(file);
+
+                        const contentToAppend = `\n${videoData}`;
+
+                        plugin?.app.vault.process(file,
+                            (data) => {
+                                return data + contentToAppend;
+                            }
+                        )
+                    }}
                 />
             ))}
         </div>
