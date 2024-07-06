@@ -1,4 +1,5 @@
-import { Menu } from "obsidian";
+import { Menu , TFile, moment} from "obsidian";
+import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 
 interface VideoCardProps {
     id: string;
@@ -10,6 +11,7 @@ interface VideoCardProps {
     url: string;
     tags: string[];
     onUnlike: () => void;
+    onAddToDailyNote: (videoData: string, file: TFile) => void;
 }
 export const VideoCard = (prop: VideoCardProps) => {
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -67,6 +69,25 @@ export const VideoCard = (prop: VideoCardProps) => {
                 menu.addItem(item => {
                     item.setTitle("Add to Daily Note");
                     item.onClick(() => {
+                        // find a daily note
+                        // add the video to the daily note
+                        // create a new daily note if it doesn't exist
+                        // add the video to the daily note
+
+             
+                    const today = moment().startOf('day');
+                    const dailyNotes = getAllDailyNotes();
+                    const dailyNote = getDailyNote(today, dailyNotes);
+
+                    // if (!dailyNote) {
+                    //     dailyNote = createDailyNote(today);
+                    // }
+
+                    const videoData = `- [${prop.title}](${prop.url}) - ${prop.channel}`;
+
+                    prop.onAddToDailyNote(videoData, dailyNote);
+                    // dailyNote.(videoData);
+   
                     });
 
                 });
