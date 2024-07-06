@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { App, Editor, MarkdownView, Plugin, PluginManifest, WorkspaceLeaf } from 'obsidian';
+import { App, Editor, MarkdownView, Plugin, PluginManifest, Vault, WorkspaceLeaf } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from 'src/types';
 import { SampleModal } from 'src/views/modals';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
