@@ -133,11 +133,12 @@ export const VideoCard = (prop: VideoCardProps) => {
                                 color: "#333",
                             }}>Published: {prop.date}</p>
                         <div className="video-tags" style={{
-                            display: "flex", flexWrap: "wrap",
+                            display: "flex",
+                            flexWrap: "wrap",
                             fontSize: "14px",
                             color: "#333",
                             maxHeight: "48px", // Limit to two lines
-                            overflow: "hidden"
+                            overflow: "clip",
                         }}>
                             {prop.tags?.slice(0, 16).map((tag) => <span key={tag} style={{
                                 padding: "2px",
