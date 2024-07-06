@@ -32,7 +32,7 @@ export const VideoCard = (prop: VideoCardProps) => {
             style={{
                 border: "0.5px solid #ddd",
                 borderRadius: "8px",
-                padding: "16px",
+                padding: "8px",
                 display: "flex",
                 gap: "4px",
                 cursor: "pointer",
@@ -91,9 +91,11 @@ export const VideoCard = (prop: VideoCardProps) => {
 
         >
             <div style={{
-                display: "flex", gap: "16px",
+                display: "flex",
+                gap: "16px",
                 width: "100%",
-                marginBlockStart: "0px", marginBlockEnd: "0px",
+                marginBlockStart: "0px",
+                marginBlockEnd: "0px",
             }}>
                 <img className="video-thumbnail" style={{
                     borderRadius: "4px",
@@ -103,6 +105,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                 <div className="video-details" style={{
                     flex: "1",
                     display: "flex", flexDirection: "column", gap: "4px",
+                    padding: "4px",
                     justifyContent: "space-between"
                 }}>
                     <div
