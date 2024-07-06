@@ -106,7 +106,7 @@ export const LikedVideoView: React.FC = () => {
                         setLikedVideos(updatedLikedVideos);
                         setVideos(updatedLikedVideos);
                     }}
-                ><RefreshCcw /></button>
+                ><RefreshCcw size={16} /></button>
                 <button title="Settings"
                     onClick={() => {
                         // Open Plugin Setting.
@@ -114,7 +114,7 @@ export const LikedVideoView: React.FC = () => {
                         setting.open();
                         setting.openTabById(APP_ID);
                     }}
-                ><Settings /></button>
+                ><Settings size={16} /></button>
             </div>
         </div>
         <div style={{
