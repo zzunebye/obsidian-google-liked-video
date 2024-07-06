@@ -1,4 +1,4 @@
-import { Menu , TFile, moment} from "obsidian";
+import { Menu, TFile, moment } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 
 interface VideoCardProps {
@@ -73,21 +73,13 @@ export const VideoCard = (prop: VideoCardProps) => {
                         // add the video to the daily note
                         // create a new daily note if it doesn't exist
                         // add the video to the daily note
+                        const today = moment().startOf('day');
+                        const dailyNotes = getAllDailyNotes();
+                        const dailyNote = getDailyNote(today, dailyNotes);
 
-             
-                    const today = moment().startOf('day');
-                    const dailyNotes = getAllDailyNotes();
-                    const dailyNote = getDailyNote(today, dailyNotes);
+                        const videoData = `- [${prop.title}](${prop.url}) - ${prop.channel}`;
+                        prop.onAddToDailyNote(videoData, dailyNote);
 
-                    // if (!dailyNote) {
-                    //     dailyNote = createDailyNote(today);
-                    // }
-
-                    const videoData = `- [${prop.title}](${prop.url}) - ${prop.channel}`;
-
-                    prop.onAddToDailyNote(videoData, dailyNote);
-                    // dailyNote.(videoData);
-   
                     });
 
                 });
