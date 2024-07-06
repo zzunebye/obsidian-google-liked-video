@@ -1,7 +1,8 @@
 export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (searchTerm: string) => void }> = ({ searchTerm, onSearchTermChange }) => {
     return (
         <div style={{
-            position: "relative", width: "100%", marginBottom: "16px",
+            position: "relative",
+            width: "100%",
         }}
         >
             <input
