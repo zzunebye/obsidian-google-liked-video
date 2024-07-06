@@ -7,7 +7,7 @@ If your plugin does not need CSS, delete this file.
 
 */
 .liked-videos-view__title {
-	font-size: 2em; /* Slightly larger font size */
+	font-size: 1.75em; /* Slightly larger font size */
 	font-weight: 600; /* Semi-bold font weight */
 	color: #2c3e50; /* Elegant dark blue-gray color */
 	background-color: #ecf0f1; /* Light gray background color */
