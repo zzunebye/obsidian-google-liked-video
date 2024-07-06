@@ -116,6 +116,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                                 color: "#d4a769",
                                 fontSize: "18px",
                                 marginBlockEnd: "0px",
+
                             }}
                         >{prop.title}</h2>
                         <p className="video-channel"
@@ -132,27 +133,31 @@ export const VideoCard = (prop: VideoCardProps) => {
                                 fontSize: "14px",
                                 color: "#333",
                             }}>Published: {prop.date}</p>
-                        <div className="video-tags" style={{
+                        {/* <div className="video-tags" style={{
                             display: "flex",
                             flexWrap: "wrap",
                             fontSize: "14px",
                             color: "#333",
-                            maxHeight: "48px", // Limit to two lines
+                            maxHeight: "50px", // Limit to two lines
                             overflow: "clip",
                         }}>
-                            {prop.tags?.slice(0, 16).map((tag) => <span key={tag} style={{
-                                padding: "2px",
-                                fontSize: "12px",
-                                borderRadius: "4px",
-                                margin: "1px",
-                                border: "1px solid gray"
-                            }}>{tag}</span>)}
+                            {prop.tags?.slice(0, 4).map((tag) => {
+                                const maxLength = 18;
+                                const displayTag = tag.length > maxLength ? `${tag.slice(0, maxLength)}...` : tag;
+                                return <span key={tag} style={{
+                                    padding: "2px",
+                                    fontSize: "12px",
+                                    borderRadius: "4px",
+                                    margin: "1px",
+                                    border: "1px solid gray",
+                                }}>{displayTag}</span>;
+                            })}
                             {prop.tags && prop.tags.length > 10 && <span style={{
                                 padding: "2px",
                                 fontSize: "12px",
                                 margin: "1px",
                             }}>& more</span>}
-                        </div>
+                        </div> */}
                     </div>
                     <p className="video-pulled-at"
                         style={{
