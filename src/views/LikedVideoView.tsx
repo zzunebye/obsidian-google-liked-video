@@ -71,15 +71,19 @@ export const LikedVideoView: React.FC = () => {
         setCurrentPage(1);
     }, [searchTerm, sortOption]);
 
-    return <div>
+    return <div
+        style={{
+            padding: "0 8px",
+        }}
+    >
         <div style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "baseline",
+            alignItems: "flex-end",
             marginBottom: "16px"
         }}>
             <div className="liked-videos-view__title">My Liked Videos <Youtube style={{ width: "1.5em", height: "1.5em" }} /></div>
-
+            <div>
             <button
                 onClick={async () => {
                     let allLikedVideos: YouTubeVideo[] = [];
@@ -101,11 +105,16 @@ export const LikedVideoView: React.FC = () => {
                     setLikedVideos(updatedLikedVideos);
                     setVideos(updatedLikedVideos);
                 }}
-                style={{
-                    padding: "4px",
-                    borderRadius: "4px",
-                }}
-            >Refresh 🔃</button>
+                ><RefreshCcw /></button>
+                <button title="Settings"
+                    onClick={() => {
+                        // Open Plugin Setting.
+                        const setting = (plugin?.app as any).setting;
+                        setting.open();
+                        setting.openTabById(APP_ID);
+                    }}
+                ><Settings /></button>
+            </div>
         </div>
         <SearchBar
             searchTerm={searchTerm}
