@@ -73,22 +73,10 @@ export const LikedVideoView: React.FC = () => {
     }, [searchTerm, sortOption]);
 
     return <div
-        style={{
-            padding: "0 0px",
-        }}
-    >
-        <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "16px",
-            backgroundColor: "#f8f9fa",
-            borderBottom: "1px solid #e0e0e0",
-            borderTop: "1px solid #e0e0e0",
-            boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.05)"
-        }}>
-            <div className="liked-videos-view__title">My Liked Videos <Youtube style={{ width: "1.5em", height: "1.5em" }} /></div>
-            <div>
+        className="liked-video-view">
+        <div className="video-view-header">
+            <div className="video-view-header__title"><Youtube style={{ width: "1.5em", height: "1.5em" }} /> My Liked Videos</div>
+            <div className="video-view-header__actions">
                 <button
                     onClick={async () => {
                         let allLikedVideos: YouTubeVideo[] = [];
@@ -139,20 +127,15 @@ export const LikedVideoView: React.FC = () => {
                 <p>{filteredVideos.length} videos</p>
             </div>
         </div>
-        <div style={{
-            display: "flex", alignItems: "center",
-            marginBottom: "8px"
-        }}>
-            <span style={{ marginRight: "8px" }}>Sort by: </span>
+        <div className="video-view-sort">
+            {/* <span style={{ marginRight: "8px" }}>Sort by: </span> */}
+            <label htmlFor="sort-video-select">Sort by:</label>
             <select
+                id="sort-video-select"
+                className="video-view-sort__select"
                 aria-label="Sort videos"
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
-                style={{
-                    padding: "4px",
-                    borderRadius: "4px",
-                    border: "1px solid #ccc",
-                }}
             >
                 <option value="addedDate">By Liked Date</option>
                 <option value="viewCount">By View Count</option>
@@ -162,14 +145,9 @@ export const LikedVideoView: React.FC = () => {
                 <option value="title">By Title</option>
             </select>
             <button
+                title="Toggle sort order"
                 onClick={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
-                style={{
-                    marginLeft: "8px",
-                    padding: "4px",
-                    borderRadius: "4px",
-                    border: "1px solid #ccc",
-                    backgroundColor: sortOrder === 'ASC' ? '#f0f0f0' : '#d0d0d0',
-                }}
+                className="video-view-sort__order"
                 aria-label="Toggle sort order"
             >
                 {sortOrder === 'ASC' ? '🔼' : '🔽'}
@@ -178,8 +156,10 @@ export const LikedVideoView: React.FC = () => {
 
         {/* Videos */}
         <div style={{
-            display: "flex",
-            flexDirection: "column",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))",
+            gridAutoRows: "1fr",
+            gridTemplateRows: "repeat(2, 1fr)",
             gap: "16px",
             paddingTop: "16px",
             paddingBottom: "16px"

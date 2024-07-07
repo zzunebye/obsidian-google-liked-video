@@ -6,24 +6,139 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
-.liked-videos-view__title {
+
+/* Reset CSS */
+
+/* View */
+
+.liked-videos-view {
+	padding: 0 0px;
+}
+
+/* View Header */
+
+.video-view-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+	background-color: var(--background-secondary);
+	padding-top: 0.5em;
+	padding-bottom: 0.5em;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-top: 1px solid var(--background-modifier-border);
+	box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.video-view-header__title {
 	display: flex; /* Makes the container a flex container */
 	align-items: center;
 	font-weight: 600; /* Semi-bold font weight */
 	font-size: 1.75em; /* Slightly larger font size */
-	color: #2c3e50; /* Elegant dark blue-gray color */
+	color: var(--text-normal); /* Elegant dark blue-gray color */
 	font-family: "Georgia", serif; /* Use elegant serif font */
 }
 
-.liked-videos-view__title > * {
+.video-view-header__title > * {
 	/* Targets direct children of the container */
 	margin: 0 5px; /* Adds margin to the left and right of children */
 }
 
+.video-view-header__actions {
+	display: flex;
+	gap: 0.25em;
+	align-items: center;
+	justify-content: flex-end;
+}
+
+.video-view-sort {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.5em;
+	margin-bottom: 8px;
+}
+
+.video-view-sort__select {
+	border-radius: 8px;
+	-webkit-appearance: menulist !important;
+	appearance: menulist !important;
+}
+
+.video-view-sort__order {
+	border-radius: 8px;
+}
+
 /* Video Card */
 
-.video-card {
+.video-card__container p,
+.video-card__container h1,
+.video-card__container h2,
+.video-card__container h3,
+.video-card__container h4,
+.video-card__container h5,
+.video-card__container h6,
+.video-card__container span {
+	margin-block: 0px;
+	color: var(--text-normal);
+	/* margin: 0;
+    padding: 0;
+    color: #333;
+    font-family: "Arial", sans-serif; Use a clean sans-serif font */
+}
+
+.video-card__container h1 {
+	font-size: 1.5em;
+	font-weight: bold;
+}
+
+.video-card__container h2 {
+	font-size: 1.25em;
+	font-weight: bold;
+}
+
+.video-card__container h3 {
+	font-size: 1.1em;
+	font-weight: bold;
+}
+
+.video-card__container h4 {
+	font-size: 1em;
+	font-weight: bold;
+}
+
+.video-card__container h5 {
+	font-size: 0.875em;
+	font-weight: bold;
+}
+
+.video-card__container h6 {
+	font-size: 0.75em;
+	font-weight: bold;
+}
+
+.video-card__container p {
+	font-size: 0.875em;
+	line-height: 1.5;
+}
+
+.video-card__container {
 	position: relative;
+	background-color: var(--background-primary-alt);
+	border: var(--border-width) solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 8px;
+	display: flex;
+	gap: 4px;
+	cursor: pointer;
+	font-family: "Roboto", sans-serif; /* Added sans-serif as a fallback */
+	transition: background-color 0.3s ease;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.video-card__container:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
 }
 
 .video-card-options {
@@ -33,6 +148,46 @@ If your plugin does not need CSS, delete this file.
 	visibility: hidden;
 }
 
-.video-card:hover .video-card-options {
+.video-card-options button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--interactive-normal);
+	cursor: pointer;
+	padding: 0;
+	margin: 0;
+	border-radius: 50%;
+	width: 32px;
+	height: 32px;
+}
+
+.video-card-options button:hover {
+	background-color: var(--interactive-hover);
+}
+
+.video-card__container:hover .video-card-options {
 	visibility: visible;
 }
+
+/* Search Bar */
+
+.search-bar {
+	width: 100%;
+	position: relative;
+}
+.search-bar > input {
+	width: 100%;
+	background-color: var(--background-modifier-form-field);
+	padding: 12px 20px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	color: var(--text-normal);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* .search-bar > input:focus {
+	border-color: var(--background-modifier-border-active);
+	box-shadow: 0 2px 8px var(--background-modifier-border-active);
+} */
