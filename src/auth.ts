@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { IncomingMessage, Server, ServerResponse } from 'http';
-import { localStorageService, setAccessToken, setAccessTokenExpirationTime, setRefreshToken } from 'src/storage';
+import { localStorageService, setAccessToken, setAccessTokenExpirationTime, setLikedVideos, setRefreshToken } from 'src/storage';
 import { Platform, Notice } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
@@ -9,7 +9,10 @@ let serverSession: Server;
 const PORT = 42813;
 const AUTH_REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`;
 
-export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideoSettings) {
+export async function handleGoogleLogin(
+    pluginSettings: ObsidianGoogleLikedVideoSettings,
+    onSuccess: () => void,
+) {
     if (!Platform.isDesktop) {
         new Notice("Can't use this OAuth method on this device");
         return;
@@ -66,9 +69,12 @@ export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideo
                 setRefreshToken(token.refresh_token);
                 setAccessToken(token.access_token);
                 setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
+                onSuccess();
             }
 
             console.info("Tokens acquired.");
+            new Notice("Tokens acquired.");
+
 
             res.end("Authentication successful! Please return to obsidian.");
 
@@ -78,6 +84,7 @@ export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideo
 
         } catch (e) {
             console.log("Auth failed");
+            new Notice("Auth failed");
 
             serverSession.close(() => {
                 console.log("Server closed");
@@ -87,6 +94,48 @@ export async function handleGoogleLogin(pluginSettings: ObsidianGoogleLikedVideo
         window.open(requestAuthUrl);
     });
 }
+
+export async function handleGoogleLogout(
+    pluginSettings: ObsidianGoogleLikedVideoSettings,
+    onSuccess: () => void,
+) {
+    if (!Platform.isDesktop) {
+        new Notice("Can't use this OAuth method on this device");
+        return;
+    }
+
+    const accessToken = localStorageService.getAccessToken();
+    if (accessToken) {
+        const success = await revokeGoogleToken(accessToken);
+        if (success) {
+            setRefreshToken("");
+            setAccessToken("");
+            setAccessTokenExpirationTime(0);
+            setLikedVideos([]);
+
+            onSuccess();
+        }
+    }
+}
+
+export async function revokeGoogleToken(token: string) {
+    const revokeUrl = `https://oauth2.googleapis.com/revoke?token=${token}`;
+    const response = await fetch(revokeUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+
+    if (response.ok) {
+        console.log("Token revoked successfully.");
+        new Notice("Token revoked successfully.");
+        return true;
+    } else {
+        console.error("Failed to revoke token.");
+        new Notice("Failed to revoke token.");
+        return false;
+    }
+}
+
 
 export async function refreshAccessToken(userClientId: string, userClientSecret: string): Promise<string> {
 

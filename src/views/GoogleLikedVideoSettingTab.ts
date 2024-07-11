@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { App, Modal, Notice, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { localStorageService, setLikedVideos } from 'src/storage';
-import { handleGoogleLogin } from 'src/auth';
+import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
 import { LikedVideoApi } from 'src/api';
@@ -79,7 +79,17 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .addButton(button => button
                 .setButtonText(localStorageService.getRefreshToken() ? 'Logout' : 'Login')
                 .onClick(async (): Promise<void> => {
-                    await handleGoogleLogin(this.plugin.settings);
+                    localStorageService.getRefreshToken() ?
+                        await handleGoogleLogout(this.plugin.settings,
+                            () => {
+                                this.display();
+                                this.updateView();
+                            }
+                        )
+                        : await handleGoogleLogin(this.plugin.settings, () => {
+                            this.display();
+                            this.updateView();
+                        });
                 }));
 
 
@@ -264,7 +274,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                             + 'part=snippet,statistics'
                             + '&myRating=like';
 
-                        const response = await this.likedVideoApi.sendRequest('GET',url, {}, {});
+                        const response = await this.likedVideoApi.sendRequest('GET', url, {}, {});
                         const data: YouTubeVideosResponse = await response.json();
 
                         // show the data in the modal
