@@ -1,6 +1,6 @@
 {
 	"id": "youtube-liked-video-plugin",
-	"name": "_YouTube Liked Video Plugin",
+	"name": "Geulo - Youtube Liked Video",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "Demonstrates some of the capabilities of the Obsidian API.",
