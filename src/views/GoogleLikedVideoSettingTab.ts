@@ -296,6 +296,20 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName('Clear LocalStorage')
+            .addButton(button => button
+                .setButtonText('Clear Stored Liked Videos in Local Storage')
+                .onClick(async () => {
+                    localStorageService.setLikedVideos([]);
+                    this.display();
+                    this.updateView();
+
+                    new Notice('Liked videos have been cleared');
+
+
+                }));
+
+        new Setting(containerEl)
             .setName('My Playlists')
             .addButton(button => button
                 .setButtonText('Fetch')
