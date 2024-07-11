@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	fetchLimit: 10
 }
 
-export const APP_ID = 'youtube-liked-video-plugin';
+export const APP_ID = 'geulo-youtube-liked-video-plugin';
 
 export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings;
