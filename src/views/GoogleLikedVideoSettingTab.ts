@@ -84,6 +84,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                             () => {
                                 this.display();
                                 this.updateView();
+                            }, () => {
+                                this.display();
+                                this.updateView();
                             }
                         )
                         : await handleGoogleLogin(this.plugin.settings, () => {

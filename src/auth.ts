@@ -98,6 +98,7 @@ export async function handleGoogleLogin(
 export async function handleGoogleLogout(
     pluginSettings: ObsidianGoogleLikedVideoSettings,
     onSuccess: () => void,
+    onError: () => void,
 ) {
     if (!Platform.isDesktop) {
         new Notice("Can't use this OAuth method on this device");
@@ -107,13 +108,14 @@ export async function handleGoogleLogout(
     const accessToken = localStorageService.getAccessToken();
     if (accessToken) {
         const success = await revokeGoogleToken(accessToken);
+        setRefreshToken("");
+        setAccessToken("");
+        setAccessTokenExpirationTime(0);
+        setLikedVideos([]);
         if (success) {
-            setRefreshToken("");
-            setAccessToken("");
-            setAccessTokenExpirationTime(0);
-            setLikedVideos([]);
-
             onSuccess();
+        } else {
+            onError();
         }
     }
 }
