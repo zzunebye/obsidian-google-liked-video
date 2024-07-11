@@ -51,7 +51,6 @@ To use this plugin, you need to set up a project in Google Cloud Console and ena
 
 ### Troubleshooting
 If you encounter any issues, consider the following steps:
-1. **Liked Video Quota**: Ensure you have not exceeded your API quota limits.
-2. **Credentials**: Double-check that your Client ID and Client secret are correctly entered in the plugin settings.
-3. **Authorized URIs**: Verify that http://127.0.0.1:42813 is listed in the Authorized JavaScript origins and http://127.0.0.1:42813/callback in the Authorized redirect URIs.
+1. **Credentials**: Double-check that your Client ID and Client secret are correctly entered in the plugin settings.
+2. **Authorized URIs**: Verify that http://127.0.0.1:42813 is listed in the Authorized JavaScript origins and http://127.0.0.1:42813/callback in the Authorized redirect URIs.
 
