@@ -33,7 +33,7 @@ class LocalStorageService {
     }
 
     getSortOrder(): string {
-        return window.localStorage.getItem("likedVideoViewSortOrder") ?? "ASC";
+        return window.localStorage.getItem("likedVideoViewSortOrder") ?? "DESC";
     }
 
     /// SET

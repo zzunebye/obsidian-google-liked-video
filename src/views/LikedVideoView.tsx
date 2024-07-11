@@ -79,6 +79,8 @@ export const LikedVideoView: React.FC = () => {
             <div className="video-view-header__title"><Youtube style={{ width: "1.5em", height: "1.5em" }} /> My Liked Videos</div>
             <div className="video-view-header__actions">
                 <button
+                    style={{ paddingLeft: "24px", paddingRight: "24px" }}
+                    /// Refresh button to fetch recently liked videos
                     onClick={async () => {
                         let allLikedVideos: YouTubeVideo[] = [];
                         let nextPageToken: string | undefined = undefined;
@@ -101,9 +103,13 @@ export const LikedVideoView: React.FC = () => {
                         // Batch state updates to avoid unnecessary re-renders
                         setLikedVideos(updatedLikedVideos);
                         setVideos(updatedLikedVideos);
+
+                        new Notice(`New liked videos from Youtube are fetched and added - ${newLikedVideos.length} new videos.`);
+
                     }}
                 ><RefreshCcw size={16} /></button>
-                <button title="Settings"
+                <button
+                    title="Settings"
                     onClick={() => {
                         // Open Plugin Setting.
                         const setting = (plugin?.app as any).setting;
@@ -132,7 +138,6 @@ export const LikedVideoView: React.FC = () => {
             </div>
         </div>
         <div className="video-view-sort">
-            {/* <span style={{ marginRight: "8px" }}>Sort by: </span> */}
             <label htmlFor="sort-video-select">Sort by:</label>
             <select
                 id="sort-video-select"
@@ -145,7 +150,7 @@ export const LikedVideoView: React.FC = () => {
                 <option value="viewCount">By View Count</option>
                 <option value="likeCount">By Like Count</option>
                 <option value="likeViewRatio">By Like/View Ratio</option>
-                <option value="date">By Date</option>
+                <option value="date">By Posted Date</option>
                 <option value="title">By Title</option>
             </select>
             <button
