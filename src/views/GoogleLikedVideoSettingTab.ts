@@ -18,7 +18,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         this.likedVideoApi = new LikedVideoApi(this.plugin.settings);
     }
 
-    sendRequestWithSettings = (url: string, headers: Record<string, string>): Promise<Response> => sendRequest(url, headers, this.plugin.settings);
     updateView(): void {
         this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onClose();
         this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onOpen();
@@ -115,8 +114,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setHeading()
-            .setName('Testing functions')
-            .setDesc('Testing functions');
+            .setName('Functions')
+            .setDesc('Functions to fetch and update liked videos');
 
 
         new Setting(containerEl)
