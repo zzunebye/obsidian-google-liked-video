@@ -1,12 +1,12 @@
 {
 	"id": "geulo-youtube-liked-video-plugin",
 	"name": "Geulo - Youtube Liked Video",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"minAppVersion": "0.15.0",
 	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
+	"author": "Junyoung Bang",
+	"authorUrl": "https://github.com/zzunebye",
 	"isDesktopOnly": true,
-	"fundingUrl": "https://buymeacoffee.com"
+	"fundingUrl": "https://www.buymeacoffee.com/junyoungbang"
 
 }
