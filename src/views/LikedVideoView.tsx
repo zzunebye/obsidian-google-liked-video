@@ -6,6 +6,7 @@ import { Youtube, Settings, RefreshCcw } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
 import { APP_ID } from 'src/main';
+import { Modal, Notice } from 'obsidian';
 
 
 export const LikedVideoView: React.FC = () => {
@@ -153,7 +154,77 @@ export const LikedVideoView: React.FC = () => {
                 {sortOrder === 'ASC' ? '🔼' : '🔽'}
             </button>
         </div>
+        {currentVideos.length === 0 && <div
+            style={{
+                display: "flex",
+                paddingTop: "32px",
+                flex: "1",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100%"
+            }}
+        >
+            <div
+                style={{
+                    fontSize: "16px", color: "#555"
+                }}
+            >No videos found
+            </div>
+            <button
+                onClick={async () => {
+                    try {
+                        /// get number of the videos in the liked videos
+                        const totalLikedVideos = await plugin?.likedVideoApi.fetchTotalLikedVideoCount();
+                        new Notice(`${totalLikedVideos} videos in total`);
 
+                        // repeat fetching liked videos
+                        // this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
+                        // If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
+                        // Then, merge the fetched videos data and save to LocalStorage.
+                        let allLikedVideos: YouTubeVideo[] = [];
+                        let nextPageToken: string | undefined = undefined;
+
+                        do {
+                            const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(50, nextPageToken);
+                            console.log('response is returned', response?.items.length);
+                            allLikedVideos = allLikedVideos.concat(response?.items || []);
+                            if (response?.nextPageToken === undefined || response?.nextPageToken === '' || response?.nextPageToken === null) {
+                                console.log('No more liked videos');
+                                break;
+                            } else {
+                                console.log('nextPageToken', response?.nextPageToken);
+                                nextPageToken = response?.nextPageToken;
+                            }
+                        } while (nextPageToken !== undefined);
+
+                        // Save the fetched videos to LocalStorage
+                        setLikedVideos(allLikedVideos);
+                        setVideos(allLikedVideos);
+
+                        new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
+
+                    } catch (error) {
+                        console.log('error', error)
+                        if (plugin?.app) {
+                            new Modal(plugin?.app).setTitle('error').setContent("error: " + error).open();
+                        }
+                    }
+                }}
+                style={{
+                    padding: "8px 16px",
+                    fontSize: "16px",
+                    cursor: "pointer",
+                    backgroundColor: "#007bff",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    marginTop: "16px"
+                }}
+            >
+                Fetch All Liked Videos
+            </button>
+        </div>}
         {/* Videos */}
         <div style={{
             display: "grid",
@@ -164,6 +235,7 @@ export const LikedVideoView: React.FC = () => {
             paddingTop: "16px",
             paddingBottom: "16px"
         }}>
+
             {currentVideos.map((video) => (
                 <VideoCard
                     key={video.id}
