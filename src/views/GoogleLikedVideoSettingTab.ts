@@ -118,31 +118,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setName('Testing functions')
             .setDesc('Testing functions');
 
-        new Setting(containerEl)
-            .setName('Test Fetch Recent Liked Videos')
-            .addButton(button => button
-                .setButtonText('Fetch')
-                .onClick(async () => {
-                    // fetch https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&myRating=like HTTP GET with 
-                    // 'bearer ${this.plugin.settings.accessToken}' as authorization header
-                    // show the response in the modal
-                    try {
-                        const url = 'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&myRating=like';
-
-                        const response = await this.sendRequestWithSettings(url, {});
-                        const data = await response.json();
-                        console.log(data);
-
-                        // show the data in the modal
-                        new Modal(this.app).setTitle('result').setContent(JSON.stringify(data, null, 2)).open();
-
-                    } catch (error) {
-                        console.log('error', error)
-                        new Modal(this.app).setTitle('error').setContent("error: " + error).open();
-                    }
-                }));
-
-
 
         new Setting(containerEl)
             .setName('Fetch All Liked Videos so far and add to LocalStorage')
