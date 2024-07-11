@@ -44,6 +44,11 @@ class LocalStorageService {
     setSortOrder(sortOrder: string): void {
         window.localStorage.setItem("likedVideoViewSortOrder", sortOrder);
     }
+
+    setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
+        window.localStorage.setItem("googleYtbLikedVideoLikedVideos", JSON.stringify(likedVideos));
+    };
+
 }
 
 export const localStorageService = new LocalStorageService();
