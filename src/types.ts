@@ -1,9 +1,9 @@
 export interface ObsidianGoogleLikedVideoSettings {
-    mySetting: string;
     accessToken: string;
     googleClientId: string;
     googleClientSecret: string;
     dailyNotePath: string;
+    fetchLimit: number;
 }
 
 export interface YouTubeVideo {

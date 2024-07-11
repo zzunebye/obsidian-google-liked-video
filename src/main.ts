@@ -6,11 +6,11 @@ import { LikedVideoListView, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedV
 import { LikedVideoApi } from './api';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
-	mySetting: 'default',
 	accessToken: '',
 	googleClientId: '2833248109-o6ap9n7tlsp2kno0tojefnsb15i1ecgl.apps.googleusercontent.com',
 	googleClientSecret: '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',
-	dailyNotePath: ''
+	dailyNotePath: '',
+	fetchLimit: 10
 }
 
 export const APP_ID = 'youtube-liked-video-plugin';

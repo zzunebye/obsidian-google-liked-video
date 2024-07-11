@@ -32,6 +32,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         console.log(likedVideosCount);
         const maxVideos = 5000;
         const progressValue = likedVideosCount / maxVideos;
+        const fetchLimit = this.plugin.settings.fetchLimit;
 
         new Setting(containerEl)
             .setName('Quota')
@@ -41,6 +42,21 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setDisabled(true)
                 .setValue(`${likedVideosCount} / ${maxVideos} (${(progressValue * 100).toFixed(2)}%)`))
+
+        new Setting(containerEl)
+            .setName('Fetch Limit')
+            .setDesc('Numbers of video to fetch at each request')
+            .addSlider(slider => slider
+                .setValue(fetchLimit)
+                .setLimits(10, 100, 10)
+                .onChange(async (value) => {
+                    this.plugin.settings.fetchLimit = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }))
+            .addText(text => text
+                .setValue(`${fetchLimit}`)
+                .setDisabled(true));
 
 
         new Setting(containerEl)

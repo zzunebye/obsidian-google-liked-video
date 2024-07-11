@@ -82,7 +82,10 @@ export const LikedVideoView: React.FC = () => {
                     onClick={async () => {
                         let allLikedVideos: YouTubeVideo[] = [];
                         let nextPageToken: string | undefined = undefined;
-                        const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(20, nextPageToken);
+
+                        const limit = plugin?.settings.fetchLimit;
+
+                        const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(limit, nextPageToken);
                         if (response) {
                             allLikedVideos = allLikedVideos.concat(response.items);
                             nextPageToken = response.nextPageToken;
