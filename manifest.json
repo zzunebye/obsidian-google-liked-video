@@ -1,12 +1,11 @@
 {
-	"id": "geulo-youtube-liked-video-plugin",
+	"id": "geulo-youtube-liked-video",
 	"name": "Geulo",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
+	"description": "Allows you to fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note.",
 	"author": "Junyoung Bang",
 	"authorUrl": "https://github.com/zzunebye",
 	"isDesktopOnly": true,
 	"fundingUrl": "https://www.buymeacoffee.com/junyoungbang"
-
 }
