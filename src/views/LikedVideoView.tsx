@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { VideosContext, usePlugin } from './LikedVideoListView';
+import { VideosContext, usePlugin } from './LikedVideoListPane';
 import { localStorageService, setLikedVideos } from 'src/storage';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { Youtube, Settings, RefreshCcw } from 'lucide-react';

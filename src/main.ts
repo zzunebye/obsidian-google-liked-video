@@ -2,7 +2,7 @@
 import { App, Plugin, PluginManifest, Vault, WorkspaceLeaf } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
-import { LikedVideoListView, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListView';
+import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { LikedVideoApi } from './api';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
@@ -31,7 +31,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,
-			(leaf) => new LikedVideoListView(leaf, this)
+			(leaf) => new LikedVideoListPane(leaf, this)
 		);
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
@@ -77,8 +77,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	onunload() { }
 
 	reloadView() {
-		this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onClose();
-		this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onload();
+		this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onClose();
+		this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onload();
 	}
 
 	async activateView() {

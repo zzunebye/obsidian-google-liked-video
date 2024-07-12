@@ -35,7 +35,7 @@ const VideosProvider: React.FC<{ videos: YouTubeVideo[] }> = ({ videos }) => {
     );
 };
 
-export class LikedVideoListView extends ItemView implements ILikedVideoListViewPersistedState {
+export class LikedVideoListPane extends ItemView implements ILikedVideoListViewPersistedState {
     root: Root | null = null;
 
     /// Persisted State

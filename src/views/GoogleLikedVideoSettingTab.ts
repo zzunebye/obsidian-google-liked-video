@@ -6,7 +6,7 @@ import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
 import { LikedVideoApi } from 'src/api';
 import GoogleLikedVideoPlugin from '../main';
-import { LikedVideoListView } from './LikedVideoListView';
+import { LikedVideoListPane } from './LikedVideoListPane';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
@@ -19,8 +19,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     updateView(): void {
-        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onClose();
-        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.onOpen();
+        this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onClose();
+        this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onOpen();
     }
     display(): void {
         const { containerEl } = this;
@@ -166,7 +166,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
                         // Save the fetched videos to LocalStorage
                         setLikedVideos(allLikedVideos);
-                        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.setState(
+                        this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
                             { videos: allLikedVideos },
                             { history: true });
                         this.display();
@@ -374,7 +374,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
 
         setLikedVideos(updatedLikedVideos);
-        this.app.workspace.getActiveViewOfType(LikedVideoListView)?.setState(
+        this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
             { videos: updatedLikedVideos },
             { history: true });
 
