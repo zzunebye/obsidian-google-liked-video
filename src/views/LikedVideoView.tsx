@@ -195,13 +195,10 @@ export const LikedVideoView: React.FC = () => {
 
                         do {
                             const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(50, nextPageToken);
-                            console.log('response is returned', response?.items.length);
                             allLikedVideos = allLikedVideos.concat(response?.items || []);
                             if (response?.nextPageToken === undefined || response?.nextPageToken === '' || response?.nextPageToken === null) {
-                                console.log('No more liked videos');
                                 break;
                             } else {
-                                console.log('nextPageToken', response?.nextPageToken);
                                 nextPageToken = response?.nextPageToken;
                             }
                         } while (nextPageToken !== undefined);
@@ -213,7 +210,6 @@ export const LikedVideoView: React.FC = () => {
                         new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
 
                     } catch (error) {
-                        console.log('error', error)
                         if (plugin?.app) {
                             new Modal(plugin?.app).setTitle('error').setContent("error: " + error).open();
                         }
@@ -256,7 +252,6 @@ export const LikedVideoView: React.FC = () => {
                         setVideos(videos.filter(v => v.id !== video.id));
                     }}
                     onAddToDailyNote={async (videoData, file) => {
-                        console.log(file);
 
                         const contentToAppend = `\n${videoData}`;
 

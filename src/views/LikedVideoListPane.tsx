@@ -79,7 +79,6 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
     }
 
     async onOpen() {
-        console.log("onOpen!!!");
         this.videos = localStorageService.getLikedVideos();
 
         this.root = createRoot(this.containerEl.children[1]);

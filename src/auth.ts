@@ -72,23 +72,17 @@ export async function handleGoogleLogin(
                 onSuccess();
             }
 
-            console.info("Tokens acquired.");
             new Notice("Tokens acquired.");
 
 
             res.end("Authentication successful! Please return to obsidian.");
 
-            serverSession.close(() => {
-                console.log("Server closed");
-            });
+            serverSession.close(() => { });
 
         } catch (e) {
-            console.log("Auth failed");
             new Notice("Auth failed");
 
-            serverSession.close(() => {
-                console.log("Server closed");
-            });
+            serverSession.close(() => { });
         }
     }).listen(PORT, async () => {
         window.open(requestAuthUrl);
@@ -128,11 +122,9 @@ export async function revokeGoogleToken(token: string) {
     });
 
     if (response.ok) {
-        console.log("Token revoked successfully.");
         new Notice("Token revoked successfully.");
         return true;
     } else {
-        console.error("Failed to revoke token.");
         new Notice("Failed to revoke token.");
         return false;
     }

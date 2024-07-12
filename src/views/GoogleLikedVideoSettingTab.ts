@@ -29,7 +29,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         const likedVideos = localStorageService.getLikedVideos();
         const likedVideosCount = likedVideos.length;
-        console.log(likedVideosCount);
         const maxVideos = 5000;
         const progressValue = likedVideosCount / maxVideos;
         const fetchLimit = this.plugin.settings.fetchLimit;
@@ -153,13 +152,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
                         do {
                             const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(50, nextPageToken);
-                            console.log('response is returned', response.items.length);
                             allLikedVideos = allLikedVideos.concat(response.items);
                             if (response.nextPageToken === undefined || response.nextPageToken === '' || response.nextPageToken === null) {
-                                console.log('No more liked videos');
                                 break;
                             } else {
-                                console.log('nextPageToken', response.nextPageToken);
                                 nextPageToken = response.nextPageToken;
                             }
                         } while (nextPageToken !== undefined);
@@ -174,7 +170,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
 
                     } catch (error) {
-                        console.log('error', error)
                         new Modal(this.app).setTitle('error').setContent("error: " + error).open();
                     }
                 }));
@@ -189,7 +184,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         this.display();
                         this.updateView()
                     } catch (error) {
-                        console.log('error', error)
                         new Modal(this.app).setTitle('error').setContent("error: " + error).open();
                     }
                 }));
@@ -276,18 +270,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         //                 // find daily note folder
         //                 const dailyNoteFolder = this.app.vault.getFolderByPath(this.plugin.settings.dailyNotePath);
         //                 if (!dailyNoteFolder) {
-        //                     console.log('Daily Note folder not found');
         //                     return;
         //                 }
         //                 const dateNow = window.moment();
 
         //                 const dailyNotes = getAllDailyNotes();
         //                 if (!dailyNotes) {
-        //                     console.log('No daily notes found');
         //                     return;
         //                 }
         //                 const todayDailyNote: TFile = getDailyNote(dateNow, dailyNotes);
-        //                 console.log('todayDailyNote', todayDailyNote);
 
         //                 // add liked videos to the daily note
         //                 if (todayDailyNote) {
@@ -300,12 +291,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         //                     await this.app.vault.modify(todayDailyNote, updatedContent);
         //                     new Notice('Liked videos added to today\'s daily note.');
         //                 } else {
-        //                     console.log('Today\'s daily note not found');
         //                 }
 
 
         //             } catch (error) {
-        //                 console.log('error', error)
         //                 new Modal(this.app).setTitle('error').setContent("error: " + error).open();
         //             }
         //         }));
@@ -336,15 +325,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         //                 new Modal(this.app).setTitle('result').setContent(JSON.stringify(data, null, 2)).open();
 
         //             } catch (error) {
-        //                 console.log('error', error)
         //                 new Modal(this.app).setTitle('error').setContent("error: " + error).open();
         //             }
         //         }));
     }
     async fetchAndUpdateLikedVideos(app: App, limit = 50, repetitive = false): Promise<void> {
-        console.log('Fetching all liked videos...');
         const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
-        console.log(`Total liked videos: ${totalLikedVideos}`);
         new Notice(`${totalLikedVideos} videos in total`);
 
         let allLikedVideos: YouTubeVideo[] = [];
