@@ -1,4 +1,4 @@
-import { Menu, TFile, moment } from "obsidian";
+import { Menu, Modal, Plugin, TFile, moment } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { MoreHorizontal } from "lucide-react";
 import { YouTubeVideo } from "src/types";
@@ -23,51 +23,68 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         e.currentTarget.style.border = "1px solid black";
     };
 
+    const handleContextMenu = (e: any): void => {
+        e.preventDefault();
+        e.stopPropagation();
+        const menu = new Menu();
+        menu.addItem(item => {
+            item.setTitle("Open in external browser");
+            item.setIcon("create-new")
+            item.onClick(() => {
+                window.open(url, '_blank');
+            });
+        });
+
+        menu.addItem(item => {
+            item.setTitle("Unlike");
+            item.setIcon("heart-off")
+            item.onClick(() => {
+                onUnlike();
+            });
+        });
+
+        menu.addItem(item => {
+            item.setTitle("Add to Daily Note");
+            item.onClick(() => {
+                // find a daily note and add the video to the daily note
+                // create a new daily note if it doesn't exist
+                const today = moment().startOf('day');
+                const dailyNotes = getAllDailyNotes();
+                const dailyNote = getDailyNote(today, dailyNotes);
+
+                const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
+                onAddToDailyNote(videoData, dailyNote);
+
+            });
+
+        });
+
+        menu.addItem(item => {
+            item.setTitle("Display Video Info");
+            item.onClick(() => {
+                // display obsidian modal with the video info
+                // key of videoInfo and values in each line
+                const modal = new Modal(app).setTitle("Video Info").setContent(
+                    `${Object.entries(videoInfo.snippet).map(([key, value]) => `${key}: ${value}`).join("\n")}`
+                );
+                modal.open();
+
+                // Modal.setContent(<div>{JSON.stringify(videoInfo)}</div>);
+                // Modal.setTitle("Video Info");
+                // Modal.open();
+            });
+        });
+
+        menu.showAtPosition({ x: e.clientX, y: e.clientY });
+    }
+
     return (
         <div
             className="video-card__container"
             onClick={() => {
                 window.open(url, '_blank');
             }}
-            onContextMenu={(e) => {
-                e.preventDefault();
-                e.currentTarget.style.backgroundColor = "transparent";
-                const menu = new Menu();
-                menu.addItem(item => {
-                    item.setTitle("Open in external browser");
-                    item.setIcon("create-new")
-                    item.onClick(() => {
-                        window.open(url, '_blank');
-                    });
-                });
-
-                menu.addItem(item => {
-                    item.setTitle("Unlike");
-                    item.setIcon("heart-off")
-                    item.onClick(() => {
-                        onUnlike();
-                    });
-                });
-
-                menu.addItem(item => {
-                    item.setTitle("Add to Daily Note");
-                    item.onClick(() => {
-                        // find a daily note
-                        // add the video to the daily note
-                        // create a new daily note if it doesn't exist
-                        // add the video to the daily note
-                        const today = moment().startOf('day');
-                        const dailyNotes = getAllDailyNotes();
-                        const dailyNote = getDailyNote(today, dailyNotes);
-
-                        const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
-                        onAddToDailyNote(videoData, dailyNote);
-
-                    });
-
-                });
-                menu.showAtPosition({ x: e.clientX, y: e.clientY });
-            }}
+            onContextMenu={handleContextMenu}
             draggable
             onDragStart={(e) => handleDragStart(e)}
             onDragEnd={(e) => handleDragEnd(e)}
@@ -147,50 +164,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     <div style={{ alignSelf: "flex-end", placeSelf: "flex-start" }}>
                         <button
                             aria-label="More options"
-                            onClick={
-                                (e) => {
-                                    // e.preventDefault();
-                                    // e.stopPropagation();
-                                    // e.currentTarget.style.visibility = "visible";
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    const menu = new Menu();
-                                    menu.addItem(item => {
-                                        item.setTitle("Open in external browser");
-                                        item.setIcon("create-new")
-                                        item.onClick(() => {
-                                            window.open(url, '_blank');
-                                        });
-                                    });
-
-                                    menu.addItem(item => {
-                                        item.setTitle("Unlike");
-                                        item.setIcon("heart-off")
-                                        item.onClick(() => {
-                                            onUnlike();
-                                        });
-                                    });
-
-                                    menu.addItem(item => {
-                                        item.setTitle("Add to Daily Note");
-                                        item.onClick(() => {
-                                            // find a daily note
-                                            // add the video to the daily note
-                                            // create a new daily note if it doesn't exist
-                                            // add the video to the daily note
-                                            const today = moment().startOf('day');
-                                            const dailyNotes = getAllDailyNotes();
-                                            const dailyNote = getDailyNote(today, dailyNotes);
-
-                                            const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
-                                            onAddToDailyNote(videoData, dailyNote);
-
-                                        });
-
-                                    });
-                                    menu.showAtPosition({ x: e.clientX, y: e.clientY });
-                                }
-                            }
+                            onClick={handleContextMenu}
                         >
                             <MoreHorizontal size={16} />
                         </button>
