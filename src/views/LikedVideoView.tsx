@@ -248,13 +248,8 @@ export const LikedVideoView: React.FC = () => {
                 <VideoCard
                     key={video.id}
                     id={video.id}
-                    title={video.snippet.title}
-                    channel={video.snippet.channelTitle}
-                    date={new Date(video.snippet.publishedAt).toLocaleDateString()}
-                    thumbnail={video.snippet.thumbnails.default.url}
                     url={`https://www.youtube.com/watch?v=${video.id}`}
-                    pulledAt={video.pulled_at}
-                    tags={video.snippet.tags}
+                    videoInfo={video}
                     onUnlike={async () => {
                         await plugin?.likedVideoApi.unlikeVideo(video.id);
                         setLikedVideos(videos.filter(v => v.id !== video.id));

@@ -1,22 +1,18 @@
 import { Menu, TFile, moment } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { MoreHorizontal } from "lucide-react";
+import { YouTubeVideo } from "src/types";
 
 interface VideoCardProps {
+    videoInfo: YouTubeVideo;
     id: string;
-    title: string;
-    channel: string;
-    date: string;
-    pulledAt: string;
-    thumbnail: string;
     url: string;
-    tags: string[];
     onUnlike: () => void;
     onAddToDailyNote: (videoData: string, file: TFile) => void;
 }
-export const VideoCard = (prop: VideoCardProps) => {
+export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoCardProps) => {
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-        e.dataTransfer.setData('text/plain', `\n[${prop.title}](${prop.url})\n`);
+        e.dataTransfer.setData('text/plain', `\n[${videoInfo.snippet.title}](${url})\n`);
         e.currentTarget.style.opacity = "0.5";
         e.currentTarget.style.border = "2px dashed #000";
     };
@@ -31,7 +27,7 @@ export const VideoCard = (prop: VideoCardProps) => {
         <div
             className="video-card__container"
             onClick={() => {
-                window.open(prop.url, '_blank');
+                window.open(url, '_blank');
             }}
             onContextMenu={(e) => {
                 e.preventDefault();
@@ -41,7 +37,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                     item.setTitle("Open in external browser");
                     item.setIcon("create-new")
                     item.onClick(() => {
-                        window.open(prop.url, '_blank');
+                        window.open(url, '_blank');
                     });
                 });
 
@@ -49,7 +45,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                     item.setTitle("Unlike");
                     item.setIcon("heart-off")
                     item.onClick(() => {
-                        prop.onUnlike();
+                        onUnlike();
                     });
                 });
 
@@ -64,8 +60,8 @@ export const VideoCard = (prop: VideoCardProps) => {
                         const dailyNotes = getAllDailyNotes();
                         const dailyNote = getDailyNote(today, dailyNotes);
 
-                        const videoData = `- [${prop.title}](${prop.url}) - ${prop.channel}`;
-                        prop.onAddToDailyNote(videoData, dailyNote);
+                        const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
+                        onAddToDailyNote(videoData, dailyNote);
 
                     });
 
@@ -92,7 +88,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                     borderRadius: "4px",
                     minWidth: "180px", // Set a consistent width for all thumbnails
                     height: "auto",
-                }} src={prop.thumbnail} alt="Video Thumbnail" />
+                }} src={videoInfo.snippet.thumbnails.default.url} alt="Video Thumbnail" />
                 <div className="video-details" style={{
                     flex: "1",
                     display: "flex", flexDirection: "column", gap: "4px",
@@ -109,9 +105,9 @@ export const VideoCard = (prop: VideoCardProps) => {
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
-                        }}>{prop.title}</h2>
-                        <p className="video-channel">Channel: {prop.channel}</p>
-                        <p className="video-date">Published: {prop.date}</p>
+                        }}>{videoInfo.snippet.title}</h2>
+                        <p className="video-channel">Channel: {videoInfo.snippet.channelTitle}</p>
+                        <p className="video-date">Published: {videoInfo.snippet.publishedAt}</p>
                         {/* <div className="video-tags" style={{
                             display: "flex",
                             flexWrap: "wrap",
@@ -145,7 +141,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                             fontSize: "10px",
                             alignSelf: "flex-end",
                             color: "#777",
-                        }}>Pulled At {new Date(prop.pulledAt).toLocaleDateString()}</p>
+                        }}>Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
                 </div>
                 <div className="video-card-options">
                     <div style={{ alignSelf: "flex-end", placeSelf: "flex-start" }}>
@@ -163,7 +159,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                                         item.setTitle("Open in external browser");
                                         item.setIcon("create-new")
                                         item.onClick(() => {
-                                            window.open(prop.url, '_blank');
+                                            window.open(url, '_blank');
                                         });
                                     });
 
@@ -171,7 +167,7 @@ export const VideoCard = (prop: VideoCardProps) => {
                                         item.setTitle("Unlike");
                                         item.setIcon("heart-off")
                                         item.onClick(() => {
-                                            prop.onUnlike();
+                                            onUnlike();
                                         });
                                     });
 
@@ -186,8 +182,8 @@ export const VideoCard = (prop: VideoCardProps) => {
                                             const dailyNotes = getAllDailyNotes();
                                             const dailyNote = getDailyNote(today, dailyNotes);
 
-                                            const videoData = `- [${prop.title}](${prop.url}) - ${prop.channel}`;
-                                            prop.onAddToDailyNote(videoData, dailyNote);
+                                            const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
+                                            onAddToDailyNote(videoData, dailyNote);
 
                                         });
 
