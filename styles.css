@@ -134,12 +134,20 @@ If your plugin does not need CSS, delete this file.
 	font-family: "Roboto", sans-serif; /* Added sans-serif as a fallback */
 	transition: background-color 0.3s ease;
 	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	opacity: 1;
+	border: 1px solid var(--background-modifier-border);
 }
 
 .video-card__container:hover {
 	background-color: var(--background-modifier-hover);
 	border-color: var(--background-modifier-border-hover);
 }
+
+.video-card__container--dragging {
+	opacity: 0.5;
+	border: 1px dashed #2d2;
+}
+
 
 .video-card-options {
 	position: absolute;
@@ -169,7 +177,6 @@ If your plugin does not need CSS, delete this file.
 .video-card__container:hover .video-card-options {
 	visibility: visible;
 }
-
 /* Search Bar */
 
 .search-bar {

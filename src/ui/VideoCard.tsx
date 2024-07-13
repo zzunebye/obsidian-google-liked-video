@@ -13,14 +13,11 @@ interface VideoCardProps {
 export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoCardProps) => {
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData('text/plain', `\n[${videoInfo.snippet.title}](${url})\n`);
-        e.currentTarget.style.opacity = "0.5";
-        e.currentTarget.style.border = "2px dashed #000";
+        e.currentTarget.classList.add('video-card__container--dragging'); // Add class
     };
 
     const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-        e.currentTarget.classList.remove('dragging');
-        e.currentTarget.style.opacity = "1";
-        e.currentTarget.style.border = "1px solid black";
+        e.currentTarget.classList.remove('video-card__container--dragging');
     };
 
     const handleContextMenu = (e: any): void => {
@@ -203,28 +200,27 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                         }}>{videoInfo.snippet.title}</h2>
                         <p className="video-channel">Channel: {videoInfo.snippet.channelTitle}</p>
                         <p className="video-date">Published: {videoInfo.snippet.publishedAt}</p>
-                        </div> */}
                     </div>
-                    <p className="video-pulled-at"
-                        style={{
-                            marginBlockStart: "0px",
-                            marginBlockEnd: "0px",
-                            fontSize: "10px",
-                            alignSelf: "flex-end",
-                            color: "#777",
-                        }}>Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
                 </div>
-                <div className="video-card-options">
-                    <div style={{ alignSelf: "flex-end", placeSelf: "flex-start" }}>
-                        <button
-                            aria-label="More options"
-                            onClick={handleContextMenu}
-                        >
-                            <MoreHorizontal size={16} />
-                        </button>
-                    </div>
+                <p className="video-pulled-at"
+                    style={{
+                        marginBlockStart: "0px",
+                        marginBlockEnd: "0px",
+                        fontSize: "10px",
+                        alignSelf: "flex-end",
+                        color: "#777",
+                    }}>Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
+            </div>
+            <div className="video-card-options">
+                <div style={{ alignSelf: "flex-end", placeSelf: "flex-start" }}>
+                    <button
+                        aria-label="More options"
+                        onClick={handleContextMenu}
+                    >
+                        <MoreHorizontal size={16} />
+                    </button>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
