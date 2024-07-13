@@ -62,16 +62,94 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         menu.addItem(item => {
             item.setTitle("Display Video Info");
             item.onClick(() => {
-                // display obsidian modal with the video info
-                // key of videoInfo and values in each line
-                const modal = new Modal(app).setTitle("Video Info").setContent(
-                    `${Object.entries(videoInfo.snippet).map(([key, value]) => `${key}: ${value}`).join("\n")}`
-                );
-                modal.open();
+                const modal = document.createElement('div');
+                modal.style.position = 'fixed';
+                modal.style.top = '0';
+                modal.style.left = '0';
+                modal.style.width = '100%';
+                modal.style.height = '100%';
+                modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                modal.style.display = 'flex';
+                modal.style.justifyContent = 'center';
+                modal.style.alignItems = 'center';
+                modal.style.zIndex = '1000';
 
-                // Modal.setContent(<div>{JSON.stringify(videoInfo)}</div>);
-                // Modal.setTitle("Video Info");
-                // Modal.open();
+                const modalContentWrapper = document.createElement('div');
+                modalContentWrapper.style.backgroundColor = 'white';
+                modalContentWrapper.style.padding = '20px';
+                modalContentWrapper.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+                modalContentWrapper.style.maxHeight = '90%';
+                modalContentWrapper.style.maxWidth = '90%';
+                modalContentWrapper.style.overflowY = 'auto';
+                modalContentWrapper.style.position = 'relative';
+                modalContentWrapper.style.border = '1px solid var(--background-modifier-border)';
+                modalContentWrapper.style.borderRadius = '16px';
+
+                const closeButton = document.createElement('button');
+                closeButton.innerText = 'X';
+                closeButton.style.position = 'absolute';
+                closeButton.style.top = '10px';
+                closeButton.style.right = '10px';
+
+                closeButton.onclick = () => {
+                    document.body.removeChild(modal);
+                };
+                modalContentWrapper.appendChild(closeButton);
+
+                const modalTitle = document.createElement('h2');
+                modalTitle.innerText = 'Video Info';
+                modalContentWrapper.appendChild(modalTitle);
+
+                const modalContent = document.createElement('div');
+                modalContent.style.display = 'grid';
+                modalContent.style.gridTemplateColumns = '1fr 2fr'; // More space for right pane
+                modalContent.style.gap = '20px'; // Increased gap for better readability
+                modalContent.style.padding = '20px'; // Added padding for better spacing
+
+                Object.entries(videoInfo.snippet).forEach(([key, value]) => {
+                    if (key === 'thumbnails') return; // Exclude thumbnails
+                    if (key === 'localized') return; // Exclude localized
+                    if (key === 'tags' && Array.isArray(value)) value = value.join(', ');
+                    // tidy up tags
+
+                    const keyElement = document.createElement('div');
+                    keyElement.style.fontWeight = 'bold';
+                    keyElement.style.textTransform = 'capitalize';
+                    keyElement.style.fontSize = '16px'; // Increased font size for better readability
+                    keyElement.style.color = '#333'; // Darker color for better contrast
+                    keyElement.innerText = key.replace(/([A-Z])/g, ' $1').trim() + ':';
+
+                    const valueElement = document.createElement('div');
+                    valueElement.style.fontSize = '16px'; // Increased font size for better readability
+                    valueElement.style.color = '#555'; // Slightly lighter color for better contrast
+                    valueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+
+                    modalContent.appendChild(keyElement);
+                    modalContent.appendChild(valueElement);
+                });
+                modalContentWrapper.appendChild(modalContent);
+
+                modal.appendChild(modalContentWrapper);
+                document.body.appendChild(modal);
+
+                // Close modal if user clicks outside modalContentWrapper
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) {
+                        document.body.removeChild(modal);
+                    }
+                });
+
+                // Close modal if user presses esc key
+                const handleKeydown = (event: { key: string; keyCode: number; }) => {
+                    if (event.key === 'Escape' || event.key === "Esc" || event.keyCode === 27) {
+                        if (document.body.contains(modal)) {
+                            document.body.removeChild(modal);
+                        }
+                        window.removeEventListener('keydown', handleKeydown);
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeydown);
             });
         });
 
@@ -125,30 +203,6 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                         }}>{videoInfo.snippet.title}</h2>
                         <p className="video-channel">Channel: {videoInfo.snippet.channelTitle}</p>
                         <p className="video-date">Published: {videoInfo.snippet.publishedAt}</p>
-                        {/* <div className="video-tags" style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            fontSize: "14px",
-                            color: "#333",
-                            maxHeight: "50px", // Limit to two lines
-                            overflow: "clip",
-                        }}>
-                            {prop.tags?.slice(0, 4).map((tag) => {
-                                const maxLength = 18;
-                                const displayTag = tag.length > maxLength ? `${tag.slice(0, maxLength)}...` : tag;
-                                return <span key={tag} style={{
-                                    padding: "2px",
-                                    fontSize: "12px",
-                                    borderRadius: "4px",
-                                    margin: "1px",
-                                    border: "1px solid gray",
-                                }}>{displayTag}</span>;
-                            })}
-                            {prop.tags && prop.tags.length > 10 && <span style={{
-                                padding: "2px",
-                                fontSize: "12px",
-                                margin: "1px",
-                            }}>& more</span>}
                         </div> */}
                     </div>
                     <p className="video-pulled-at"
