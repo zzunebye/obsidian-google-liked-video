@@ -10,21 +10,7 @@ export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (sear
             {searchTerm && (
                 <button
                     onClick={() => onSearchTermChange('')}
-                    style={{
-                        position: "absolute",
-                        right: "0px",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        fontSize: "16px",
-                        color: "#999",
-                        borderRadius: "0px 8px 8px 0px",
-                        transition: "color 0.3s ease",
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = "#666"}
-                    onMouseLeave={(e) => e.currentTarget.style.color = "#999"}
+                    className="search-bar__button" 
                 >
                     &#x2715;
                 </button>

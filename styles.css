@@ -194,6 +194,24 @@ If your plugin does not need CSS, delete this file.
 	transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+.search-bar__button {
+    position: absolute;
+    right: 0px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #999;
+    border-radius: 0px 8px 8px 0px;
+    transition: color 0.3s ease;
+}
+
+.search-bar__button:hover {
+    color: #666;
+}
+
 /* .search-bar > input:focus {
 	border-color: var(--background-modifier-border-active);
 	box-shadow: 0 2px 8px var(--background-modifier-border-active);
