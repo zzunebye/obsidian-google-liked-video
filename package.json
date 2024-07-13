@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "geulo-youtube-liked-video",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Allows you to fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

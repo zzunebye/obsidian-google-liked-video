@@ -1,13 +1,18 @@
 import { App, Modal } from "obsidian";
 
-export class SampleModal extends Modal {
-	constructor(app: App) {
+export class GeuloModal extends Modal {
+	title: string;
+	message: string;
+	constructor(app: App, title: string, message: string) {
 		super(app);
+		this.title = title;
+		this.titleEl.setText(this.title);
+		this.message = message;
 	}
 
 	onOpen() {
 		const { contentEl } = this;
-		contentEl.setText('Woah!');
+		contentEl.setText(this.message);
 	}
 
 	onClose() {
