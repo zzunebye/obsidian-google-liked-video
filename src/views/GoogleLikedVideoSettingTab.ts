@@ -76,8 +76,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Client Secret')
-            .setDesc('Client Secret on your own')
+            .setName('Client secret')
+            .setDesc('Client secret on your own')
             .addText(text => text
                 .setPlaceholder('Enter your client secret')
                 .setValue(this.plugin.settings.googleClientSecret)
@@ -110,23 +110,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
 
-        // new Setting(containerEl)
-        //     .setHeading()
-        //     .setName('Paths')
-        //     .setDesc('Paths to save the data');
-
-
-        // new Setting(containerEl)
-        //     .setName('Daily Note Folder')
-        //     .setDesc('Folder to save the daily note')
-        //     .addText(text => text
-        //         .setPlaceholder('Enter your daily note folder')
-        //         .setValue(this.plugin.settings.dailyNotePath)
-        //         .onChange(async (value) => {
-        //             this.plugin.settings.dailyNotePath = value;
-        //             await this.plugin.saveSettings();
-        //         }));
-
         new Setting(containerEl)
             .setHeading()
             .setName('Functions')
@@ -134,9 +117,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 
         new Setting(containerEl)
-            .setName('Fetch All Liked Videos so far and add to LocalStorage')
+            .setName('Fetch all liked videos so far and add to local storage')
             .addButton(button => button
-                .setButtonText('Full Scan')
+                .setButtonText('Full scan')
                 .onClick(async () => {
                     try {
                         /// get number of the videos in the liked videos
@@ -175,7 +158,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Fetch All Liked Videos so far, compare to the stored videos and filter/add the new videos to LocalStorage')
+            .setName('Fetch all liked videos so far, compare to the stored videos and filter/add the new videos to local storage')
             .addButton(button => button
                 .setButtonText('Fetch')
                 .onClick(async () => {
@@ -188,147 +171,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }
                 }));
 
-        // new Setting(containerEl)
-        //     .setName("Fetch Latest Liked Videos")
-        //     .addButton(button => button
-        //         .setButtonText('Fetch')
-        //         .onClick(async () => {
-
-        //             const likedVideos = localStorageService.getLikedVideos();
-        //             const lastLikedVideoId = localStorageService.getLastLikedVideoId();
-
-        //             // Get the latest liked videos from the API
-        //             const latestLikedVideosFromAPI = await this.likedVideoApi.fetchLikedVideos(10, likedVideos[0]?.id);
-
-        //             // Compare to the latest liked video saved on LocalStorage. 
-        //             // If the last Id cannot be found, then fetch all the liked videos from the API
-        //             // However, maybe the last liked video on local storage is deleted from the API list (If the user unliked it)
-        //             // In that case, fetch all the liked videos from the API
-
-        //             let newLikedVideos: YouTubeVideo[] = [];
-
-        //             // Check if the last liked video ID exists in the latest liked videos from the API
-        //             const lastLikedVideoExists: boolean = latestLikedVideosFromAPI?.items?.some(video => video.id === lastLikedVideoId) ?? false;
-
-        //             if (!lastLikedVideoExists) {
-        //                 // If the last liked video ID does not exist, fetch all liked videos from the API
-        //                 const allLikedVideosFromAPI = await this.likedVideoApi.fetchLikedVideos();
-        //                 newLikedVideos = allLikedVideosFromAPI.items;
-        //             } else {
-        //                 // If the last liked video ID exists, find the new liked videos
-        //                 let foundLastLikedVideo = false;
-        //                 for (const video of latestLikedVideosFromAPI.items) {
-        //                     if (video.id === lastLikedVideoId) {
-        //                         foundLastLikedVideo = true;
-        //                         break;
-        //                     }
-        //                     newLikedVideos.push(video);
-        //                 }
-        //                 if (!foundLastLikedVideo) {
-        //                     // If the last liked video ID was not found in the latest liked videos, fetch all liked videos from the API
-        //                     const allLikedVideosFromAPI = await this.likedVideoApi.fetchLikedVideos();
-        //                     newLikedVideos = allLikedVideosFromAPI.items;
-        //                 }
-        //             }
-
-        //             if (newLikedVideos.length > 0) {
-        //                 likedVideos.unshift(...newLikedVideos);
-        //             }
-        //             new Modal(this.app).setTitle('result').setContent(`${likedVideos.length} videos`).open();
-
-        //             setLikedVideos(likedVideos);
-        //         }));
-
-
-        // new Setting(containerEl)
-        //     .setName('Get the stored liked videos from local storage')
-        //     .addButton(button => button
-        //         .setButtonText('Get')
-        //         .onClick(async () => {
-        //             const likedVideos: YouTubeVideo[] = localStorageService.getLikedVideos();
-        //             new Modal(this.app).setTitle('result').setContent(`${likedVideos.length} videos`).open();
-        //         }));
-
-
-
-        // new Setting(containerEl)
-        //     .setName('Fetch Today\'s Liked Videos and add to Daily Note')
-        //     .addButton(button => button
-        //         .setButtonText('Fetch')
-        //         .onClick(async () => {
-        //             try {
-        //                 const url = 'https://youtube.googleapis.com/youtube/v3/videos?'
-        //                     + 'part=snippet,statistics'
-        //                     + '&myRating=like';
-
-        //                 const response = await this.likedVideoApi.sendRequest('GET', url, {}, {});
-        //                 const data: YouTubeVideosResponse = await response.json();
-
-        //                 // show the data in the modal
-        //                 new Modal(this.app).setTitle('result').setContent(JSON.stringify(data, null, 2)).open();
-
-        //                 // find daily note folder
-        //                 const dailyNoteFolder = this.app.vault.getFolderByPath(this.plugin.settings.dailyNotePath);
-        //                 if (!dailyNoteFolder) {
-        //                     return;
-        //                 }
-        //                 const dateNow = window.moment();
-
-        //                 const dailyNotes = getAllDailyNotes();
-        //                 if (!dailyNotes) {
-        //                     return;
-        //                 }
-        //                 const todayDailyNote: TFile = getDailyNote(dateNow, dailyNotes);
-
-        //                 // add liked videos to the daily note
-        //                 if (todayDailyNote) {
-        //                     const fileContent = await this.app.vault.read(todayDailyNote);
-        //                     const likedVideosContent = data.items.map((video: YouTubeVideo) => {
-        //                         return `- [${video.snippet.title}](https://www.youtube.com/watch?v=${video.id})`;
-        //                     }).join('\n');
-
-        //                     const updatedContent = `${fileContent}\n\n## Liked Videos\n${likedVideosContent}`;
-        //                     await this.app.vault.modify(todayDailyNote, updatedContent);
-        //                     new Notice('Liked videos added to today\'s daily note.');
-        //                 } else {
-        //                 }
-
-
-        //             } catch (error) {
-        //                 new Modal(this.app).setTitle('error').setContent("error: " + error).open();
-        //             }
-        //         }));
-
         new Setting(containerEl)
-            .setName('Clear LocalStorage')
+            .setName('Clear local storage')
             .addButton(button => button
-                .setButtonText('Clear Stored Liked Videos in Local Storage')
+                .setButtonText('Clear stored liked videos in local storage')
                 .onClick(async () => {
                     localStorageService.setLikedVideos([]);
                     this.display();
                     this.updateView();
 
                     new Notice('Liked videos have been cleared');
-
-
                 }));
-
-        // new Setting(containerEl)
-        //     .setName('My Playlists')
-        //     .addButton(button => button
-        //         .setButtonText('Fetch')
-        //         .onClick(async () => {
-        //             try {
-        //                 const data = await this.likedVideoApi.fetchPlaylists();
-
-        //                 // show the data in the modal
-        //                 new Modal(this.app).setTitle('result').setContent(JSON.stringify(data, null, 2)).open();
-
-        //             } catch (error) {
-        //                 new Modal(this.app).setTitle('error').setContent("error: " + error).open();
-        //             }
-        //         }));
     }
+
     async fetchAndUpdateLikedVideos(app: App, limit = 50, repetitive = false): Promise<void> {
         const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
         new Notice(`${totalLikedVideos} videos in total`);

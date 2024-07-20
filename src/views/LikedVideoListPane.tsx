@@ -71,7 +71,7 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
     }
 
     getDisplayText(): string {
-        return "Liked Videos";
+        return "Liked videos";
     }
 
     getIcon(): string {
@@ -90,7 +90,7 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
 
         const container = this.containerEl.children[1];
         container.empty();
-        container.createEl("h1", { text: "Liked Videos" });
+        container.createEl("h1", { text: "Liked videos" });
     }
 
     async onClose() {

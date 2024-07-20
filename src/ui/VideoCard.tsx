@@ -41,7 +41,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         });
 
         menu.addItem(item => {
-            item.setTitle("Add to Daily Note");
+            item.setTitle("Add to daily note");
             item.onClick(() => {
                 // find a daily note and add the video to the daily note
                 // create a new daily note if it doesn't exist
@@ -57,7 +57,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         });
 
         menu.addItem(item => {
-            item.setTitle("Display Video Info");
+            item.setTitle("Display video info");
             item.onClick(() => {
                 const modal = document.createElement('div');
                 modal.style.position = 'fixed';

@@ -75,7 +75,7 @@ export async function handleGoogleLogin(
             new Notice("Tokens acquired.");
 
 
-            res.end("Authentication successful! Please return to obsidian.");
+            res.end("Authentication successful! Please return to Obsidian.");
 
             serverSession.close(() => { });
 

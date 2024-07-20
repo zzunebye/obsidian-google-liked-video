@@ -76,7 +76,7 @@ export const LikedVideoView: React.FC = () => {
     return <div
         className="liked-video-view">
         <div className="video-view-header">
-            <div className="video-view-header__title"><Youtube style={{ width: "1.5em", height: "1.5em" }} /> My Liked Videos</div>
+            <div className="video-view-header__title"><Youtube style={{ width: "1.5em", height: "1.5em" }} /> My Liked videos</div>
             <div className="video-view-header__actions">
                 <button
                     style={{ paddingLeft: "24px", paddingRight: "24px" }}
@@ -226,7 +226,7 @@ export const LikedVideoView: React.FC = () => {
                     marginTop: "16px"
                 }}
             >
-                Fetch All Liked Videos
+                Fetch all liked videos
             </button>
         </div>}
         {/* Videos */}
