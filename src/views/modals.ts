@@ -12,7 +12,8 @@ export class GeuloModal extends Modal {
 
 	onOpen() {
 		const { contentEl } = this;
-		contentEl.setText(this.message);
+		// contentEl.setText(this.message);
+		contentEl.createEl('p', { text: this.message });
 	}
 
 	onClose() {

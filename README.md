@@ -1,7 +1,7 @@
 # Geulo - Youtube Liked Video Plugin
 
 
-This plugin allows you to fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note in Obsidian.
+This plugin Fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note in Obsidian.
 
 
 Features

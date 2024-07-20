@@ -49,16 +49,6 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				this.activateView();
 			}
 		});
-
-		this.addCommand({
-			id: 'open-liked-video-setting',
-			name: 'Open Youtube Liked Video Setting',
-			callback: () => {
-				const setting = (this.app as any).setting;
-				setting.open();
-				setting.openTabById(APP_ID);
-			}
-		});
 	}
 
 	onunload() { }

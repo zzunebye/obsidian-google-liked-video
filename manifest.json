@@ -3,7 +3,7 @@
 	"name": "Geulo",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "Allows you to fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note.",
+	"description": "Fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note.",
 	"author": "Junyoung Bang",
 	"authorUrl": "https://github.com/zzunebye",
 	"isDesktopOnly": true,
