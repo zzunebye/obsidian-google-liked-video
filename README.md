@@ -5,11 +5,11 @@ This plugin Fetch all the YouTube videos you have liked, search and sort them wi
 
 
 Features
-- **Fetch Liked Videos**: Retrieve all the YouTube videos you've liked and add them to your daily notes.
-- **Sidebar List** : View, search and sort your liked videos in the right sidebar.
-- **Add to Daily Note** : Add a liked video to your daily note by clicking on the video in the sidebar.
-- **Batch Update** (coming soon): Fetch all your liked videos and update the corresponding daily notes in one go.
-- **Popular Videos** (coming soon) : Retrieve and display the most popular videos.
+- **Fetch liked videos**: Retrieve all the YouTube videos you've liked and add them to your daily notes.
+- **Sidebar list** : View, search and sort your liked videos in the right sidebar.
+- **Add to daily note** : Add a liked video to your daily note by clicking on the video in the sidebar.
+- **Batch update** (coming soon): Fetch all your liked videos and update the corresponding daily notes in one go.
+- **Popular videos** (coming soon) : Retrieve and display the most popular videos.
 
 It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/obsidian-google-calendar) plugin.
 

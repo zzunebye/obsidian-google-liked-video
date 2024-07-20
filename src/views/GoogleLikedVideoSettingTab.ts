@@ -35,7 +35,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Quota')
-            .setDesc('Quota of the liked videos')
+            .setDesc('Displays the quota of liked videos fetched from the YouTube Data API v3, indicating how many videos you can store (up to 5000).')
             .addProgressBar(progressBar => progressBar
                 .setValue(progressValue * 100))
             .addText(text => text
@@ -66,7 +66,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Client ID')
-            .setDesc('Client ID on your own')
+            .setDesc('Client ID required to authenticate your Google account and access the YouTube Data API v3.')
             .addText(text => text
                 .setPlaceholder('Enter your client ID')
                 .setValue(this.plugin.settings.googleClientId)
@@ -77,7 +77,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Client secret')
-            .setDesc('Client secret on your own')
+            .setDesc('Client secret for accessing the YouTube Data API v3')
             .addText(text => text
                 .setPlaceholder('Enter your client secret')
                 .setValue(this.plugin.settings.googleClientSecret)
