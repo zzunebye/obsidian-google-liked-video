@@ -7,8 +7,8 @@ import { LikedVideoApi } from './api';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
-	googleClientId: '2833248109-o6ap9n7tlsp2kno0tojefnsb15i1ecgl.apps.googleusercontent.com',
-	googleClientSecret: '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',
+	googleClientId: '',
+	googleClientSecret: '',
 	dailyNotePath: '',
 	fetchLimit: 10
 }
