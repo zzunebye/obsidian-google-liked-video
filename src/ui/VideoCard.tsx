@@ -142,52 +142,20 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         >
             <div
                 className="video-card-inner"
-                style={{
-                    display: "flex",
-                    position: "relative",
-                    gap: "16px",
-                    width: "100%",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                }}>
-                <img className="video-thumbnail" style={{
-                    borderRadius: "4px",
-                    minWidth: "180px", // Set a consistent width for all thumbnails
-                    height: "auto",
-                }} src={videoInfo.snippet.thumbnails.default.url} alt="Video Thumbnail" />
-                <div className="video-details" style={{
-                    flex: "1",
-                    display: "flex", flexDirection: "column", gap: "4px",
-                    padding: "4px",
-                    justifyContent: "space-between",
-                    overflow: "hidden",
-                }}>
-                    <div
-                        style={{
-                            display: "flex", flexDirection: "column", gap: "4px",
-                        }}
-                    >
-                        <h2 className="video-title" style={{
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                        }}>{videoInfo.snippet.title}</h2>
+                
+            >
+                <img className="video-thumbnail" src={videoInfo.snippet.thumbnails.default.url} alt="Video Thumbnail" />
+                <div className="video-details" >
+                    <div className="video-details-inner">
+                        <h2 className="video-title">{videoInfo.snippet.title}</h2>
                         <p className="video-channel">Channel: {videoInfo.snippet.channelTitle}</p>
                         <p className="video-date">Published: {videoInfo.snippet.publishedAt}</p>
                     </div>
                 </div>
-                <p className="video-pulled-at"
-                    style={{
-                        marginBlockStart: "0px",
-                        marginBlockEnd: "0px",
-                        fontSize: "10px",
-                        alignSelf: "flex-end",
-                        color: "#777",
-                    }}>Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
+                <p className="video-pulled-at">Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
             </div>
             <div className="video-card-options">
-                <div style={{ alignSelf: "flex-end", placeSelf: "flex-start" }}>
+                <div>
                     <button
                         aria-label="More options"
                         onClick={handleContextMenu}
@@ -196,6 +164,6 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     </button>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

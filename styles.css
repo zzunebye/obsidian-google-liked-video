@@ -197,11 +197,62 @@ If your plugin does not need CSS, delete this file.
 	border: 1px dashed #2d2;
 }
 
+.video-card-inner {
+	display: flex;
+	position: relative;
+	gap: 16px;
+	width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.video-thumbnail {
+	border-radius: 4px;
+	min-width: 180px;
+	height: auto;
+}
+
+.video-details {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 4px;
+	justify-content: space-between;
+	overflow: hidden;
+}
+
+.video-details-inner {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.video-title {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.video-pulled-at {
+	margin-block-start: 0px;
+	margin-block-end: 0px;
+	font-size: 10px;
+	align-self: flex-end;
+	color: #777;
+}
+
 .video-card-options {
 	position: absolute;
 	right: 0;
 	top: 0;
 	visibility: hidden;
+}
+
+.video-card-options > div {
+	align-self: flex-end;
+	place-self: flex-start;
 }
 
 .video-card-options button {
@@ -225,6 +276,7 @@ If your plugin does not need CSS, delete this file.
 .video-card__container:hover .video-card-options {
 	visibility: visible;
 }
+
 /* Search Bar */
 
 .search-bar {
