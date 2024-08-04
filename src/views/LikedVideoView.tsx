@@ -76,11 +76,12 @@ export const LikedVideoView: React.FC = () => {
     return <div
         className="liked-video-view">
         <div className="video-view-header">
-            <div className="video-view-header__title"><Youtube style={{ width: "1.5em", height: "1.5em" }} /> My Liked videos</div>
+            <div className="video-view-header__title"><Youtube className="video-view-header__icon" /> My Liked videos</div>
             <div className="video-view-header__actions">
                 <button
-                    style={{ paddingLeft: "24px", paddingRight: "24px" }}
+                    title="Refresh"
                     /// Refresh button to fetch recently liked videos
+                    className="video-view-header__refresh-button"
                     onClick={async () => {
                         let allLikedVideos: YouTubeVideo[] = [];
                         let nextPageToken: string | undefined = undefined;
@@ -119,21 +120,14 @@ export const LikedVideoView: React.FC = () => {
                 ><Settings size={16} /></button>
             </div>
         </div>
-        <div style={{
-            display: "flex", alignItems: "center",
-            justifyContent: "space-between", gap: "8px",
-            marginBottom: "8px"
-        }}>
-            <div style={{ flex: "1" }}>
+        <div className="search-bar-container">
+            <div className="search-bar-wrapper">
                 <SearchBar
                     searchTerm={searchTerm}
                     onSearchTermChange={setSearchTerm}
                 />
             </div>
-            <div style={{
-                fontSize: "16px", color: "#555",
-                width: "96px"
-            }}>
+            <div className="video-count">
                 <p>{filteredVideos.length} videos</p>
             </div>
         </div>
@@ -162,24 +156,11 @@ export const LikedVideoView: React.FC = () => {
                 {sortOrder === 'ASC' ? '🔼' : '🔽'}
             </button>
         </div>
-        {currentVideos.length === 0 && <div
-            style={{
-                display: "flex",
-                paddingTop: "32px",
-                flex: "1",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%"
-            }}
-        >
-            <div
-                style={{
-                    fontSize: "16px", color: "#555"
-                }}
-            >No videos found
-            </div>
+        {currentVideos.length === 0 && <div className="no-videos-found">
+            <div className="no-videos-found__text">No videos found</div>
+
             <button
+                className="no-videos-found__fetch-all-button"
                 onClick={async () => {
                     try {
                         /// get number of the videos in the liked videos
@@ -215,31 +196,12 @@ export const LikedVideoView: React.FC = () => {
                         }
                     }
                 }}
-                style={{
-                    padding: "8px 16px",
-                    fontSize: "16px",
-                    cursor: "pointer",
-                    backgroundColor: "#007bff",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "4px",
-                    marginTop: "16px"
-                }}
             >
                 Fetch all liked videos
             </button>
         </div>}
         {/* Videos */}
-        <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))",
-            gridAutoRows: "1fr",
-            gridTemplateRows: "repeat(2, 1fr)",
-            gap: "16px",
-            paddingTop: "16px",
-            paddingBottom: "16px"
-        }}>
-
+        <div className="video-view__video-grid">
             {currentVideos.map((video) => (
                 <VideoCard
                     key={video.id}
@@ -266,13 +228,8 @@ export const LikedVideoView: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        <div style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "8px",
-            marginTop: "16px"
-        }}>
-            <div style={{ minWidth: "80px", textAlign: "center" }}>
+        <div className="video-view__pagination">
+            <div className="video-view__pagination__controls">
                 {currentPage > 1 && (
                     <>
                         <button onClick={() => setCurrentPage(1)}>
@@ -287,7 +244,7 @@ export const LikedVideoView: React.FC = () => {
             <button disabled>
                 {currentPage}
             </button>
-            <div style={{ minWidth: "80px", textAlign: "center" }}>
+            <div className="video-view__pagination__controls">
                 {currentPage < totalPages && (
                     <>
                         <button onClick={() => setCurrentPage(currentPage + 1)}>
