@@ -1,4 +1,4 @@
-import { Menu, Modal, Plugin, TFile, moment } from "obsidian";
+import { Menu, TFile, moment } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { MoreHorizontal } from "lucide-react";
 import { YouTubeVideo } from "src/types";
@@ -60,33 +60,15 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
             item.setTitle("Display video info");
             item.onClick(() => {
                 const modal = document.createElement('div');
-                modal.style.position = 'fixed';
-                modal.style.top = '0';
-                modal.style.left = '0';
-                modal.style.width = '100%';
-                modal.style.height = '100%';
-                modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-                modal.style.display = 'flex';
-                modal.style.justifyContent = 'center';
-                modal.style.alignItems = 'center';
-                modal.style.zIndex = '1000';
+                modal.className = 'modal-overlay';
+
 
                 const modalContentWrapper = document.createElement('div');
-                modalContentWrapper.style.backgroundColor = 'white';
-                modalContentWrapper.style.padding = '20px';
-                modalContentWrapper.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
-                modalContentWrapper.style.maxHeight = '90%';
-                modalContentWrapper.style.maxWidth = '90%';
-                modalContentWrapper.style.overflowY = 'auto';
-                modalContentWrapper.style.position = 'relative';
-                modalContentWrapper.style.border = '1px solid var(--background-modifier-border)';
-                modalContentWrapper.style.borderRadius = '16px';
+                modalContentWrapper.className = 'modal-content-wrapper';
 
                 const closeButton = document.createElement('button');
                 closeButton.innerText = 'X';
-                closeButton.style.position = 'absolute';
-                closeButton.style.top = '10px';
-                closeButton.style.right = '10px';
+                closeButton.className = 'close-button';
 
                 closeButton.onclick = () => {
                     document.body.removeChild(modal);
@@ -98,10 +80,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 modalContentWrapper.appendChild(modalTitle);
 
                 const modalContent = document.createElement('div');
-                modalContent.style.display = 'grid';
-                modalContent.style.gridTemplateColumns = '1fr 2fr'; // More space for right pane
-                modalContent.style.gap = '20px'; // Increased gap for better readability
-                modalContent.style.padding = '20px'; // Added padding for better spacing
+                modalContent.className = 'modal-content';
 
                 Object.entries(videoInfo.snippet).forEach(([key, value]) => {
                     if (key === 'thumbnails') return; // Exclude thumbnails
@@ -109,20 +88,16 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     if (key === 'tags' && Array.isArray(value)) value = value.join(', ');
                     // tidy up tags
 
-                    const keyElement = document.createElement('div');
-                    keyElement.style.fontWeight = 'bold';
-                    keyElement.style.textTransform = 'capitalize';
-                    keyElement.style.fontSize = '16px'; // Increased font size for better readability
-                    keyElement.style.color = '#333'; // Darker color for better contrast
-                    keyElement.innerText = key.replace(/([A-Z])/g, ' $1').trim() + ':';
+                    const labelElement = document.createElement('div');
+                    labelElement.className = 'key-element';
+                    labelElement.innerText = key.replace(/([A-Z])/g, ' $1').trim() + ':';
 
-                    const valueElement = document.createElement('div');
-                    valueElement.style.fontSize = '16px'; // Increased font size for better readability
-                    valueElement.style.color = '#555'; // Slightly lighter color for better contrast
-                    valueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+                    const infoValueElement = document.createElement('div');
+                    infoValueElement.className = 'value-element';
+                    infoValueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
 
-                    modalContent.appendChild(keyElement);
-                    modalContent.appendChild(valueElement);
+                    modalContent.appendChild(labelElement);
+                    modalContent.appendChild(infoValueElement);
                 });
                 modalContentWrapper.appendChild(modalContent);
 
