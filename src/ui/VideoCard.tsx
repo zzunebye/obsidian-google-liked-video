@@ -140,7 +140,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         >
             <div
                 className="video-card-inner"
-                
+
             >
                 <img className="video-thumbnail" src={videoInfo.snippet.thumbnails.default.url} alt="Video Thumbnail" />
                 <div className="video-details" >

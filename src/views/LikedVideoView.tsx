@@ -247,10 +247,10 @@ export const LikedVideoView: React.FC = () => {
             <div className="video-view__pagination__controls">
                 {currentPage < totalPages && (
                     <>
-                        <button onClick={() => setCurrentPage(currentPage + 1)}>
+                        <button type="button" onClick={() => setCurrentPage(currentPage + 1)}>
                             -&gt;
                         </button>
-                        <button onClick={() => setCurrentPage(totalPages)}>
+                        <button type="button" onClick={() => setCurrentPage(totalPages)}>
                             --&gt;
                         </button>
                     </>

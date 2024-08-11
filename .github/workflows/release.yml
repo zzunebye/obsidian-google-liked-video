@@ -32,5 +32,5 @@ jobs:
           gh release create "$tag" \
             --title="$tag" \
             --draft \
-            --notes "$(date +'%Y-%m-%d')\n$(git log $previous_tag..HEAD --oneline)" \
+            --notes "$(date +'%Y-%m-%d')\n" \
             main.js manifest.json styles.css
