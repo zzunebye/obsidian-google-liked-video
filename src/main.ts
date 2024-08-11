@@ -26,7 +26,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		this.likedVideoApi = new LikedVideoApi(this?.settings);
+		if (this.settings) {
+			this.likedVideoApi = new LikedVideoApi(this.settings);
+		}
+		
 		this.vault = this.app.vault;
 
 		this.registerView(
