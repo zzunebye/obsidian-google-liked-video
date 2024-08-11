@@ -51,7 +51,6 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
 
                 const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
                 onAddToDailyNote(videoData, dailyNote);
-
             });
 
         });
@@ -61,7 +60,6 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
             item.onClick(() => {
                 const modal = document.createElement('div');
                 modal.className = 'modal-overlay';
-
 
                 const modalContentWrapper = document.createElement('div');
                 modalContentWrapper.className = 'modal-content-wrapper';
