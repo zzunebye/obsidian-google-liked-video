@@ -28,7 +28,9 @@ jobs:
         run: |
           tag="${GITHUB_REF#refs/tags/}"
 
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^)
           gh release create "$tag" \
             --title="$tag" \
             --draft \
+            --notes "$(date +'%Y-%m-%d')\n$(git log $previous_tag..HEAD --oneline)" \
             main.js manifest.json styles.css
