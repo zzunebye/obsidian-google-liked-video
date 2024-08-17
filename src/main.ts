@@ -47,7 +47,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'open-liked-video-list-view',
-			name: 'Open Youtube Liked Video List View',
+			name: 'Open Geulo (Youtube Liked Video) List View',
 			callback: () => {
 				this.activateView();
 			}

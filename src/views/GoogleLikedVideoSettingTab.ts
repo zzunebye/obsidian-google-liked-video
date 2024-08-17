@@ -63,6 +63,14 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setName('Setup')
             .setDesc('Setup the plugin');
 
+        new Setting(containerEl)
+            .setName('Open Youtube Data API Console')
+            .setDesc('Click the button below to open the Google Developer Console, where you can manage your Google APIs and credentials.')
+            .addButton(button => button
+                .setButtonText('Open Google Developer Console')
+                .onClick(async () => {
+                    window.open('https://console.cloud.google.com/apis/api/youtube.googleapis.com', '_blank');
+                }));
 
         new Setting(containerEl)
             .setName('Client ID')

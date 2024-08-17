@@ -69,11 +69,10 @@ export async function handleGoogleLogin(
                 setRefreshToken(token.refresh_token);
                 setAccessToken(token.access_token);
                 setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
-                onSuccess();
-            }
+                            }
 
             new Notice("Tokens acquired.");
-
+onSuccess();
 
             res.end("Authentication successful! Please return to Obsidian.");
 
