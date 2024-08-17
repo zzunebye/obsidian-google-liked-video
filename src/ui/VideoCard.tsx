@@ -2,6 +2,7 @@ import { Menu, TFile, moment } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { MoreHorizontal } from "lucide-react";
 import { YouTubeVideo } from "src/types";
+import { GeuloModal } from "src/views/modals";
 
 interface VideoCardProps {
     videoInfo: YouTubeVideo;
@@ -58,24 +59,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         menu.addItem(item => {
             item.setTitle("Display video info");
             item.onClick(() => {
-                const modal = document.createElement('div');
-                modal.className = 'geulo-modal__overlay';
-
-                const modalContentWrapper = document.createElement('div');
-                modalContentWrapper.className = 'geulo-modal__content-wrapper';
-
-                const closeButton = document.createElement('button');
-                closeButton.innerText = 'X';
-                closeButton.className = 'geulo-modal__close-button';
-
-                closeButton.onclick = () => {
-                    document.body.removeChild(modal);
-                };
-                modalContentWrapper.appendChild(closeButton);
-
-                const modalTitle = document.createElement('h2');
-                modalTitle.innerText = 'Video Info';
-                modalContentWrapper.appendChild(modalTitle);
+                const modal = new GeuloModal(app, 'Video Info', '');
 
                 const modalContent = document.createElement('div');
                 modalContent.className = 'geulo-modal__content';
@@ -97,29 +81,9 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     modalContent.appendChild(labelElement);
                     modalContent.appendChild(infoValueElement);
                 });
-                modalContentWrapper.appendChild(modalContent);
 
-                modal.appendChild(modalContentWrapper);
-                document.body.appendChild(modal);
-
-                // Close modal if user clicks outside modalContentWrapper
-                modal.addEventListener('click', (event) => {
-                    if (event.target === modal) {
-                        document.body.removeChild(modal);
-                    }
-                });
-
-                // Close modal if user presses esc key
-                const handleKeydown = (event: { key: string; keyCode: number; }) => {
-                    if (event.key === 'Escape' || event.key === "Esc" || event.keyCode === 27) {
-                        if (document.body.contains(modal)) {
-                            document.body.removeChild(modal);
-                        }
-                        window.removeEventListener('keydown', handleKeydown);
-                    }
-                };
-
-                window.addEventListener('keydown', handleKeydown);
+                modal.contentEl.appendChild(modalContent);
+                modal.open();
             });
         });
 
