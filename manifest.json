@@ -1,9 +1,9 @@
 {
 	"id": "geulo-youtube-liked-video",
 	"name": "Geulo",
-	"version": "0.1.9",
+	"version": "0.1.10",
 	"minAppVersion": "0.15.0",
-	"description": "Fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note.",
+	"description": "Effortlessly fetch and manage all the YouTube videos you've liked, search and sort them, and add them to your daily note.",
 	"author": "Junyoung Bang",
 	"authorUrl": "https://github.com/zzunebye",
 	"isDesktopOnly": true,

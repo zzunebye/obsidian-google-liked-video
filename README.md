@@ -19,6 +19,10 @@ It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/ob
 
 To use this plugin, you need to set up a project in Google Cloud Console and enable the YouTube Data API v3. Follow the steps below to set it up:
 
+1. **Download the Plugin**: Go to the Obsidian community plugins page and search for "Geulo".
+2. **Enable the Plugin**: In Obsidian, navigate to Settings > Community plugins and toggle the Geulo plugin on.
+3. **Set Up API Credentials**: Follow the steps in the "Setting up Google Cloud Console and YouTube Data API v3" section to obtain your credentials.
+
 ### Setting up Google Cloud Console and YouTube Data API v3
 
 To use this plugin, you need to set up a project in Google Cloud Console and enable the YouTube Data API v3. Follow the steps below to set it up:
@@ -52,6 +56,7 @@ To use this plugin, you need to set up a project in Google Cloud Console and ena
 * Click "Login" to login to your Google account.
 
 ### Troubleshooting
+
 If you encounter any issues, consider the following steps:
 1. **Credentials**: Double-check that your Client ID and Client secret are correctly entered in the plugin settings.
 2. **Authorized URIs**: Verify that http://127.0.0.1:42813 is listed in the Authorized JavaScript origins and http://127.0.0.1:42813/callback in the Authorized redirect URIs.
