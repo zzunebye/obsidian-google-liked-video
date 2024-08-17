@@ -38,6 +38,8 @@ If your plugin does not need CSS, delete this file.
 	grid-template-columns: 1fr 2fr; /* More space for right pane */
 	gap: 20px; /* Increased gap for better readability */
 	padding: 20px; /* Added padding for better spacing */
+	-webkit-user-select: text; /* Allow text selection */
+	user-select: text; /* Allow text selection */
 }
 
 .geulo-modal__close-button {
