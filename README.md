@@ -3,6 +3,8 @@
 
 This plugin Fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note in Obsidian.
 
+Features are still at its early stages. If you have any feedback or suggestions, please feel free to open an issue or contact me at [zzunebye@gmail.com](mailto:zzunebye@gmail.com).
+
 
 Features
 - **Fetch liked videos**: Retrieve all the YouTube videos you've liked and add them to your daily notes.
