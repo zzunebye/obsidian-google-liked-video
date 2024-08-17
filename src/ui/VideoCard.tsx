@@ -71,11 +71,11 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     // tidy up tags
 
                     const labelElement = document.createElement('div');
-                    labelElement.className = 'geulo-modal__key';
+                    labelElement.className = 'geulo-modal__key-element';
                     labelElement.innerText = key.replace(/([A-Z])/g, ' $1').trim() + ':';
 
                     const infoValueElement = document.createElement('div');
-                    infoValueElement.className = 'geulo-modal__value';
+                    infoValueElement.className = 'geulo-modal__value-element';
                     infoValueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
 
                     modalContent.appendChild(labelElement);
