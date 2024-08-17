@@ -140,7 +140,7 @@ export const LikedVideoView: React.FC = () => {
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
             >
-                <option value="addedDate">By Liked Date</option>
+                <option value="addedDate">By Liked Order</option>
                 <option value="viewCount">By View Count</option>
                 <option value="likeCount">By Like Count</option>
                 <option value="likeViewRatio">By Like/View Ratio</option>
