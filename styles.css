@@ -8,7 +8,7 @@ If your plugin does not need CSS, delete this file.
 */
 
 /* Modal Overlay*/
-.modal-overlay {
+.geulo-modal__overlay {
 	position: fixed;
 	top: 0;
 	left: 0;
@@ -21,7 +21,7 @@ If your plugin does not need CSS, delete this file.
 	z-index: 1000;
 }
 
-.modal-content-wrapper {
+.geulo-modal__content-wrapper {
 	background-color: var(--background-primary-alt);
 	padding: 20px;
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -33,27 +33,27 @@ If your plugin does not need CSS, delete this file.
 	border-radius: 16px;
 }
 
-.modal-content {
+.geulo-modal__content {
 	display: grid;
 	grid-template-columns: 1fr 2fr; /* More space for right pane */
 	gap: 20px; /* Increased gap for better readability */
 	padding: 20px; /* Added padding for better spacing */
 }
 
-.modal-close-button {
+.geulo-modal__close-button {
 	position: absolute;
 	top: 10px;
 	right: 10px;
 }
 
-.key-element {
+.geulo-modal__key-element {
 	font-weight: bold;
 	text-transform: capitalize;
 	font-size: 16px; /* Increased font size for better readability */
 	color: var(--text-normal); /* Darker color for better contrast */
 }
 
-.value-element {
+.geulo-modal__value-element {
 	font-size: 16px; /* Increased font size for better readability */
 	color: var(--text-normal); /* Slightly lighter color for better contrast */
 }

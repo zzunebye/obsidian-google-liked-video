@@ -59,14 +59,14 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
             item.setTitle("Display video info");
             item.onClick(() => {
                 const modal = document.createElement('div');
-                modal.className = 'modal-overlay';
+                modal.className = 'geulo-modal__overlay';
 
                 const modalContentWrapper = document.createElement('div');
-                modalContentWrapper.className = 'modal-content-wrapper';
+                modalContentWrapper.className = 'geulo-modal__content-wrapper';
 
                 const closeButton = document.createElement('button');
                 closeButton.innerText = 'X';
-                closeButton.className = 'close-button';
+                closeButton.className = 'geulo-modal__close-button';
 
                 closeButton.onclick = () => {
                     document.body.removeChild(modal);
@@ -78,7 +78,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 modalContentWrapper.appendChild(modalTitle);
 
                 const modalContent = document.createElement('div');
-                modalContent.className = 'modal-content';
+                modalContent.className = 'geulo-modal__content';
 
                 Object.entries(videoInfo.snippet).forEach(([key, value]) => {
                     if (key === 'thumbnails') return; // Exclude thumbnails
@@ -87,11 +87,11 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     // tidy up tags
 
                     const labelElement = document.createElement('div');
-                    labelElement.className = 'key-element';
+                    labelElement.className = 'geulo-modal__key';
                     labelElement.innerText = key.replace(/([A-Z])/g, ' $1').trim() + ':';
 
                     const infoValueElement = document.createElement('div');
-                    infoValueElement.className = 'value-element';
+                    infoValueElement.className = 'geulo-modal__value';
                     infoValueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
 
                     modalContent.appendChild(labelElement);
