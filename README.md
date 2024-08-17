@@ -3,6 +3,8 @@
 
 This plugin Fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note in Obsidian.
 
+Reviewing is as important as consuming content. I often find it not really helpful to search for new things, while there are always more things to learn by re-watching good YouTube videos. I hope this plugin, with Obsidian's power to build a knowledge base, can help us achieve that.
+
 Features are still at its early stages. If you have any feedback or suggestions, please feel free to open an issue or contact me at [zzunebye@gmail.com](mailto:zzunebye@gmail.com).
 
 
