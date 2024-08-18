@@ -1,4 +1,6 @@
-import { getGoogleAccessToken, refreshAccessToken } from "./auth";
+import { Notice } from "obsidian";
+import { getGoogleAccessTokenFromLocal, refreshAccessToken } from "./auth";
+import { setAccessToken, setAccessTokenExpirationTime } from "./storage";
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from "./types";
 
 export class LikedVideoApi {
@@ -6,10 +8,27 @@ export class LikedVideoApi {
         this.pluginSettings = pluginSettings;
     }
 
+
+    // Wrapper function for sending request to the YouTube Data API
+    // 1. It will get the access token from the plugin settings
+    // 2. If the access token is expired, it will refresh the access token with the refresh token
+    // 3. It will add the access token to the request headers
     async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
-        let accessToken = getGoogleAccessToken();
+        let accessToken = getGoogleAccessTokenFromLocal();
+
         if (!accessToken) {
-            accessToken = await refreshAccessToken(this.pluginSettings.googleClientId, this.pluginSettings.googleClientSecret);
+            try {
+                const tokenResponse = await refreshAccessToken(
+                    this.pluginSettings.googleClientId,
+                    this.pluginSettings.googleClientSecret,
+                );
+                setAccessToken(tokenResponse.access_token);
+                setAccessTokenExpirationTime(+new Date() + tokenResponse.expires_in * 1000);
+                accessToken = tokenResponse.access_token;
+            } catch (error) {
+                new Notice("Failed to refresh access token: " + error.message);
+                throw error;
+            }
         }
 
         return await fetch(url, {

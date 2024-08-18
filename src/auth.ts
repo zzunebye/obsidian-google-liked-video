@@ -69,10 +69,10 @@ export async function handleGoogleLogin(
                 setRefreshToken(token.refresh_token);
                 setAccessToken(token.access_token);
                 setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
-                            }
+            }
 
             new Notice("Tokens acquired.");
-onSuccess();
+            onSuccess();
 
             res.end("Authentication successful! Please return to Obsidian.");
 
@@ -130,16 +130,22 @@ export async function revokeGoogleToken(token: string) {
 }
 
 
-export async function refreshAccessToken(userClientId: string, userClientSecret: string): Promise<string> {
+export async function refreshAccessToken(userClientId: string, userClientSecret: string)
+    : Promise<{ access_token: string, expires_in: number }> {
+    const refreshToken = localStorageService.getRefreshToken();
+    if (!refreshToken || refreshToken == "") {
+        new Notice("Refresh token for Google API is missing or expired");
+        throw new Error("Refresh token for Google API is missing or expired");
+    }
 
     const refreshTokenRequestBody = {
         grant_type: 'refresh_token',
-        refresh_token: localStorageService.getRefreshToken(),
+        refresh_token: refreshToken,
         client_id: userClientId,
         client_secret: userClientSecret,
     }
 
-    const response = await fetch(
+    const response: Response = await fetch(
         'https://oauth2.googleapis.com/token',
         {
             method: 'POST',
@@ -148,39 +154,21 @@ export async function refreshAccessToken(userClientId: string, userClientSecret:
         }
     )
 
-    const token = await response.json();
+    const token: { access_token: string, expires_in: number } = await response.json();
 
-    setAccessToken(token.access_token);
-    setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
-
-    return token.access_token;
+    return token;
 }
 
 
-export function getGoogleAccessToken(): string {
-    /// Check if the refresh token is set
-    if (!localStorageService.getRefreshToken() || localStorageService.getRefreshToken() == "") {
-        new Notice(
-            "Google  missing settings or not logged in"
-        );
-        return "";
-    }
-
+export function getGoogleAccessTokenFromLocal(): string {
+    const accessToken = localStorageService.getAccessToken();
     /// Check if the access token is set
-    if (localStorageService.getAccessToken() == "") {
+    if (!accessToken || accessToken == "") {
         new Notice(
-            "Google access token is expired"
+            "Access token for Google API is missing or expired"
         );
         return "";
     }
 
-    /// Check if the access token expiration time is not set, or past
-    if (localStorageService.getAccessTokenExpirationTime() == null || localStorageService.getAccessTokenExpirationTime() < Date.now()) {
-        new Notice(
-            "Google access token is expired"
-        );
-        return "";
-    }
-
-    return localStorageService.getAccessToken();
+    return accessToken;
 }
