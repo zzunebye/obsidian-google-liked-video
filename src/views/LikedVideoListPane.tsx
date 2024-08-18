@@ -88,9 +88,6 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
             </PluginContext.Provider>
         );
 
-        const container = this.containerEl.children[1];
-        container.empty();
-        container.createEl("h1", { text: "Liked videos" });
     }
 
     async onClose() {
