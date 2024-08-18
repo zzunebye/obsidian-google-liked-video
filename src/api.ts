@@ -1,6 +1,6 @@
-import { Notice } from "obsidian";
-import { getGoogleAccessTokenFromLocal, refreshAccessToken } from "./auth";
-import { setAccessToken, setAccessTokenExpirationTime } from "./storage";
+import { Modal, Notice } from "obsidian";
+import { getGoogleAccessTokenFromLocal, getValidAccessToken } from "./auth";
+import { localStorageService, setAccessToken, setAccessTokenExpirationTime } from "./storage";
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from "./types";
 
 export class LikedVideoApi {
@@ -16,29 +16,24 @@ export class LikedVideoApi {
     async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
         let accessToken = getGoogleAccessTokenFromLocal();
 
-        if (!accessToken) {
-            try {
-                const tokenResponse = await refreshAccessToken(
-                    this.pluginSettings.googleClientId,
-                    this.pluginSettings.googleClientSecret,
-                );
-                setAccessToken(tokenResponse.access_token);
-                setAccessTokenExpirationTime(+new Date() + tokenResponse.expires_in * 1000);
-                accessToken = tokenResponse.access_token;
-            } catch (error) {
-                new Notice("Failed to refresh access token: " + error.message);
-                throw error;
-            }
-        }
 
-        return await fetch(url, {
-            method: method,
-            headers: {
-                ...headers,
-                'Authorization': `Bearer ${accessToken}`,
-            },
-            ...options
-        });
+        try {
+            accessToken = await getValidAccessToken(
+                this.pluginSettings.googleClientId,
+                this.pluginSettings.googleClientSecret
+            );
+            return await fetch(url, {
+                method: method,
+                headers: {
+                    ...headers,
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                ...options
+            });
+        } catch (error) {
+            new Notice("Failed to get access token: " + error.message);
+            throw error;
+        }
     }
 
     async fetchLikedVideos(limit = 50, pageToken?: string): Promise<YouTubeVideosResponse> {

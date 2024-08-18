@@ -133,6 +133,7 @@ export async function revokeGoogleToken(token: string) {
 export async function refreshAccessToken(userClientId: string, userClientSecret: string)
     : Promise<{ access_token: string, expires_in: number }> {
     const refreshToken = localStorageService.getRefreshToken();
+
     if (!refreshToken || refreshToken == "") {
         new Notice("Refresh token for Google API is missing or expired");
         throw new Error("Refresh token for Google API is missing or expired");
@@ -156,7 +157,29 @@ export async function refreshAccessToken(userClientId: string, userClientSecret:
 
     const token: { access_token: string, expires_in: number } = await response.json();
 
+    setAccessToken(token.access_token);
+    setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
+
+
     return token;
+}
+
+export async function getValidAccessToken(userClientId: string, userClientSecret: string): Promise<string> {
+    const currentTime = new Date().getTime();
+    const expirationTime = localStorageService.getAccessTokenExpirationTime();
+
+    if (currentTime >= expirationTime) {
+        const token = await refreshAccessToken(userClientId, userClientSecret);
+        return token.access_token;
+    }
+
+    const accessToken = localStorageService.getAccessToken();
+    if (!accessToken) {
+        const token = await refreshAccessToken(userClientId, userClientSecret);
+        return token.access_token;
+    }
+
+    return accessToken;
 }
 
 
