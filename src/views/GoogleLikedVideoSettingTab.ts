@@ -47,7 +47,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setDesc('Numbers of video to fetch at each request')
             .addSlider(slider => slider
                 .setValue(fetchLimit)
-                .setLimits(10, 100, 10)
+                .setLimits(10, 100, 30)
                 .onChange(async (value) => {
                     this.plugin.settings.fetchLimit = value;
                     await this.plugin.saveSettings();
