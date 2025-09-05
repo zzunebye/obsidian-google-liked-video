@@ -65,7 +65,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 modalContent.className = 'geulo-modal__content';
 
                 Object.entries(videoInfo.snippet).forEach(([key, value]) => {
-                    if (key === 'thumbnails') return; // Exclude thumbnails
+                    if (key === 'thumbnails') return; // Exclude thumbnails to be displayed in the modal
                     if (key === 'localized') return; // Exclude localized
                     if (key === 'tags' && Array.isArray(value)) value = value.join(', ');
                     // tidy up tags
@@ -106,7 +106,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 className="video-card-inner"
 
             >
-                <img className="video-thumbnail" src={videoInfo.snippet.thumbnails.default.url} alt="Video Thumbnail" />
+                <img className="video-thumbnail" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" />
                 <div className="video-details" >
                     <div className="video-details-inner">
                         <h2 className="video-title">{videoInfo.snippet.title}</h2>
