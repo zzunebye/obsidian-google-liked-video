@@ -29,7 +29,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		if (this.settings) {
 			this.likedVideoApi = new LikedVideoApi(this.settings);
 		}
-		
+
 		this.vault = this.app.vault;
 
 		this.registerView(

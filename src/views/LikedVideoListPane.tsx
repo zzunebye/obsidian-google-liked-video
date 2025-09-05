@@ -1,39 +1,19 @@
 import { ItemView, Menu, MenuItem, ViewStateResult, WorkspaceLeaf } from "obsidian";
 import { localStorageService } from "src/storage";
 import { Root, createRoot } from "react-dom/client";
-import { StrictMode, useState } from "react";
-import { LikedVideoView } from "./LikedVideoView";
+import { StrictMode } from "react";
 import { YouTubeVideo } from "src/types";
 import GoogleLikedVideoPlugin from "../main";
-import * as React from "react";
-
+import { VideosProvider } from "../hooks/videoContext";
+import { PluginContext } from "../hooks/pluginContext";
 interface ILikedVideoListViewPersistedState {
     videos: YouTubeVideo[];
 }
 
 export const VIEW_TYPE_LIKED_VIDEO_LIST = "liked-video-list";
 
-export const VideosContext = React.createContext<[YouTubeVideo[], React.Dispatch<React.SetStateAction<YouTubeVideo[]>>]>([[], () => { }]);
-export const PluginContext = React.createContext<GoogleLikedVideoPlugin | null>(null);
 
-export const useVideos = (): [YouTubeVideo[], React.Dispatch<React.SetStateAction<YouTubeVideo[]>>] => {
-    return React.useContext(VideosContext);
-};
 
-export const usePlugin = (): GoogleLikedVideoPlugin | null => {
-    return React.useContext(PluginContext);
-};
-
-const VideosProvider: React.FC<{ videos: YouTubeVideo[] }> = ({ videos }) => {
-    const [videoList, setVideoList] = useState<YouTubeVideo[]>(videos);
-    return (
-        <VideosContext.Provider value={[videoList, setVideoList]}>
-            <StrictMode>
-                <LikedVideoView />
-            </StrictMode>
-        </VideosContext.Provider>
-    );
-};
 
 export class LikedVideoListPane extends ItemView implements ILikedVideoListViewPersistedState {
     root: Root | null = null;
@@ -83,9 +63,11 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
 
         this.root = createRoot(this.containerEl.children[1]);
         this.root.render(
-            <PluginContext.Provider value={this.plugin}>
-                <VideosProvider videos={this.videos} />
-            </PluginContext.Provider>
+            <StrictMode>
+                <PluginContext.Provider value={this.plugin}>
+                    <VideosProvider videos={this.videos} />
+                </PluginContext.Provider>
+            </StrictMode>
         );
 
     }
