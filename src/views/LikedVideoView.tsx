@@ -8,6 +8,7 @@ import { SearchBar } from 'src/ui/SearchBar';
 import { APP_ID } from 'src/main';
 import { Modal, Notice } from 'obsidian';
 import { VideosContext } from 'src/store/videoContext';
+import { UI_TEXT } from 'src/constants/uiText';
 
 
 export const LikedVideoView: React.FC = () => {
@@ -77,10 +78,10 @@ export const LikedVideoView: React.FC = () => {
     return <div
         className="liked-video-view">
         <div className="video-view-header">
-            <div className="video-view-header__title"><Youtube className="video-view-header__icon" /> My Liked videos</div>
+            <div className="video-view-header__title"><Youtube className="video-view-header__icon" /> {UI_TEXT.HEADER_TITLE}</div>
             <div className="video-view-header__actions">
                 <button
-                    title="Refresh"
+                    title={UI_TEXT.BTN_REFRESH}
                     /// Refresh button to fetch recently liked videos
                     className="video-view-header__refresh-button"
                     onClick={async () => {
@@ -106,12 +107,12 @@ export const LikedVideoView: React.FC = () => {
                         setLikedVideos(updatedLikedVideos);
                         setVideos(updatedLikedVideos);
 
-                        new Notice(`New liked videos from Youtube are fetched and added - ${newLikedVideos.length} new videos.`);
+                        new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
 
                     }}
                 ><RefreshCcw size={16} /></button>
                 <button
-                    title="Settings"
+                    title={UI_TEXT.BTN_SETTINGS}
                     onClick={() => {
                         // Open Plugin Setting.
                         const setting = (plugin?.app as any).setting;
@@ -129,36 +130,36 @@ export const LikedVideoView: React.FC = () => {
                 />
             </div>
             <div className="video-count">
-                <p>{filteredVideos.length} videos</p>
+                <p>{UI_TEXT.VIDEO_COUNT(filteredVideos.length)}</p>
             </div>
         </div>
         <div className="video-view-sort">
-            <label htmlFor="sort-video-select">Sort by:</label>
+            <label htmlFor="sort-video-select">{UI_TEXT.SORT_LABEL}</label>
             <select
                 id="sort-video-select"
                 className="video-view-sort__select"
-                aria-label="Sort videos"
+                aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
             >
-                <option value="addedDate">By Liked Order</option>
-                <option value="viewCount">By View Count</option>
-                <option value="likeCount">By Like Count</option>
-                <option value="likeViewRatio">By Like/View Ratio</option>
-                <option value="date">By Published Date</option>
-                <option value="title">By Title</option>
+                <option value="addedDate">{UI_TEXT.SORT_BY_LIKED_ORDER}</option>
+                <option value="viewCount">{UI_TEXT.SORT_BY_VIEW_COUNT}</option>
+                <option value="likeCount">{UI_TEXT.SORT_BY_LIKE_COUNT}</option>
+                <option value="likeViewRatio">{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}</option>
+                <option value="date">{UI_TEXT.SORT_BY_PUBLISHED_DATE}</option>
+                <option value="title">{UI_TEXT.SORT_BY_TITLE}</option>
             </select>
             <button
-                title="Toggle sort order"
+                title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
                 onClick={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
                 className="video-view-sort__order"
-                aria-label="Toggle sort order"
+                aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
             >
-                {sortOrder === 'ASC' ? '🔼' : '🔽'}
+                {sortOrder === 'ASC' ? UI_TEXT.SORT_ASC : UI_TEXT.SORT_DESC}
             </button>
         </div>
         {currentVideos.length === 0 && <div className="no-videos-found">
-            <div className="no-videos-found__text">No videos found</div>
+            <div className="no-videos-found__text">{UI_TEXT.NO_VIDEOS_FOUND}</div>
 
             <button
                 className="no-videos-found__fetch-all-button"
@@ -166,7 +167,7 @@ export const LikedVideoView: React.FC = () => {
                     try {
                         /// get number of the videos in the liked videos
                         const totalLikedVideos = await plugin?.likedVideoApi.fetchTotalLikedVideoCount();
-                        new Notice(`${totalLikedVideos} videos in total`);
+                        new Notice(UI_TEXT.NOTICE_TOTAL_VIDEOS(totalLikedVideos ?? 0));
 
                         // repeat fetching liked videos
                         // this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
@@ -189,16 +190,16 @@ export const LikedVideoView: React.FC = () => {
                         setLikedVideos(allLikedVideos);
                         setVideos(allLikedVideos);
 
-                        new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
+                        new Notice(UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(allLikedVideos.length));
 
                     } catch (error) {
                         if (plugin?.app) {
-                            new Modal(plugin?.app).setTitle('error').setContent("error: " + error).open();
+                            new Modal(plugin?.app).setTitle(UI_TEXT.ERROR_TITLE).setContent(UI_TEXT.ERROR_MESSAGE(error)).open();
                         }
                     }
                 }}
             >
-                Fetch all liked videos
+                {UI_TEXT.BTN_FETCH_ALL}
             </button>
         </div>}
         {/* Videos */}
@@ -234,10 +235,10 @@ export const LikedVideoView: React.FC = () => {
                 {currentPage > 1 && (
                     <>
                         <button onClick={() => setCurrentPage(1)}>
-                            &lt;--
+                            {UI_TEXT.PAGE_FIRST}
                         </button>
                         <button onClick={() => setCurrentPage(currentPage - 1)}>
-                            &lt;-
+                            {UI_TEXT.PAGE_PREV}
                         </button>
                     </>
                 )}
@@ -249,10 +250,10 @@ export const LikedVideoView: React.FC = () => {
                 {currentPage < totalPages && (
                     <>
                         <button type="button" onClick={() => setCurrentPage(currentPage + 1)}>
-                            -&gt;
+                            {UI_TEXT.PAGE_NEXT}
                         </button>
                         <button type="button" onClick={() => setCurrentPage(totalPages)}>
-                            --&gt;
+                            {UI_TEXT.PAGE_LAST}
                         </button>
                     </>
                 )}
