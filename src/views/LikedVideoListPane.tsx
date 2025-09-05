@@ -4,8 +4,8 @@ import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
 import { YouTubeVideo } from "src/types";
 import GoogleLikedVideoPlugin from "../main";
-import { VideosProvider } from "../hooks/videoContext";
-import { PluginContext } from "../hooks/pluginContext";
+import { VideosProvider } from "../store/videoContext";
+import { PluginContext } from "../store/pluginContext";
 interface ILikedVideoListViewPersistedState {
     videos: YouTubeVideo[];
 }

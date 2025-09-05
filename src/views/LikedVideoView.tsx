@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { usePlugin } from '../hooks/pluginContext';
+import { usePlugin } from '../store/pluginContext';
 import { localStorageService, setLikedVideos } from 'src/storage';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { Youtube, Settings, RefreshCcw } from 'lucide-react';
@@ -7,7 +7,7 @@ import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
 import { APP_ID } from 'src/main';
 import { Modal, Notice } from 'obsidian';
-import { VideosContext } from 'src/hooks/videoContext';
+import { VideosContext } from 'src/store/videoContext';
 
 
 export const LikedVideoView: React.FC = () => {
