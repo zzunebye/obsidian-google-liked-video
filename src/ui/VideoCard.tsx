@@ -113,8 +113,8 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                         <p className="video-channel">Channel: {videoInfo.snippet.channelTitle}</p>
                         <p className="video-date">Published: {videoInfo.snippet.publishedAt}</p>
                     </div>
+                    <p className="video-pulled-at">Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
                 </div>
-                <p className="video-pulled-at">Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
             </div>
             <div className="video-card-options">
                 <div>
