@@ -13,7 +13,7 @@ interface VideoCardProps {
 }
 export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoCardProps) => {
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-        e.dataTransfer.setData('text/plain', `\n[${videoInfo.snippet.title}](${url})\n`);
+        e.dataTransfer.setData('text/plain', `\n[${videoInfo.snippet.channelTitle} - ${videoInfo.snippet.title}](${url})\n`);
         e.currentTarget.classList.add('video-card__container--dragging'); // Add class
     };
 
@@ -111,7 +111,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     <div className="video-details-inner">
                         <h2 className="video-title">{videoInfo.snippet.title}</h2>
                         <p className="video-channel">Channel: {videoInfo.snippet.channelTitle}</p>
-                        <p className="video-date">Published: {videoInfo.snippet.publishedAt}</p>
+                        <p className="video-date">Published: {moment(videoInfo.snippet.publishedAt).format('MMM D, YYYY')}</p>
                     </div>
                     <p className="video-pulled-at">Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
                 </div>
