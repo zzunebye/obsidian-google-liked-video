@@ -145,7 +145,7 @@ export const LikedVideoView: React.FC = () => {
                 <option value="viewCount">By View Count</option>
                 <option value="likeCount">By Like Count</option>
                 <option value="likeViewRatio">By Like/View Ratio</option>
-                <option value="date">By Posted Date</option>
+                <option value="date">By Published Date</option>
                 <option value="title">By Title</option>
             </select>
             <button
