@@ -10,3 +10,6 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## How to roll out new version
+
