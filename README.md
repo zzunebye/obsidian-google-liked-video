@@ -8,7 +8,8 @@ Reviewing is as important as consuming content. I often find it not really helpf
 Features are still at its early stages. If you have any feedback or suggestions, please feel free to open an issue or contact me at [zzunebye@gmail.com](mailto:zzunebye@gmail.com).
 
 
-Features
+## Features
+
 - **Fetch liked videos**: Retrieve all the YouTube videos you've liked and add them to your daily notes.
 - **Sidebar list** : View, search and sort your liked videos in the right sidebar.
 - **Add to daily note** : Add a liked video to your daily note by clicking on the video in the sidebar.
@@ -60,6 +61,7 @@ To use this plugin, you need to set up a project in Google Cloud Console and ena
 ### Troubleshooting
 
 If you encounter any issues, consider the following steps:
+
 1. **Credentials**: Double-check that your Client ID and Client secret are correctly entered in the plugin settings.
 2. **Authorized URIs**: Verify that http://127.0.0.1:42813 is listed in the Authorized JavaScript origins and http://127.0.0.1:42813/callback in the Authorized redirect URIs.
 3. If granting permission to your google project fails, check if there are multiple window/tabs for login process opened. If so, close all of them and try again.
