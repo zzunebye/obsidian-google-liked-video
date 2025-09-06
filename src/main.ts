@@ -20,6 +20,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings;
 	vault: Vault;
 	likedVideoApi: LikedVideoApi;
+	paneRef: LikedVideoListPane | null = null;
 
 	constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest);
@@ -35,7 +36,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,
-			(leaf) => new LikedVideoListPane(leaf, this)
+			(leaf) => {
+				this.paneRef = new LikedVideoListPane(leaf, this);
+				return this.paneRef;
+			}
 		);
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
@@ -59,7 +63,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	reloadView() {
 		this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onClose();
-		this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onload();
+		this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onOpen();
 	}
 
 	async activateView() {

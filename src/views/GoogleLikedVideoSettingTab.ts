@@ -125,7 +125,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 
         new Setting(containerEl)
-            .setName('Fetch all liked videos so far and add to local storage')
+            .setName('Fetch all liked videos so far and add to local storage. This will override all the liked videos in local storage.')
             .addButton(button => button
                 .setButtonText('Full scan')
                 .onClick(async () => {
