@@ -3,6 +3,8 @@ import { getGoogleAccessTokenFromLocal, getValidAccessToken } from "./auth";
 import { localStorageService, setAccessToken, setAccessTokenExpirationTime } from "./storage";
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from "./types";
 
+const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
+
 export class LikedVideoApi {
     constructor(private pluginSettings: ObsidianGoogleLikedVideoSettings) {
         this.pluginSettings = pluginSettings;
@@ -56,7 +58,7 @@ export class LikedVideoApi {
     }
 
     async fetchPlaylists(): Promise<any> {
-        const url = 'https://youtube.googleapis.com/youtube/v3/playlists?'
+        const url = BASE_URL + 'playlists?'
             + 'part=snippet,contentDetails'
             + '&maxResults=5'
             + '&mine=true';
@@ -88,7 +90,7 @@ export class LikedVideoApi {
     }
 
     async fetchTotalLikedVideoCount(): Promise<number> {
-        const url = 'https://youtube.googleapis.com/youtube/v3/videos?'
+        const url = BASE_URL + 'videos?'
             + 'part=snippet,statistics'
             + '&maxResults=1'
             + '&myRating=like';
@@ -98,7 +100,7 @@ export class LikedVideoApi {
     }
 
     async unlikeVideo(videoId: string): Promise<void> {
-        const url = `https://youtube.googleapis.com/youtube/v3/videos/rate?id=${videoId}&rating=none`;
+        const url = BASE_URL + 'videos/rate?id=' + videoId + '&rating=none';
         await this.sendRequest('POST', url, {
             'Content-Type': 'application/json'
         });
