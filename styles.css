@@ -60,6 +60,14 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-normal); /* Slightly lighter color for better contrast */
 }
 
+.geulo-modal__divider {
+	display: block;
+	grid-column: 1 / -1; /* Make divider span both columns */
+	width: 100%;
+	border-top: 1px solid var(--background-modifier-border);
+	margin: 24px 0 12px 0; /* More space above, less below for separation */
+}
+
 /* View */
 
 .liked-videos-view {

@@ -64,6 +64,25 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 const modalContent = document.createElement('div');
                 modalContent.className = 'geulo-modal__content';
 
+                Object.entries(videoInfo.statistics).forEach(([key, value]) => {
+                    if (key === 'favoriteCount') return; // Exclude favoriteCount
+                    const labelElement = document.createElement('div');
+                    labelElement.className = 'geulo-modal__key-element';
+                    labelElement.innerText = key.replace(/([A-Z])/g, ' $1').trim() + ':';
+
+                    const infoValueElement = document.createElement('div');
+                    infoValueElement.className = 'geulo-modal__value-element';
+                    infoValueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value.toString();
+
+                    modalContent.appendChild(labelElement);
+                    modalContent.appendChild(infoValueElement);
+                });
+
+                // Add a visual divider between statistics and snippet info
+                const divider = document.createElement('hr');
+                divider.className = 'geulo-modal__divider';
+                modalContent.appendChild(divider);
+
                 Object.entries(videoInfo.snippet).forEach(([key, value]) => {
                     if (key === 'thumbnails') return; // Exclude thumbnails to be displayed in the modal
                     if (key === 'localized') return; // Exclude localized
