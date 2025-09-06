@@ -4,6 +4,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     googleClientSecret: string;
     dailyNotePath: string;
     fetchLimit: number;
+    fullFetchLimit: number;
 }
 
 export interface YouTubeVideo {

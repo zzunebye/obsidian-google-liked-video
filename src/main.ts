@@ -10,7 +10,8 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
 	googleClientSecret: '',
 	dailyNotePath: '',
-	fetchLimit: 10
+	fetchLimit: 10,
+	fullFetchLimit: 100
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';
