@@ -5,6 +5,8 @@ This plugin Fetch all the YouTube videos you have liked, search and sort them wi
 
 Reviewing is as important as consuming content. I often find it not really helpful to search for new things, while there are always more things to learn by re-watching good YouTube videos. I hope this plugin, with Obsidian's power to build a knowledge base, can help us achieve that.
 
+With Geulo, you can also manage your liked video list by un-liking the videos in the sidebar.
+
 Features are still at its early stages. If you have any feedback or suggestions, please feel free to open an issue or contact me at [zzunebye@gmail.com](mailto:zzunebye@gmail.com).
 
 
@@ -15,6 +17,7 @@ Features are still at its early stages. If you have any feedback or suggestions,
 - **Add to daily note** : Add a liked video to your daily note by clicking on the video in the sidebar.
 - **Batch update** (coming soon): Fetch all your liked videos and update the corresponding daily notes in one go.
 - **Popular videos** (coming soon) : Retrieve and display the most popular videos.
+- **Un-like videos** : Un-like a video by clicking on the video in the sidebar.
 
 It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/obsidian-google-calendar) plugin.
 
