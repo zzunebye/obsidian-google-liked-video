@@ -12,9 +12,6 @@ interface ILikedVideoListViewPersistedState {
 
 export const VIEW_TYPE_LIKED_VIDEO_LIST = "liked-video-list";
 
-
-
-
 export class LikedVideoListPane extends ItemView implements ILikedVideoListViewPersistedState {
     root: Root | null = null;
 

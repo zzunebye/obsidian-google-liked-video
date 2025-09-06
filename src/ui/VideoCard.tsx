@@ -1,4 +1,4 @@
-import { Menu, TFile, moment } from "obsidian";
+import { Menu, TFile, moment, Notice } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { MoreHorizontal } from "lucide-react";
 import { YouTubeVideo } from "src/types";
@@ -53,7 +53,27 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
                 onAddToDailyNote(videoData, dailyNote);
             });
+        });
 
+        menu.addItem(item => {
+            item.setTitle("Add to current note");
+            item.onClick(() => {
+                // Get the currently active file
+                const activeFile = app.workspace.getActiveFile();
+                if (!activeFile) {
+                    new Notice("No active note found. Please open a note first.");
+                    return;
+                }
+
+                const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
+
+                // Append to the current note
+                app.vault.process(activeFile, (data) => {
+                    return data + '\n' + videoData;
+                }).then(() => {
+                    new Notice(`Added video to ${activeFile.basename}`);
+                });
+            });
         });
 
         menu.addItem(item => {
@@ -77,6 +97,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     modalContent.appendChild(labelElement);
                     modalContent.appendChild(infoValueElement);
                 });
+
 
                 // Add a visual divider between statistics and snippet info
                 const divider = document.createElement('hr');
