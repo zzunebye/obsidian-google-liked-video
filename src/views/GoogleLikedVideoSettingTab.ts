@@ -142,7 +142,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         let nextPageToken: string | undefined = undefined;
 
                         do {
-                            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fetchLimit, nextPageToken);
+                            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fullFetchLimit, nextPageToken);
                             allLikedVideos = allLikedVideos.concat(response.items);
                             if (response.nextPageToken === undefined || response.nextPageToken === '' || response.nextPageToken === null) {
                                 break;

@@ -177,7 +177,7 @@ export const LikedVideoView: React.FC = () => {
                         let nextPageToken: string | undefined = undefined;
 
                         do {
-                            const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(50, nextPageToken);
+                            const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(plugin?.settings.fullFetchLimit, nextPageToken);
                             allLikedVideos = allLikedVideos.concat(response?.items || []);
                             if (response?.nextPageToken === undefined || response?.nextPageToken === '' || response?.nextPageToken === null) {
                                 break;
