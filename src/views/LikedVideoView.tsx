@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { usePlugin } from '../store/pluginContext';
-import { localStorageService, setLikedVideos } from 'src/storage';
+import { localStorageService } from 'src/storage';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { Youtube, Settings, RefreshCcw } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
@@ -104,7 +104,7 @@ export const LikedVideoView: React.FC = () => {
                         const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
 
                         // Batch state updates to avoid unnecessary re-renders
-                        setLikedVideos(updatedLikedVideos);
+                        localStorageService.setLikedVideos(updatedLikedVideos);
                         setVideos(updatedLikedVideos);
 
                         new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
@@ -187,7 +187,7 @@ export const LikedVideoView: React.FC = () => {
                         } while (nextPageToken !== undefined);
 
                         // Save the fetched videos to LocalStorage
-                        setLikedVideos(allLikedVideos);
+                        localStorageService.setLikedVideos(allLikedVideos);
                         setVideos(allLikedVideos);
 
                         new Notice(UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(allLikedVideos.length));
@@ -212,7 +212,7 @@ export const LikedVideoView: React.FC = () => {
                     videoInfo={video}
                     onUnlike={async () => {
                         await plugin?.likedVideoApi.unlikeVideo(video.id);
-                        setLikedVideos(videos.filter(v => v.id !== video.id));
+                        localStorageService.setLikedVideos(videos.filter(v => v.id !== video.id));
                         setVideos(videos.filter(v => v.id !== video.id));
                     }}
                     onAddToDailyNote={async (videoData, file) => {

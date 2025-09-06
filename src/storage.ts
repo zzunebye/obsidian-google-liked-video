@@ -69,9 +69,4 @@ export const setAccessTokenExpirationTime = (googleExpirationTime: number): void
     window.localStorage.setItem("googleYtbLikedVideoExpirationTime", googleExpirationTime.toString());
 };
 
-export const setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
-    window.localStorage.setItem("googleYtbLikedVideoLikedVideos", JSON.stringify(likedVideos));
-};
-
-
 

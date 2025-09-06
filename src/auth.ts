@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { IncomingMessage, Server, ServerResponse } from 'http';
-import { localStorageService, setAccessToken, setAccessTokenExpirationTime, setLikedVideos, setRefreshToken } from 'src/storage';
+import { localStorageService, setAccessToken, setAccessTokenExpirationTime, setRefreshToken } from 'src/storage';
 import { Platform, Notice } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
@@ -104,7 +104,7 @@ export async function handleGoogleLogout(
         setRefreshToken("");
         setAccessToken("");
         setAccessTokenExpirationTime(0);
-        setLikedVideos([]);
+        localStorageService.setLikedVideos([]);
         if (success) {
             onSuccess();
         } else {

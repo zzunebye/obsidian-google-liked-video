@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { App, Modal, Notice, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { localStorageService, setLikedVideos } from 'src/storage';
+import { localStorageService } from 'src/storage';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
@@ -152,7 +152,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         } while (nextPageToken !== undefined);
 
                         // Save the fetched videos to LocalStorage
-                        setLikedVideos(allLikedVideos);
+                        localStorageService.setLikedVideos(allLikedVideos);
                         this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
                             { videos: allLikedVideos },
                             { history: true });
@@ -222,7 +222,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
         }
 
-        setLikedVideos(updatedLikedVideos);
+        localStorageService.setLikedVideos(updatedLikedVideos);
         this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
             { videos: updatedLikedVideos },
             { history: true });
