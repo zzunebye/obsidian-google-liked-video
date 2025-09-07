@@ -17,6 +17,7 @@ export const LikedVideoView: React.FC = () => {
     const [sortOption, setSortOption] = useState(localStorageService.getSortOption());
     const [sortOrder, setSortOrder] = useState(localStorageService.getSortOrder());
     const [videos, setVideos] = useContext(VideosContext);
+    const [isFetching, setIsFetching] = useState(false);
     const plugin = usePlugin();
     const videosPerPage = 10;
 
@@ -78,28 +79,40 @@ export const LikedVideoView: React.FC = () => {
     return <div
         className="liked-video-view">
         <div className="video-view-header">
-            <div className="video-view-header__title"><Youtube className="video-view-header__icon" /> {UI_TEXT.HEADER_TITLE}</div>
+            <div className="video-view-header__title"><Youtube className="video-view-header__icon" /> {UI_TEXT.HEADER_TITLE}
+                {plugin?.settings.autoFetchEnabled && (
+                    <span className="auto-fetch-indicator" title={`Auto-fetch: Every ${plugin.settings.autoFetchInterval < 1
+                        ? `${Math.round(plugin.settings.autoFetchInterval * 60)} seconds`
+                        : `${plugin.settings.autoFetchInterval} minutes`
+                        }`}>
+                        {plugin?.isFetching ? '🔄 Fetching...' : '⏰ Auto'}
+                    </span>
+                )}
+            </div>
             <div className="video-view-header__actions">
                 <button
                     title={UI_TEXT.BTN_REFRESH}
                     /// Refresh button to fetch recently liked videos
                     className="video-view-header__refresh-button"
+                    disabled={isFetching || plugin?.isFetching}
                     onClick={async () => {
-                        let allLikedVideos: YouTubeVideo[] = [];
+                        setIsFetching(true);
+                        let fetchedLikedVideos: YouTubeVideo[] = [];
                         let nextPageToken: string | undefined = undefined;
 
                         const limit = plugin?.settings.fetchLimit;
 
                         const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(limit, nextPageToken);
+
                         if (response) {
-                            allLikedVideos = allLikedVideos.concat(response.items);
+                            fetchedLikedVideos = fetchedLikedVideos.concat(response.items);
                             nextPageToken = response.nextPageToken;
                         }
 
                         const storedLikedVideos = localStorageService.getLikedVideos();
                         const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
 
-                        const newLikedVideos = allLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
+                        const newLikedVideos = fetchedLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
 
                         const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
 
@@ -108,7 +121,7 @@ export const LikedVideoView: React.FC = () => {
                         setVideos(updatedLikedVideos);
 
                         new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
-
+                        setIsFetching(false);
                     }}
                 ><RefreshCcw size={16} /></button>
                 <button

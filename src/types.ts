@@ -5,6 +5,10 @@ export interface ObsidianGoogleLikedVideoSettings {
     dailyNotePath: string;
     fetchLimit: number;
     fullFetchLimit: number;
+    autoFetchEnabled: boolean;
+    autoFetchInterval: number;
+    fetchOnStartup: boolean;
+    lastAutoFetchTime: number;
 }
 
 export interface YouTubeVideo {

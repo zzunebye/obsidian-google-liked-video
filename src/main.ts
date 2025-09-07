@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { App, Plugin, PluginManifest, Vault, WorkspaceLeaf } from 'obsidian';
-import { ObsidianGoogleLikedVideoSettings } from 'src/types';
+import { App, Notice, Plugin, PluginManifest, Vault, WorkspaceLeaf } from 'obsidian';
+import { ObsidianGoogleLikedVideoSettings, YouTubeVideosResponse } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { LikedVideoApi } from './api';
+import { localStorageService } from './storage';
+import { debugLogger } from './debug';
+import { UI_TEXT } from './constants/uiText';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
@@ -11,7 +14,11 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientSecret: '',
 	dailyNotePath: '',
 	fetchLimit: 10,
-	fullFetchLimit: 100
+	fullFetchLimit: 100,
+	autoFetchEnabled: false,
+	autoFetchInterval: 60,
+	fetchOnStartup: false,
+	lastAutoFetchTime: 0
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';
@@ -20,16 +27,21 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings;
 	vault: Vault;
 	likedVideoApi: LikedVideoApi;
+	autoFetchInterval: NodeJS.Timeout | null = null;
+	isFetching: boolean = false;
 	paneRef: LikedVideoListPane | null = null;
+	settingTabRef: GoogleLikedVideoSettingTab | null = null;
 
 	constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest);
 	}
 
 	async onload() {
+		debugLogger.info('Plugin loading...');
 		await this.loadSettings();
 		if (this.settings) {
 			this.likedVideoApi = new LikedVideoApi(this.settings);
+			debugLogger.debug('API client initialized');
 		}
 
 		this.vault = this.app.vault;
@@ -43,7 +55,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		);
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new GoogleLikedVideoSettingTab(this.app, this));
+		this.settingTabRef = new GoogleLikedVideoSettingTab(this.app, this);
+		this.addSettingTab(this.settingTabRef);
 
 
 		this.addRibbonIcon("youtube", "Activate Liked Video List View", () => {
@@ -57,9 +70,21 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				this.activateView();
 			}
 		});
+
+
+		if (this.settings.fetchOnStartup && localStorageService.getAccessToken()) {
+			debugLogger.info('Fetch on startup enabled, scheduling fetch in 5 seconds');
+			setTimeout(() => {
+				this.performAutoFetch();
+			}, 5000);
+		}
+
+		this.setupAutoFetch();
 	}
 
-	onunload() { }
+	onunload() {
+		this.stopAutoFetch();
+	}
 
 	reloadView() {
 		this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onClose();
@@ -93,5 +118,89 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		this.setupAutoFetch();
+	}
+
+	setupAutoFetch() {
+		this.stopAutoFetch();
+
+		if (this.settings.autoFetchEnabled && this.settings.autoFetchInterval > 0) {
+			const debugConfig = debugLogger.getConfig();
+			const intervalMinutes = debugConfig.autoFetchIntervalOverride || this.settings.autoFetchInterval;
+			const intervalMs = intervalMinutes * 60 * 1000;
+
+			// Display interval in appropriate units for debugging
+			const displayInterval = intervalMinutes < 1
+				? `${Math.round(intervalMinutes * 60)} seconds`
+				: `${intervalMinutes} minutes`;
+
+			debugLogger.autoFetch(`Setting up auto-fetch with interval: ${displayInterval}`);
+
+			this.autoFetchInterval = setInterval(async () => {
+				if (!this.isFetching) {
+					await this.performAutoFetch();
+				}
+			}, intervalMs);
+		}
+	}
+
+	stopAutoFetch() {
+		if (this.autoFetchInterval) {
+			clearInterval(this.autoFetchInterval);
+			this.autoFetchInterval = null;
+		}
+	}
+
+	async performAutoFetch() {
+		if (this.isFetching) {
+			debugLogger.autoFetch('Skipping auto-fetch - already fetching');
+			return;
+		}
+
+		try {
+			debugLogger.autoFetch('Starting auto-fetch');
+			new Notice('Geulo: Auto-fetching started');
+			this.isFetching = true;
+			const now = Date.now();
+			debugLogger.time('auto-fetch');
+
+			if (this.likedVideoApi && localStorageService.getAccessToken()) {
+				const limit = this.settings.fetchLimit;
+				const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(limit);
+				if (response && response.items.length > 0) {
+					debugLogger.autoFetch(`Fetched ${response.items.length} videos`);
+
+					const storedLikedVideos = localStorageService.getLikedVideos();
+					const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
+
+					const newLikedVideos = response.items.filter(video => !storedLikedVideoIdsSet.has(video.id));
+
+					const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
+
+					// Batch state updates to avoid unnecessary re-renders
+					localStorageService.setLikedVideos(updatedLikedVideos);
+
+					new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
+
+					this.settings.lastAutoFetchTime = now;
+					await this.saveData(this.settings);
+
+					const view = this.paneRef;
+					if (view) {
+						// update state of the view
+						this.reloadView();
+					}
+					// update the last auto fetch time in setting tab
+					this.settingTabRef?.display();
+				}
+			}
+		} catch (error) {
+			debugLogger.error('Auto-fetch failed:', error);
+			console.error('Auto-fetch failed:', error);
+		} finally {
+			debugLogger.timeEnd('auto-fetch');
+			this.isFetching = false;
+			debugLogger.autoFetch('Auto-fetch completed');
+		}
 	}
 }

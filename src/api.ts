@@ -1,7 +1,7 @@
-import { Modal, Notice } from "obsidian";
+import { Notice } from "obsidian";
 import { getGoogleAccessTokenFromLocal, getValidAccessToken } from "./auth";
-import { localStorageService, setAccessToken, setAccessTokenExpirationTime } from "./storage";
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from "./types";
+import { debugLogger } from "./debug";
 
 const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
 
@@ -17,14 +17,14 @@ export class LikedVideoApi {
     // 3. It will add the access token to the request headers
     async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
         let accessToken = getGoogleAccessTokenFromLocal();
-
+        debugLogger.api(`${method} request to: ${url}`);
 
         try {
             accessToken = await getValidAccessToken(
                 this.pluginSettings.googleClientId,
                 this.pluginSettings.googleClientSecret
             );
-            return await fetch(url, {
+            const response = await fetch(url, {
                 method: method,
                 headers: {
                     ...headers,
@@ -32,14 +32,18 @@ export class LikedVideoApi {
                 },
                 ...options
             });
+            debugLogger.api(`Response status: ${response.status}`);
+            return response;
         } catch (error) {
+            debugLogger.error('API request failed:', error);
             new Notice("Failed to get access token: " + error.message);
             throw error;
         }
     }
 
     async fetchLikedVideos(limit = 50, pageToken?: string): Promise<YouTubeVideosResponse> {
-        let url = 'https://youtube.googleapis.com/youtube/v3/videos?'
+        debugLogger.api(`Fetching liked videos - limit: ${limit}, pageToken: ${pageToken || 'none'}`);
+        let url = BASE_URL + 'videos?'
             + 'part=snippet,contentDetails,statistics'
             + `&maxResults=${limit}`
             + '&myRating=like';
@@ -49,6 +53,8 @@ export class LikedVideoApi {
         }
         const response = await this.sendRequest('GET', url, {});
         const data: YouTubeVideosResponse = await response.json();
+        debugLogger.api(`Fetched ${data.items?.length || 0} videos`);
+        debugLogger.verbose('API Response:', data);
 
         data.items.forEach(video => {
             video.pulled_at = new Date().toISOString();

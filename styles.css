@@ -108,6 +108,17 @@ If your plugin does not need CSS, delete this file.
 	margin: 0 5px; /* Adds margin to the left and right of children */
 }
 
+.auto-fetch-indicator {
+	font-size: 0.7em;
+	padding: 2px 8px;
+	margin-left: 12px;
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	color: var(--text-muted);
+	font-weight: normal;
+}
+
 .video-view-header__actions {
 	display: flex;
 	gap: 0.25em;

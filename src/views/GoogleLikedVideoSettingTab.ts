@@ -7,6 +7,7 @@ import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
 import { LikedVideoApi } from 'src/api';
 import GoogleLikedVideoPlugin from '../main';
 import { LikedVideoListPane } from './LikedVideoListPane';
+import { debugLogger } from 'src/debug';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
@@ -18,10 +19,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         this.likedVideoApi = new LikedVideoApi(this.plugin.settings);
     }
 
-    updateView(): void {
+    updateListPaneView(): void {
         this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onClose();
         this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onOpen();
     }
+
     display(): void {
         const { containerEl } = this;
 
@@ -105,18 +107,94 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         await handleGoogleLogout(this.plugin.settings,
                             () => {
                                 this.display();
-                                this.updateView();
+                                this.updateListPaneView();
                             }, () => {
                                 this.display();
-                                this.updateView();
+                                this.updateListPaneView();
                             }
                         )
                         : await handleGoogleLogin(this.plugin.settings, () => {
                             this.display();
-                            this.updateView();
+                            this.updateListPaneView();
                         });
                 }));
 
+
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Automatic Fetch')
+            .setDesc('Configure automatic fetching of liked videos');
+
+        new Setting(containerEl)
+            .setName('Enable automatic fetch')
+            .setDesc('Automatically fetch liked videos at regular intervals')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoFetchEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.autoFetchEnabled = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                    this.updateListPaneView();
+                }));
+
+        if (this.plugin.settings.autoFetchEnabled) {
+            new Setting(containerEl)
+                .setName('Fetch interval')
+                .setDesc('How often to automatically fetch videos (in minutes)')
+                .addDropdown(dropdown => {
+                    // Add debug option for 5 seconds if in debug mode
+                    const debugConfig = debugLogger.getConfig();
+                    if (debugConfig.enabled) {
+                        dropdown.addOption('0.083', '🔧 5 seconds (Debug)');
+                        dropdown.addOption('1', '🔧 1 minute (Debug)');
+                    }
+
+                    dropdown
+                        .addOption('10', '10 minutes')
+                        .addOption('30', '30 minutes')
+                        .addOption('60', '1 hour')
+                        .addOption('120', '2 hours')
+                        .addOption('360', '6 hours')
+                        .addOption('720', '12 hours')
+                        .addOption('1440', '24 hours')
+                        .setValue(String(this.plugin.settings.autoFetchInterval))
+                        .onChange(async (value) => {
+                            this.plugin.settings.autoFetchInterval = parseFloat(value);
+                            await this.plugin.saveSettings();
+
+                            if (parseFloat(value) < 1) {
+                                new Notice('⚠️ Debug mode: Using very short fetch interval!');
+                            }
+                            this.updateListPaneView();
+                            this.display();
+                        });
+
+                    return dropdown;
+                });
+
+            new Setting(containerEl)
+                .setName('Fetch on startup')
+                .setDesc('Automatically fetch videos when Obsidian starts')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.fetchOnStartup)
+                    .onChange(async (value) => {
+                        this.plugin.settings.fetchOnStartup = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            if (this.plugin.settings.lastAutoFetchTime > 0) {
+                const lastFetch = new Date(this.plugin.settings.lastAutoFetchTime);
+
+                // Format the interval display
+                const intervalDisplay = this.plugin.settings.autoFetchInterval < 1
+                    ? `${Math.round(this.plugin.settings.autoFetchInterval * 60)}s`
+                    : `${this.plugin.settings.autoFetchInterval}min`;
+
+                new Setting(containerEl)
+                    .setName('Last auto-fetch')
+                    .setDesc(`Last: ${lastFetch.toLocaleString()} (every ${intervalDisplay})`);
+            }
+        }
 
         new Setting(containerEl)
             .setHeading()
@@ -157,7 +235,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                             { videos: allLikedVideos },
                             { history: true });
                         this.display();
-                        this.updateView()
+                        this.updateListPaneView()
                         new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
 
                     } catch (error) {
@@ -173,7 +251,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     try {
                         await this.fetchAndUpdateLikedVideos(this.app, 20, false);
                         this.display();
-                        this.updateView()
+                        this.updateListPaneView()
                     } catch (error) {
                         new Modal(this.app).setTitle('error').setContent("error: " + error).open();
                     }
@@ -186,10 +264,91 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .onClick(async () => {
                     localStorageService.setLikedVideos([]);
                     this.display();
-                    this.updateView();
+                    this.updateListPaneView();
 
                     new Notice('Liked videos have been cleared');
                 }));
+
+        // Debug settings - only show in development mode
+        const debugConfig = debugLogger.getConfig();
+        if (debugConfig.enabled) {
+            new Setting(containerEl)
+                .setHeading()
+                .setName('🔧 Debug Settings')
+                .setDesc('Development mode only');
+
+            new Setting(containerEl)
+                .setName('Log Level')
+                .setDesc('Set the verbosity of debug logs')
+                .addDropdown(dropdown => dropdown
+                    .addOption('error', 'Error')
+                    .addOption('warn', 'Warning')
+                    .addOption('info', 'Info')
+                    .addOption('debug', 'Debug')
+                    .addOption('verbose', 'Verbose')
+                    .setValue(debugConfig.logLevel)
+                    .onChange((value: any) => {
+                        debugLogger.updateConfig({ logLevel: value });
+                        new Notice(`Debug log level set to: ${value}`);
+                    }));
+
+            new Setting(containerEl)
+                .setName('Log API Calls')
+                .setDesc('Log all API requests and responses')
+                .addToggle(toggle => toggle
+                    .setValue(debugConfig.logApiCalls)
+                    .onChange(value => {
+                        debugLogger.updateConfig({ logApiCalls: value });
+                    }));
+
+            new Setting(containerEl)
+                .setName('Log State Changes')
+                .setDesc('Log state updates and changes')
+                .addToggle(toggle => toggle
+                    .setValue(debugConfig.logStateChanges)
+                    .onChange(value => {
+                        debugLogger.updateConfig({ logStateChanges: value });
+                    }));
+
+            new Setting(containerEl)
+                .setName('Log Auto-Fetch')
+                .setDesc('Log automatic fetch operations')
+                .addToggle(toggle => toggle
+                    .setValue(debugConfig.logAutoFetch)
+                    .onChange(value => {
+                        debugLogger.updateConfig({ logAutoFetch: value });
+                    }));
+
+            new Setting(containerEl)
+                .setName('Auto-Fetch Interval Override (minutes)')
+                .setDesc('Override auto-fetch interval for testing (0 = use normal setting)')
+                .addText(text => text
+                    .setPlaceholder('0')
+                    .setValue(String(debugConfig.autoFetchIntervalOverride || 0))
+                    .onChange(value => {
+                        const minutes = parseInt(value) || 0;
+                        debugLogger.updateConfig({
+                            autoFetchIntervalOverride: minutes > 0 ? minutes : undefined
+                        });
+                        if (minutes > 0) {
+                            new Notice(`Auto-fetch interval overridden to ${minutes} minutes. Restart plugin to apply.`);
+                        }
+                    }));
+
+            new Setting(containerEl)
+                .setName('Force Fetch Now')
+                .setDesc('Trigger an immediate fetch for testing')
+                .addButton(button => button
+                    .setButtonText('Fetch Now')
+                    .onClick(async () => {
+                        debugLogger.info('Manual debug fetch triggered');
+                        await this.plugin.performAutoFetch();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Debug Console Commands')
+                .setDesc('Enable: enableGeuloDebug() | Disable: disableGeuloDebug()');
+        }
     }
 
     async fetchAndUpdateLikedVideos(app: App, limit = 50, repetitive = false): Promise<void> {
