@@ -7,6 +7,7 @@ import { LikedVideoApi } from './api';
 import { localStorageService } from './storage';
 import { debugLogger } from './debug';
 import { UI_TEXT } from './constants/uiText';
+import { categoriesService } from './categoriesService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
@@ -80,6 +81,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 
 		this.setupAutoFetch();
+
+		// Initialize categories in the background
+		this.initializeCategories();
 	}
 
 	onunload() {
@@ -202,5 +206,39 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			this.isFetching = false;
 			debugLogger.autoFetch('Auto-fetch completed');
 		}
+	}
+
+	/**
+	 * Initialize video categories in the background
+	 */
+	private async initializeCategories(): Promise<void> {
+		try {
+			// Load categories asynchronously without blocking plugin startup
+			setTimeout(async () => {
+				if (this.likedVideoApi && localStorageService.getAccessToken()) {
+					debugLogger.info('Initializing video categories...');
+					await categoriesService.loadCategories(this.likedVideoApi);
+					debugLogger.info('Video categories initialized');
+				} else {
+					debugLogger.debug('Skipping categories initialization - no access token');
+				}
+			}, 2000); // Wait 2 seconds after plugin load
+		} catch (error) {
+			debugLogger.error('Failed to initialize categories:', error);
+		}
+	}
+
+	/**
+	 * Get category name for a video
+	 */
+	getCategoryName(categoryId: string): string {
+		return categoriesService.getCategoryName(categoryId);
+	}
+
+	/**
+	 * Get formatted category display
+	 */
+	getCategoryDisplay(categoryId: string): string {
+		return categoriesService.getCategoryDisplay(categoryId);
 	}
 }

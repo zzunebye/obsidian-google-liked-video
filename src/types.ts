@@ -85,3 +85,27 @@ export interface YouTubeVideosResponse {
         resultsPerPage: number;
     };
 }
+
+export interface YouTubeCategory {
+    id: string;
+    title: string;
+}
+
+export interface YoutubeCategoriesResponse {
+    kind: string;
+    etag: string;
+    items: {
+        kind: string;
+        etag: string;
+        id: string;
+        snippet: {
+            channelId: string;
+            title: string;
+        };
+    }[];
+}
+
+export interface CategoriesCache {
+    categories: { [key: string]: YouTubeCategory };
+    lastFetched: number;
+}

@@ -1,8 +1,9 @@
-import { Menu, TFile, moment, Notice } from "obsidian";
+import { Menu, TFile, moment, Notice, App } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { MoreHorizontal } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { GeuloModal } from "src/views/modals";
+import { usePlugin } from "../store/pluginContext";
 
 interface VideoCardProps {
     videoInfo: YouTubeVideo;
@@ -12,6 +13,8 @@ interface VideoCardProps {
     onAddToDailyNote: (videoData: string, file: TFile) => void;
 }
 export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoCardProps) => {
+    const plugin = usePlugin();
+
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData('text/plain', `\n[${videoInfo.snippet.channelTitle} - ${videoInfo.snippet.title}](${url})\n`);
         e.currentTarget.classList.add('video-card__container--dragging'); // Add class
@@ -116,7 +119,14 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
 
                     const infoValueElement = document.createElement('div');
                     infoValueElement.className = 'geulo-modal__value-element';
-                    infoValueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+                    
+                    // Special handling for categoryId to show both ID and name
+                    if (key === 'categoryId' && plugin) {
+                        const categoryDisplay = plugin.getCategoryDisplay(value as string);
+                        infoValueElement.innerText = categoryDisplay;
+                    } else {
+                        infoValueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+                    }
 
                     modalContent.appendChild(labelElement);
                     modalContent.appendChild(infoValueElement);

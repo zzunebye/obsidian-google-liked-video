@@ -1,6 +1,6 @@
 import { Notice } from "obsidian";
 import { getGoogleAccessTokenFromLocal, getValidAccessToken } from "./auth";
-import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from "./types";
+import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse, YouTubeCategory, YoutubeCategoriesResponse } from "./types";
 import { debugLogger } from "./debug";
 
 const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
@@ -110,6 +110,39 @@ export class LikedVideoApi {
         await this.sendRequest('POST', url, {
             'Content-Type': 'application/json'
         });
+    }
+
+    /**
+     * Fetch video categories from YouTube API
+     * Returns categories for US region by default
+     */
+    async fetchVideoCategories(): Promise<YouTubeCategory[]> {
+        try {
+            debugLogger.api('Fetching video categories for US region');
+
+            const url = BASE_URL + 'videoCategories?part=snippet&regionCode=US';
+            const response = await this.sendRequest('GET', url, {});
+            const data: YoutubeCategoriesResponse = await response.json();
+
+            debugLogger.api(`Fetched ${data.items?.length || 0} video categories`);
+            debugLogger.verbose('Categories API Response:', data);
+
+            if (!data.items || data.items.length === 0) {
+                debugLogger.warn('No categories returned from API');
+                return [];
+            }
+
+            // Transform API response to our category format
+            const categories: YouTubeCategory[] = data.items.map(item => ({
+                id: item.id,
+                title: item.snippet.title
+            }));
+
+            return categories;
+        } catch (error) {
+            debugLogger.error('Failed to fetch video categories:', error);
+            throw error;
+        }
     }
 }
 
