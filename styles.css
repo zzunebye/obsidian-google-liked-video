@@ -48,6 +48,210 @@ If your plugin does not need CSS, delete this file.
 	right: 10px;
 }
 
+/* New React Modal Styles */
+.video-info-modal {
+	padding: 0;
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.video-info-section {
+	margin-bottom: 24px;
+}
+
+.video-info-section__title {
+	font-size: 16px;
+	font-weight: 600;
+	margin-bottom: 12px;
+	color: var(--text-accent);
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: 4px;
+}
+
+.video-info-section__content {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.video-info-item {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 8px 0;
+}
+
+.video-info-item__key {
+	font-weight: 500;
+	color: var(--text-muted);
+	font-size: 14px;
+	text-transform: capitalize;
+}
+
+.video-info-item__value {
+	color: var(--text-normal);
+	font-size: 14px;
+	line-height: 1.4;
+	word-wrap: break-word;
+	white-space: pre-wrap;
+	padding: 4px 8px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.video-info-divider {
+	height: 1px;
+	background: var(--background-modifier-border);
+	margin: 16px 0;
+	opacity: 0.5;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+	.video-info-modal {
+		padding: 16px;
+		max-height: 80vh;
+	}
+
+	.video-info-item {
+		padding: 6px 0;
+	}
+
+	.video-info-item__value {
+		font-size: 13px;
+		padding: 6px;
+	}
+}
+
+/* React Modal Base Styles */
+.react-modal-wrapper {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+/* Ensure React modals work well with Obsidian theming */
+.modal .react-modal-wrapper {
+	color: var(--text-normal);
+	background: transparent;
+}
+
+.modal .react-modal-wrapper * {
+	box-sizing: border-box;
+}
+
+/* Confirmation Modal Styles */
+.confirmation-modal {
+	padding: 24px;
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	align-items: center;
+}
+
+.confirmation-modal__icon {
+	font-size: 32px;
+	margin-bottom: 8px;
+}
+
+.confirmation-modal__message {
+	font-size: 16px;
+	line-height: 1.5;
+	color: var(--text-normal);
+	max-width: 400px;
+}
+
+.confirmation-modal__actions {
+	display: flex;
+	gap: 12px;
+	justify-content: center;
+	margin-top: 8px;
+}
+
+.confirmation-modal__button {
+	padding: 8px 16px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+	transition: all 0.2s ease;
+	min-width: 80px;
+}
+
+.confirmation-modal__button--cancel {
+	background: var(--background-secondary);
+	color: var(--text-normal);
+}
+
+.confirmation-modal__button--cancel:hover {
+	background: var(--background-secondary-alt);
+}
+
+.confirmation-modal__button--confirm {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.confirmation-modal__button--confirm:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.confirmation-modal__button--danger {
+	background: var(--text-error);
+}
+
+.confirmation-modal__button--danger:hover {
+	background: var(--text-error);
+	opacity: 0.8;
+}
+
+.confirmation-modal__button--warning {
+	background: var(--text-warning);
+}
+
+.confirmation-modal__button--warning:hover {
+	background: var(--text-warning);
+	opacity: 0.8;
+}
+
+/* Remember choice checkbox styles */
+.confirmation-modal__remember-choice {
+	margin: 8px 0;
+	padding: 12px 16px;
+	background: var(--background-secondary);
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.confirmation-modal__checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	font-size: 14px;
+	color: var(--text-normal);
+}
+
+.confirmation-modal__checkbox {
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	cursor: pointer;
+	accent-color: var(--interactive-accent);
+}
+
+.confirmation-modal__checkbox-text {
+	user-select: none;
+	line-height: 1.4;
+}
+
+.confirmation-modal__checkbox-label:hover .confirmation-modal__checkbox-text {
+	color: var(--text-accent);
+}
+
 .geulo-modal__key-element {
 	font-weight: bold;
 	text-transform: capitalize;
@@ -328,7 +532,6 @@ If your plugin does not need CSS, delete this file.
 .search-bar-wrapper {
 	flex: 1;
 }
-
 
 .category-filter {
 	display: flex;

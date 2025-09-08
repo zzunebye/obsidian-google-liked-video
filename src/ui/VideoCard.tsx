@@ -2,7 +2,8 @@ import { Menu, TFile, moment, Notice, App } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { MoreHorizontal } from "lucide-react";
 import { YouTubeVideo } from "src/types";
-import { GeuloModal } from "src/views/modals";
+import { VideoInfoModal } from "src/ui/VideoInfoModal";
+import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
 
 interface VideoCardProps {
@@ -39,8 +40,15 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         menu.addItem(item => {
             item.setTitle("Unlike");
             item.setIcon("heart-off")
-            item.onClick(() => {
-                onUnlike();
+            item.onClick(async () => {
+                const confirmed = await confirmUnlikeAction(
+                    plugin?.app || app,
+                    videoInfo.snippet.title
+                );
+
+                if (confirmed) {
+                    onUnlike();
+                }
             });
         });
 
@@ -82,57 +90,11 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         menu.addItem(item => {
             item.setTitle("Display video info");
             item.onClick(() => {
-                const modal = new GeuloModal(app, 'Video Info', '');
-
-                const modalContent = document.createElement('div');
-                modalContent.className = 'geulo-modal__content';
-
-                Object.entries(videoInfo.statistics).forEach(([key, value]) => {
-                    if (key === 'favoriteCount') return; // Exclude favoriteCount
-                    const labelElement = document.createElement('div');
-                    labelElement.className = 'geulo-modal__key-element';
-                    labelElement.innerText = key.replace(/([A-Z])/g, ' $1').trim() + ':';
-
-                    const infoValueElement = document.createElement('div');
-                    infoValueElement.className = 'geulo-modal__value-element';
-                    infoValueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value.toString();
-
-                    modalContent.appendChild(labelElement);
-                    modalContent.appendChild(infoValueElement);
-                });
-
-
-                // Add a visual divider between statistics and snippet info
-                const divider = document.createElement('hr');
-                divider.className = 'geulo-modal__divider';
-                modalContent.appendChild(divider);
-
-                Object.entries(videoInfo.snippet).forEach(([key, value]) => {
-                    if (key === 'thumbnails') return; // Exclude thumbnails to be displayed in the modal
-                    if (key === 'localized') return; // Exclude localized
-                    if (key === 'tags' && Array.isArray(value)) value = value.join(', ');
-                    // tidy up tags
-
-                    const labelElement = document.createElement('div');
-                    labelElement.className = 'geulo-modal__key-element';
-                    labelElement.innerText = key.replace(/([A-Z])/g, ' $1').trim() + ':';
-
-                    const infoValueElement = document.createElement('div');
-                    infoValueElement.className = 'geulo-modal__value-element';
-                    
-                    // Special handling for categoryId to show both ID and name
-                    if (key === 'categoryId' && plugin) {
-                        const categoryDisplay = plugin.getCategoryDisplay(value as string);
-                        infoValueElement.innerText = categoryDisplay;
-                    } else {
-                        infoValueElement.innerText = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
-                    }
-
-                    modalContent.appendChild(labelElement);
-                    modalContent.appendChild(infoValueElement);
-                });
-
-                modal.contentEl.appendChild(modalContent);
+                const modal = new VideoInfoModal(
+                    plugin?.app || app,
+                    videoInfo,
+                    plugin?.getCategoryDisplay.bind(plugin)
+                );
                 modal.open();
             });
         });
