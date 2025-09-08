@@ -1,24 +1,34 @@
-# Geulo - Youtube Liked Video Plugin
+# Geulo - YouTube Liked Video Plugin
 
+Transform your YouTube liked videos into a powerful knowledge management system within Obsidian.
 
-This plugin Fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note in Obsidian.
+Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube directly into your Obsidian workflow. Perfect for researchers, content creators, and knowledge workers who believe that revisiting quality content is as valuable as discovering new material.
 
-Reviewing is as important as consuming content. I often find it not really helpful to search for new things, while there are always more things to learn by re-watching good YouTube videos. I hope this plugin, with Obsidian's power to build a knowledge base, can help us achieve that.
+**Why Geulo?** Instead of letting your liked videos disappear into YouTube's depths, Geulo brings them into your personal knowledge base where you can search, sort, and reference them alongside your notes. Turn passive video consumption into active knowledge building.
 
-With Geulo, you can also manage your liked video list by un-liking the videos in the sidebar.
+**Key capabilities:**
 
-Features are still at its early stages. If you have any feedback or suggestions, please feel free to open an issue or contact me at [zzunebye@gmail.com](mailto:zzunebye@gmail.com).
+- Instantly access your entire YouTube liked video collection
+- Smart search and sorting to rediscover forgotten gems  
+- One-click integration with your daily notes
+- Curate your collection by removing videos directly from the sidebar
+
+*Features are still at its early stages - your feedback shapes the future.* Connect with us at [zzunebye@gmail.com](mailto:zzunebye@gmail.com) or open an issue for suggestions.
 
 
 
 ## Features
 
-- **Fetch liked videos**: Retrieve all the YouTube videos you've liked and add them to your daily notes.
-- **Sidebar list** : View, search and sort your liked videos in the right sidebar.
-- **Add to daily note** : Add a liked video to your daily note by clicking on the video in the sidebar.
-- **Batch update** (coming soon): Fetch all your liked videos and update the corresponding daily notes in one go.
-- **Popular videos** (coming soon) : Retrieve and display the most popular videos.
-- **Un-like videos** : Un-like a video by clicking on the video in the sidebar.
+### ✅ Available Now
+- **Video retrieval**: Access your entire YouTube liked video history
+- **Smart sidebar interface**: Search, filter, and sort your videos with multiple options. Search is based on the video title, channel title, and tags.
+- **Daily note integration**: Add videos to your daily notes with a single click
+- **Collection curation**: Remove videos from your liked list directly within Obsidian
+- **Video info display**: Display video info with a single click
+
+### 🔄 Coming Soon
+- **Batch processing**: Bulk import and organize your entire video collection
+- **Trending insights**: Surface your most-watched and popular videos
 
 It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/obsidian-google-calendar) plugin.
 
