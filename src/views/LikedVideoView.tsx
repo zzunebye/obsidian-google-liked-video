@@ -63,7 +63,8 @@ export const LikedVideoView: React.FC = () => {
             // Search filter
             const titleMatch = video.snippet.title.toLowerCase().includes(searchTerm.toLowerCase());
             const tagsMatch = (video.snippet.tags ?? []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-            const searchMatch = titleMatch || tagsMatch;
+            const channelMatch = video.snippet.channelTitle.toLowerCase().includes(searchTerm.toLowerCase());
+            const searchMatch = titleMatch || tagsMatch || channelMatch;
 
             // Category filter
             const categoryMatch = selectedCategory === 'all' || video.snippet.categoryId === selectedCategory;

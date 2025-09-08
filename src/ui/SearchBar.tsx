@@ -3,7 +3,7 @@ export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (sear
         <div className="search-bar">
             <input
                 type="text"
-                placeholder="Search videos..."
+                placeholder="Search by title, tags, or channel..."
                 value={searchTerm}
                 onChange={(e) => onSearchTermChange(e.target.value)}
             />
