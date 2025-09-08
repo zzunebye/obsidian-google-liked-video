@@ -517,7 +517,8 @@ If your plugin does not need CSS, delete this file.
 	margin-block-end: 0px;
 	font-size: 10px;
 	align-self: flex-end;
-	color: #777;
+	color: var(--text-faint);
+	opacity: 0.6;
 }
 
 .video-card-options {
