@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { ReactNode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { Modal, App } from 'obsidian';
@@ -7,7 +8,7 @@ interface ReactModalProps {
     onClose?: () => void;
 }
 
-const ReactModalContent: React.FC<ReactModalProps> = ({ children, onClose }) => {
+const ReactModalContent: React.FC<ReactModalProps> = ({ children, onClose }: ReactModalProps) => {
     return (
         <div className="react-modal-wrapper">
             {children}

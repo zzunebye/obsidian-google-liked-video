@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { App } from 'obsidian';
 import { ReactModal, openReactModal } from './ReactModal';
 
@@ -22,7 +23,7 @@ const ConfirmationContent: React.FC<ConfirmationModalProps> = ({
     type = 'info',
     showRememberChoice = false,
     rememberChoiceText = "Don't ask me again"
-}) => {
+}: ConfirmationModalProps) => {
     const [rememberChoice, setRememberChoice] = useState(false);
 
     const handleConfirm = () => {

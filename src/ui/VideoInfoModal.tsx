@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { App } from 'obsidian';
 import { YouTubeVideo } from 'src/types';
 import { ReactModal, openReactModal } from './ReactModal';
@@ -7,7 +8,7 @@ interface VideoInfoModalProps {
     getCategoryDisplay?: (categoryId: string) => string;
 }
 
-const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategoryDisplay }) => {
+const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategoryDisplay }: VideoInfoModalProps) => {
     const formatKey = (key: string): string => {
         return key.replace(/([A-Z])/g, ' $1').trim();
     };
