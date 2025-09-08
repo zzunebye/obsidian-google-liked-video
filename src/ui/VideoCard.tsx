@@ -1,6 +1,6 @@
 import { Menu, TFile, moment, Notice, App } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Eye, ThumbsUp, MessageCircle } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
@@ -15,6 +15,19 @@ interface VideoCardProps {
 }
 export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoCardProps) => {
     const plugin = usePlugin();
+
+    // Utility function to format large numbers
+    const formatCount = (count: number | string): string => {
+        const num = typeof count === 'string' ? parseInt(count) : count;
+        if (isNaN(num)) return '0';
+        
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        } else if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+        }
+        return num.toString();
+    };
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData('text/plain', `\n[${videoInfo.snippet.channelTitle} - ${videoInfo.snippet.title}](${url})\n`);
@@ -125,7 +138,23 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                         <p className="video-channel">Channel: {videoInfo.snippet.channelTitle}</p>
                         <p className="video-date">Published: {moment(videoInfo.snippet.publishedAt).format('MMM D, YYYY')}</p>
                     </div>
-                    <p className="video-pulled-at">Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
+                    <div className="video-bottom-row">
+                        <p className="video-pulled-at">Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
+                        <div className="video-statistics">
+                            <div className="video-stat">
+                                <Eye size={14} className="video-stat-icon" />
+                                <span className="video-stat-count">{formatCount(videoInfo.statistics.viewCount)}</span>
+                            </div>
+                            <div className="video-stat">
+                                <ThumbsUp size={14} className="video-stat-icon" />
+                                <span className="video-stat-count">{formatCount(videoInfo.statistics.likeCount)}</span>
+                            </div>
+                            <div className="video-stat">
+                                <MessageCircle size={14} className="video-stat-icon" />
+                                <span className="video-stat-count">{formatCount(videoInfo.statistics.commentCount)}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className="video-card-options">
