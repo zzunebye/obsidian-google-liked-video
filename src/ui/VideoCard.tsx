@@ -1,6 +1,6 @@
 import { Menu, TFile, moment, Notice, App } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
-import { MoreHorizontal, Eye, ThumbsUp, MessageCircle } from "lucide-react";
+import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, Play, PictureInPicture, ExternalLink } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
@@ -36,6 +36,12 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
 
     const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
         e.currentTarget.classList.remove('video-card__container--dragging');
+    };
+
+    const handleExternalOpen = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(url, '_blank');
     };
 
     const handleContextMenu = (e: any): void => {
@@ -158,7 +164,14 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 </div>
             </div>
             <div className="video-card-options">
-                <div>
+                    <button
+                        className="video-external-btn"
+                        aria-label="Open in Browser"
+                        onClick={handleExternalOpen}
+                        title="Open in External Browser"
+                    >
+                        <ExternalLink size={16} />
+                    </button>
                     <button
                         aria-label="More options"
                         onClick={handleContextMenu}
