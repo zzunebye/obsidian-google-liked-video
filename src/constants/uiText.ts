@@ -13,6 +13,7 @@ export const UI_TEXT = {
     SORT_BY_LIKED_ORDER: 'By Liked Order',
     SORT_BY_VIEW_COUNT: 'By View Count',
     SORT_BY_LIKE_COUNT: 'By Like Count',
+    SORT_BY_COMMENT_COUNT: 'By Comment Count',
     SORT_BY_LIKE_VIEW_RATIO: 'By Like/View Ratio',
     SORT_BY_PUBLISHED_DATE: 'By Published Date',
     SORT_BY_TITLE: 'By Title',
@@ -23,6 +24,8 @@ export const UI_TEXT = {
 
     // Video count
     VIDEO_COUNT: (count: number) => `${count} videos`,
+    VIDEO_COUNT_WITH_TOTAL: (current: number, total: number) =>
+        current === total ? `${current} videos` : `${current} videos (of ${total})`,
 
     // Empty state
     NO_VIDEOS_FOUND: 'No videos found',

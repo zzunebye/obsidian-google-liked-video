@@ -28,11 +28,11 @@ export const LikedVideoView: React.FC = () => {
         if (!categoriesService.isReady()) {
             return [];
         }
-        
+
         // Get unique categories from current videos
         const videoCategories = new Set(videos.map(video => video.snippet.categoryId));
         const allCategories = categoriesService.getAllCategories();
-        
+
         // Only show categories that exist in the current video collection
         return allCategories.filter(category => videoCategories.has(category.id));
     }, [videos, categoriesService.isReady()]);
@@ -64,10 +64,10 @@ export const LikedVideoView: React.FC = () => {
             const titleMatch = video.snippet.title.toLowerCase().includes(searchTerm.toLowerCase());
             const tagsMatch = (video.snippet.tags ?? []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
             const searchMatch = titleMatch || tagsMatch;
-            
+
             // Category filter
             const categoryMatch = selectedCategory === 'all' || video.snippet.categoryId === selectedCategory;
-            
+
             return searchMatch && categoryMatch;
         });
     }, [videos, searchTerm, selectedCategory]);
@@ -83,6 +83,13 @@ export const LikedVideoView: React.FC = () => {
                 break;
             case 'likeCount':
                 sorted.sort((a, b) => b.statistics.likeCount - a.statistics.likeCount);
+                break;
+            case 'commentCount':
+                sorted.sort((a, b) => {
+                    const aCommentCount = parseInt(a.statistics.commentCount) || 0;
+                    const bCommentCount = parseInt(b.statistics.commentCount) || 0;
+                    return bCommentCount - aCommentCount;
+                });
                 break;
             case 'likeViewRatio':
                 sorted.sort((a, b) => b.statistics.likeCount / b.statistics.viewCount - a.statistics.likeCount / a.statistics.viewCount);
@@ -181,7 +188,7 @@ export const LikedVideoView: React.FC = () => {
                 />
             </div>
             <div className="video-count">
-                <p>{UI_TEXT.VIDEO_COUNT(filteredVideos.length)}</p>
+                <p>{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(filteredVideos.length, videos.length)}</p>
             </div>
         </div>
         <div className="video-view-sort">
@@ -220,6 +227,7 @@ export const LikedVideoView: React.FC = () => {
                     <option value="addedDate">{UI_TEXT.SORT_BY_LIKED_ORDER}</option>
                     <option value="viewCount">{UI_TEXT.SORT_BY_VIEW_COUNT}</option>
                     <option value="likeCount">{UI_TEXT.SORT_BY_LIKE_COUNT}</option>
+                    <option value="commentCount">{UI_TEXT.SORT_BY_COMMENT_COUNT}</option>
                     <option value="likeViewRatio">{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}</option>
                     <option value="date">{UI_TEXT.SORT_BY_PUBLISHED_DATE}</option>
                     <option value="title">{UI_TEXT.SORT_BY_TITLE}</option>

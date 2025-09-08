@@ -614,7 +614,6 @@ If your plugin does not need CSS, delete this file.
 .video-count {
 	font-size: 16px;
 	color: #555;
-	width: 96px;
 }
 
 .no-videos-found {
