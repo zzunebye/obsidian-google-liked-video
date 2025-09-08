@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { IncomingMessage, Server, ServerResponse } from 'http';
-import { localStorageService, setAccessToken, setAccessTokenExpirationTime, setRefreshToken } from 'src/storage';
+import { localStorageService } from 'src/storage';
 import { Platform, Notice } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
@@ -18,9 +18,9 @@ export async function handleGoogleLogin(
         return;
     }
 
-    setRefreshToken("");
-    setAccessToken("");
-    setAccessTokenExpirationTime(0);
+    localStorageService.setRefreshToken("");
+    localStorageService.setAccessToken("");
+    localStorageService.setAccessTokenExpirationTime(0);
 
     const userClientID = pluginSettings.googleClientId;
     const userClientSecret = pluginSettings.googleClientSecret;
@@ -66,9 +66,9 @@ export async function handleGoogleLogin(
             const token = await response.json();
 
             if (token?.refresh_token) {
-                setRefreshToken(token.refresh_token);
-                setAccessToken(token.access_token);
-                setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
+                localStorageService.setRefreshToken(token.refresh_token);
+                localStorageService.setAccessToken(token.access_token);
+                localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
             }
 
             new Notice("Tokens acquired.");
@@ -101,9 +101,9 @@ export async function handleGoogleLogout(
     const accessToken = localStorageService.getAccessToken();
     if (accessToken) {
         const success = await revokeGoogleToken(accessToken);
-        setRefreshToken("");
-        setAccessToken("");
-        setAccessTokenExpirationTime(0);
+        localStorageService.setRefreshToken("");
+        localStorageService.setAccessToken("");
+        localStorageService.setAccessTokenExpirationTime(0);
         localStorageService.setLikedVideos([]);
         if (success) {
             onSuccess();
@@ -157,8 +157,8 @@ export async function refreshAccessToken(userClientId: string, userClientSecret:
 
     const token: { access_token: string, expires_in: number } = await response.json();
 
-    setAccessToken(token.access_token);
-    setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
+    localStorageService.setAccessToken(token.access_token);
+    localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
 
 
     return token;
