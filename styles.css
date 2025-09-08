@@ -134,9 +134,10 @@ If your plugin does not need CSS, delete this file.
 .video-view-sort {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: space-between;
 	gap: 0.5em;
 	margin-bottom: 8px;
+	flex-wrap: wrap;
 }
 
 .video-view-sort__select {
@@ -147,6 +148,12 @@ If your plugin does not need CSS, delete this file.
 
 .video-view-sort__order {
 	border-radius: 8px;
+}
+
+.sort-controls {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
 }
 
 /* Video Card */
@@ -322,6 +329,45 @@ If your plugin does not need CSS, delete this file.
 	flex: 1;
 }
 
+
+.category-filter {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	min-width: 180px;
+}
+
+.category-filter-icon {
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.category-filter-select {
+	flex: 1;
+	background: none;
+	border: none;
+	outline: none;
+	color: var(--text-normal);
+	font-size: 0.9em;
+	cursor: pointer;
+	min-width: 0;
+}
+
+.category-filter-select:disabled {
+	cursor: not-allowed;
+	color: var(--text-muted);
+}
+
+.category-filter-select option {
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	padding: 4px 8px;
+}
+
 .search-bar {
 	width: 100%;
 	position: relative;
@@ -366,24 +412,6 @@ If your plugin does not need CSS, delete this file.
 	font-size: 16px;
 	color: #555;
 	width: 96px;
-}
-
-.video-view-sort {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 0.5em;
-	margin-bottom: 8px;
-}
-
-.video-view-sort__select {
-	border-radius: 8px;
-	-webkit-appearance: menulist !important;
-	appearance: menulist !important;
-}
-
-.video-view-sort__order {
-	border-radius: 8px;
 }
 
 .no-videos-found {

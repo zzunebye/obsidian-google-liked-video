@@ -36,6 +36,10 @@ class LocalStorageService {
         return window.localStorage.getItem("likedVideoViewSortOrder") ?? "DESC";
     }
 
+    getSelectedCategory(): string {
+        return window.localStorage.getItem("likedVideoViewSelectedCategory") ?? "all";
+    }
+
     /// SET
     setSortOption(sortOption: string): void {
         window.localStorage.setItem("likedVideoViewSortOption", sortOption);
@@ -43,6 +47,10 @@ class LocalStorageService {
 
     setSortOrder(sortOrder: string): void {
         window.localStorage.setItem("likedVideoViewSortOrder", sortOrder);
+    }
+
+    setSelectedCategory(categoryId: string): void {
+        window.localStorage.setItem("likedVideoViewSelectedCategory", categoryId);
     }
 
     setLikedVideos = (likedVideos: YouTubeVideo[]): void => {

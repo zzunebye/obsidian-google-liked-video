@@ -2,13 +2,14 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { usePlugin } from '../store/pluginContext';
 import { localStorageService } from 'src/storage';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
-import { Youtube, Settings, RefreshCcw } from 'lucide-react';
+import { Youtube, Settings, RefreshCcw, Filter } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
 import { APP_ID } from 'src/main';
 import { Modal, Notice } from 'obsidian';
 import { VideosContext } from 'src/store/videoContext';
 import { UI_TEXT } from 'src/constants/uiText';
+import { categoriesService } from 'src/categoriesService';
 
 
 export const LikedVideoView: React.FC = () => {
@@ -16,23 +17,60 @@ export const LikedVideoView: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOption, setSortOption] = useState(localStorageService.getSortOption());
     const [sortOrder, setSortOrder] = useState(localStorageService.getSortOrder());
+    const [selectedCategory, setSelectedCategory] = useState(localStorageService.getSelectedCategory());
     const [videos, setVideos] = useContext(VideosContext);
     const [isFetching, setIsFetching] = useState(false);
     const plugin = usePlugin();
     const videosPerPage = 10;
+
+    // Get available categories for filtering
+    const availableCategories = useMemo(() => {
+        if (!categoriesService.isReady()) {
+            return [];
+        }
+        
+        // Get unique categories from current videos
+        const videoCategories = new Set(videos.map(video => video.snippet.categoryId));
+        const allCategories = categoriesService.getAllCategories();
+        
+        // Only show categories that exist in the current video collection
+        return allCategories.filter(category => videoCategories.has(category.id));
+    }, [videos, categoriesService.isReady()]);
+
+    // Calculate category counts
+    const categoryCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        videos.forEach(video => {
+            const categoryId = video.snippet.categoryId;
+            if (categoryId) {
+                counts[categoryId] = (counts[categoryId] || 0) + 1;
+            }
+        });
+        return counts;
+    }, [videos]);
 
     useEffect(() => {
         localStorageService.setSortOption(sortOption);
         localStorageService.setSortOrder(sortOrder);
     }, [sortOption, sortOrder]);
 
+    useEffect(() => {
+        localStorageService.setSelectedCategory(selectedCategory);
+    }, [selectedCategory]);
+
     const filteredVideos = useMemo(() => {
         return videos.filter(video => {
+            // Search filter
             const titleMatch = video.snippet.title.toLowerCase().includes(searchTerm.toLowerCase());
             const tagsMatch = (video.snippet.tags ?? []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-            return titleMatch || tagsMatch;
+            const searchMatch = titleMatch || tagsMatch;
+            
+            // Category filter
+            const categoryMatch = selectedCategory === 'all' || video.snippet.categoryId === selectedCategory;
+            
+            return searchMatch && categoryMatch;
         });
-    }, [videos, searchTerm]);
+    }, [videos, searchTerm, selectedCategory]);
 
     const sortedVideos = useMemo(() => {
         const sorted = [...filteredVideos];
@@ -71,10 +109,10 @@ export const LikedVideoView: React.FC = () => {
         return sortedVideos.slice(startIndex, endIndex);
     }, [sortedVideos, startIndex, endIndex]);
 
-    // Reset currentPage to 1 when searchTerm or sortOption changes
+    // Reset currentPage to 1 when searchTerm, sortOption, or selectedCategory changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, sortOption]);
+    }, [searchTerm, sortOption, selectedCategory]);
 
     return <div
         className="liked-video-view">
@@ -147,29 +185,54 @@ export const LikedVideoView: React.FC = () => {
             </div>
         </div>
         <div className="video-view-sort">
-            <label htmlFor="sort-video-select">{UI_TEXT.SORT_LABEL}</label>
-            <select
-                id="sort-video-select"
-                className="video-view-sort__select"
-                aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
-            >
-                <option value="addedDate">{UI_TEXT.SORT_BY_LIKED_ORDER}</option>
-                <option value="viewCount">{UI_TEXT.SORT_BY_VIEW_COUNT}</option>
-                <option value="likeCount">{UI_TEXT.SORT_BY_LIKE_COUNT}</option>
-                <option value="likeViewRatio">{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}</option>
-                <option value="date">{UI_TEXT.SORT_BY_PUBLISHED_DATE}</option>
-                <option value="title">{UI_TEXT.SORT_BY_TITLE}</option>
-            </select>
-            <button
-                title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
-                onClick={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
-                className="video-view-sort__order"
-                aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
-            >
-                {sortOrder === 'ASC' ? UI_TEXT.SORT_ASC : UI_TEXT.SORT_DESC}
-            </button>
+            <div className="category-filter">
+                <Filter size={14} className="category-filter-icon" />
+                <select
+                    className="category-filter-select"
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    disabled={!categoriesService.isReady() || availableCategories.length === 0}
+                >
+                    <option value="all">
+                        All Categories ({videos.length})
+                    </option>
+                    {availableCategories.map(category => (
+                        <option key={category.id} value={category.id}>
+                            {category.title} ({categoryCounts[category.id] || 0})
+                        </option>
+                    ))}
+                    {!categoriesService.isReady() && (
+                        <option value="loading" disabled>
+                            Loading categories...
+                        </option>
+                    )}
+                </select>
+            </div>
+            <div className="sort-controls">
+                <label htmlFor="sort-video-select">{UI_TEXT.SORT_LABEL}</label>
+                <select
+                    id="sort-video-select"
+                    className="video-view-sort__select"
+                    aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                >
+                    <option value="addedDate">{UI_TEXT.SORT_BY_LIKED_ORDER}</option>
+                    <option value="viewCount">{UI_TEXT.SORT_BY_VIEW_COUNT}</option>
+                    <option value="likeCount">{UI_TEXT.SORT_BY_LIKE_COUNT}</option>
+                    <option value="likeViewRatio">{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}</option>
+                    <option value="date">{UI_TEXT.SORT_BY_PUBLISHED_DATE}</option>
+                    <option value="title">{UI_TEXT.SORT_BY_TITLE}</option>
+                </select>
+                <button
+                    title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
+                    onClick={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
+                    className="video-view-sort__order"
+                    aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
+                >
+                    {sortOrder === 'ASC' ? UI_TEXT.SORT_ASC : UI_TEXT.SORT_DESC}
+                </button>
+            </div>
         </div>
         {currentVideos.length === 0 && <div className="no-videos-found">
             <div className="no-videos-found__text">{UI_TEXT.NO_VIDEOS_FOUND}</div>
