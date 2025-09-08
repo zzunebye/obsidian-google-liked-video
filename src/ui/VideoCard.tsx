@@ -1,6 +1,6 @@
-import { Menu, TFile, moment, Notice, App } from "obsidian";
+import { Menu, TFile, moment, Notice } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
-import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, Play, PictureInPicture, ExternalLink } from "lucide-react";
+import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, ExternalLink } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
@@ -20,7 +20,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
     const formatCount = (count: number | string): string => {
         const num = typeof count === 'string' ? parseInt(count) : count;
         if (isNaN(num)) return '0';
-        
+
         if (num >= 1000000) {
             return (num / 1000000).toFixed(1) + 'M';
         } else if (num >= 1000) {
@@ -164,22 +164,22 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 </div>
             </div>
             <div className="video-card-options">
-                    <button
-                        className="video-external-btn"
-                        aria-label="Open in Browser"
-                        onClick={handleExternalOpen}
-                        title="Open in External Browser"
-                    >
-                        <ExternalLink size={16} />
-                    </button>
-                    <button
-                        aria-label="More options"
-                        onClick={handleContextMenu}
-                    >
-                        <MoreHorizontal size={16} />
-                    </button>
-                </div>
+                <button
+                    className="video-card-btn"
+                    aria-label="Open in Browser"
+                    onClick={handleExternalOpen}
+                    title="Open in External Browser"
+                >
+                    <ExternalLink size={16} />
+                </button>
+                <button
+                    className="video-card-btn"
+                    aria-label="More options"
+                    onClick={handleContextMenu}
+                >
+                    <MoreHorizontal size={16} />
+                </button>
             </div>
-        </div >
+        </div>
     );
 };

@@ -505,7 +505,6 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-normal);
 }
 
-
 .video-title {
 	white-space: nowrap;
 	overflow: hidden;
@@ -522,6 +521,10 @@ If your plugin does not need CSS, delete this file.
 }
 
 .video-card-options {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
 	position: absolute;
 	right: 0;
 	top: 0;
@@ -697,4 +700,25 @@ If your plugin does not need CSS, delete this file.
 .video-view__pagination__controls {
 	min-width: 80px;
 	text-align: center;
+}
+.video-card-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 0;
+	margin: 0;
+	border-radius: 50%;
+	width: 32px;
+	height: 32px;
+	transition: all 0.2s ease;
+}
+
+.video-card-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+	border-color: var(--background-modifier-border-hover);
 }
