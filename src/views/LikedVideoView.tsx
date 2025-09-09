@@ -249,7 +249,7 @@ export const LikedVideoView: React.FC = () => {
                 />
             </div>
             <div className="video-count">
-                <p>{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(filteredVideos.length, videos.length)}</p>
+                <p style={{ margin: '0' }}>{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(filteredVideos.length, videos.length)}</p>
             </div>
         </div>
         <div className="video-view-sort">
