@@ -15,8 +15,6 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 
 *Features are still at its early stages - your feedback shapes the future.* Connect with us at [zzunebye@gmail.com](mailto:zzunebye@gmail.com) or open an issue for suggestions.
 
-
-
 ## Features
 
 ### ✅ Available Now
@@ -33,6 +31,12 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 - **Trending insights**: Surface your most-watched and popular videos
 
 It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/obsidian-google-calendar) plugin.
+
+## Tips
+
+<img width="968" alt="image" src="https://github.com/user-attachments/assets/81f68f4e-3313-4bf1-a1aa-7e1a0566de7e" />
+
+You can watch youtube video and take a note within Obsidian if you turn on **Core Plugin > Web Viewer**.
 
 ## Requirements
 
