@@ -848,3 +848,21 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-normal);
 	border-color: var(--background-modifier-border-hover);
 }
+
+/* Channel link styles */
+.video-channel-link {
+	color: var(--text-accent);
+	cursor: pointer;
+	text-decoration: underline;
+	text-decoration-color: transparent;
+	transition: all 0.2s ease;
+	padding: 2px 4px;
+	border-radius: 3px;
+	margin: -2px -4px;
+}
+
+.video-channel-link:hover {
+	background-color: var(--background-modifier-hover);
+	text-decoration-color: var(--text-accent);
+	color: var(--text-accent-hover);
+}

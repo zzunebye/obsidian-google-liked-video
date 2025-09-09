@@ -397,6 +397,9 @@ export const LikedVideoView: React.FC = () => {
                             }
                         )
                     }}
+                    onChannelClick={(channelTitle) => {
+                        setSearchTerm(channelTitle);
+                    }}
                 />
             ))}
         </div>

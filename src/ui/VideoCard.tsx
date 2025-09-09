@@ -5,7 +5,7 @@ import { YouTubeVideo } from "src/types";
 import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
-import { sanitizeFileName, generateVideoNoteContent, generateUniqueFileName, getExpectedNotePath } from "src/utils/noteUtils";
+import { sanitizeFileName, generateVideoNoteContent, getExpectedNotePath } from "src/utils/noteUtils";
 
 interface VideoCardProps {
     videoInfo: YouTubeVideo;
@@ -13,8 +13,9 @@ interface VideoCardProps {
     url: string;
     onUnlike: () => void;
     onAddToDailyNote: (videoData: string, file: TFile) => void;
+    onChannelClick: (channelTitle: string) => void;
 }
-export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoCardProps) => {
+export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick }: VideoCardProps) => {
     const plugin = usePlugin();
 
     // Format duration from seconds to display format
@@ -60,6 +61,12 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
         e.preventDefault();
         e.stopPropagation();
         window.open(url, '_blank');
+    };
+
+    const handleChannelClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onChannelClick(videoInfo.snippet.channelTitle);
     };
 
     const handleContextMenu = (e: any): void => {
@@ -212,7 +219,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 <div className="video-details" >
                     <div className="video-details-inner">
                         <h2 className="video-title">{videoInfo.snippet.title}</h2>
-                        <p className="video-channel">Channel: {videoInfo.snippet.channelTitle}</p>
+                        <p className="video-channel">Channel: <span className="video-channel-link" onClick={handleChannelClick}>{videoInfo.snippet.channelTitle}</span></p>
                         <p className="video-date">Published: {moment(videoInfo.snippet.publishedAt).format('MMM D, YYYY')}</p>
                     </div>
                     <div className="video-bottom-row">
