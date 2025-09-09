@@ -294,15 +294,15 @@ If your plugin does not need CSS, delete this file.
 }
 
 .video-view-header__icon {
-	width: 1.5em;
-	height: 1.5em;
+	width: 1.25em;
+	height: 1.25em;
 }
 
 .video-view-header__title {
 	display: flex; /* Makes the container a flex container */
 	align-items: center;
 	font-weight: 600; /* Semi-bold font weight */
-	font-size: 1.5em; /* Slightly larger font size */
+	font-size: 1.25em; /* Slightly larger font size */
 	color: var(--text-normal); /* Elegant dark blue-gray color */
 	font-family: "Georgia", serif; /* Use elegant serif font */
 }
