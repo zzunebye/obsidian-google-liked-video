@@ -57,19 +57,26 @@ export const generateVideoNoteContent = (
     const published = moment(videoInfo.snippet.publishedAt).format('YYYY-MM-DD');
     const category = getCategoryDisplay ? getCategoryDisplay(videoInfo.snippet.categoryId) : videoInfo.snippet.categoryId;
 
-    // removed as tags won't be supported as of now
-    // const tags = videoInfo.snippet.tags || [];
-    // const yamlTags = tags.length > 0 ? tags.map(tag => `"${tag}"`).join(', ') : '[]';
+    // Extract video tags if available
+    const videoTags = videoInfo.snippet.tags || [];
+    const tagsYAML = videoTags.length > 0
+        ? videoTags.map(tag => `"${tag.replace(/"/g, '\\"')}"`).join(', ')
+        : '';
 
     const frontmatter = `---
 title: "${title.replace(/"/g, '\\"')}"
+type: "youtube-video"
 channel: "${channel.replace(/"/g, '\\"')}"
 duration: "${duration}"
 published: "${published}"
 category: "${category.replace(/\s*\(\d+\)\s*/g, '').trim()}"
 url: "${videoUrl}"
 created_at: "${moment().format('YYYY-MM-DD HH:mm:ss')}"
+tags: [youtube, video]${tagsYAML ? `
+video_tags: [${tagsYAML}]` : ''}
+content-language: "${videoInfo.snippet.defaultAudioLanguage || 'unknown'}"
 ---
+
 `;
 
     return frontmatter;
@@ -121,7 +128,7 @@ export const getExpectedNotePath = async (
     } else {
         // Use Obsidian's default new file location, optionally with channel subfolder
         const defaultLocation = app.fileManager.getNewFileParent('');
-        let basePath = defaultLocation?.path || '';
+        const basePath = defaultLocation?.path || '';
 
         if (organizeByChannel && channelName && basePath) {
             const sanitizedChannelName = sanitizeChannelName(channelName);
@@ -195,7 +202,7 @@ export const generateUniqueFileName = async (
     } else {
         // Use Obsidian's default new file location, optionally with channel subfolder
         const defaultLocation = app.fileManager.getNewFileParent('');
-        let basePath = defaultLocation?.path || '';
+        const basePath = defaultLocation?.path || '';
 
         if (organizeByChannel && channelName && basePath) {
             const sanitizedChannelName = sanitizeChannelName(channelName);
