@@ -5,6 +5,7 @@ import { YouTubeVideo } from "src/types";
 import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
+import { sanitizeFileName, generateVideoNoteContent, generateUniqueFileName } from "src/utils/noteUtils";
 
 interface VideoCardProps {
     videoInfo: YouTubeVideo;
@@ -19,14 +20,14 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
     // Format duration from seconds to display format
     const formatDuration = (duration: string | undefined): string => {
         if (!duration) return '';
-        
+
         const seconds = parseDurationToSeconds(duration);
         if (seconds === null || seconds === 0) return '';
-        
+
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-        
+
         if (hours > 0) {
             return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
@@ -132,6 +133,32 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                     plugin?.getCategoryDisplay.bind(plugin)
                 );
                 modal.open();
+            });
+        });
+
+        menu.addItem(item => {
+            item.setTitle("Create note");
+            item.setIcon("file-plus");
+            item.onClick(async () => {
+                try {
+                    const baseFileName = sanitizeFileName(videoInfo.snippet.title);
+                    const fileName = await generateUniqueFileName(plugin?.app || app, baseFileName);
+
+                    const noteContent = generateVideoNoteContent(
+                        videoInfo,
+                        url,
+                        plugin?.getCategoryDisplay.bind(plugin)
+                    );
+
+                    const file = await (plugin?.app || app).vault.create(fileName, noteContent);
+
+                    await (plugin?.app || app).workspace.openLinkText(file.path, '', true);
+
+                    new Notice(`Created note: ${file.basename}`);
+                } catch (error) {
+                    console.error('Error creating video note:', error);
+                    new Notice('Failed to create video note. Check console for details.');
+                }
             });
         });
 
