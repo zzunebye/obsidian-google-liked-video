@@ -10,6 +10,7 @@ import { Modal, Notice } from 'obsidian';
 import { VideosContext } from 'src/store/videoContext';
 import { UI_TEXT } from 'src/constants/uiText';
 import { categoriesService } from 'src/categoriesService';
+import { parseDurationToSeconds } from 'src/ui/VideoInfoModal';
 
 
 export const LikedVideoView: React.FC = () => {
@@ -18,6 +19,8 @@ export const LikedVideoView: React.FC = () => {
     const [sortOption, setSortOption] = useState(localStorageService.getSortOption());
     const [sortOrder, setSortOrder] = useState(localStorageService.getSortOrder());
     const [selectedCategory, setSelectedCategory] = useState(localStorageService.getSelectedCategory());
+    const [musicFilterEnabled, setMusicFilterEnabled] = useState(localStorageService.getMusicFilterEnabled());
+    const [shortVideosFilterEnabled, setShortVideosFilterEnabled] = useState(localStorageService.getShortVideosFilterEnabled());
     const [videos, setVideos] = useContext(VideosContext);
     const [isFetching, setIsFetching] = useState(false);
     const plugin = usePlugin();
@@ -49,6 +52,17 @@ export const LikedVideoView: React.FC = () => {
         return counts;
     }, [videos]);
 
+    // Pre-process video durations once
+    const videoDurations = useMemo(() => {
+        const durations = new Map<string, number>();
+        videos.forEach(video => {
+            if (video.contentDetails?.duration) {
+                durations.set(video.id, parseDurationToSeconds(video.contentDetails.duration));
+            }
+        });
+        return durations;
+    }, [videos]);
+
     useEffect(() => {
         localStorageService.setSortOption(sortOption);
         localStorageService.setSortOrder(sortOrder);
@@ -57,6 +71,14 @@ export const LikedVideoView: React.FC = () => {
     useEffect(() => {
         localStorageService.setSelectedCategory(selectedCategory);
     }, [selectedCategory]);
+
+    useEffect(() => {
+        localStorageService.setMusicFilterEnabled(musicFilterEnabled);
+    }, [musicFilterEnabled]);
+
+    useEffect(() => {
+        localStorageService.setShortVideosFilterEnabled(shortVideosFilterEnabled);
+    }, [shortVideosFilterEnabled]);
 
     const filteredVideos = useMemo(() => {
         return videos.filter(video => {
@@ -69,9 +91,16 @@ export const LikedVideoView: React.FC = () => {
             // Category filter
             const categoryMatch = selectedCategory === 'all' || video.snippet.categoryId === selectedCategory;
 
-            return searchMatch && categoryMatch;
+            // Music filter (exclude music videos when filter is enabled)
+            const musicMatch = !musicFilterEnabled || video.snippet.categoryId !== '10';
+
+            // Short videos filter (exclude videos ≤ 90 seconds when filter is enabled)
+            const durationInSeconds = videoDurations.get(video.id) || 0;
+            const shortVideoMatch = !shortVideosFilterEnabled || durationInSeconds > 90;
+
+            return searchMatch && categoryMatch && musicMatch && shortVideoMatch;
         });
-    }, [videos, searchTerm, selectedCategory]);
+    }, [videos, searchTerm, selectedCategory, musicFilterEnabled, shortVideosFilterEnabled, videoDurations]);
 
     const sortedVideos = useMemo(() => {
         const sorted = [...filteredVideos];
@@ -102,12 +131,19 @@ export const LikedVideoView: React.FC = () => {
             case 'addedDate':
                 sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
                 break;
+            case 'duration':
+                sorted.sort((a, b) => {
+                    const aDuration = videoDurations.get(a.id) || 0;
+                    const bDuration = videoDurations.get(b.id) || 0;
+                    return bDuration - aDuration;
+                });
+                break;
         }
         if (sortOrder === 'ASC') {
             sorted.reverse();
         }
         return sorted;
-    }, [filteredVideos, sortOption, videos, sortOrder]);
+    }, [filteredVideos, sortOption, videos, sortOrder, videoDurations]);
 
     const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
     const startIndex = (currentPage - 1) * videosPerPage;
@@ -117,10 +153,10 @@ export const LikedVideoView: React.FC = () => {
         return sortedVideos.slice(startIndex, endIndex);
     }, [sortedVideos, startIndex, endIndex]);
 
-    // Reset currentPage to 1 when searchTerm, sortOption, or selectedCategory changes
+    // Reset currentPage to 1 when searchTerm, sortOption, or filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, sortOption, selectedCategory]);
+    }, [searchTerm, sortOption, selectedCategory, musicFilterEnabled, shortVideosFilterEnabled]);
 
     return <div
         className="liked-video-view">
@@ -193,28 +229,54 @@ export const LikedVideoView: React.FC = () => {
             </div>
         </div>
         <div className="video-view-sort">
-            <div className="category-filter">
-                <Filter size={14} className="category-filter-icon" />
-                <select
-                    className="category-filter-select"
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    disabled={!categoriesService.isReady() || availableCategories.length === 0}
-                >
-                    <option value="all">
-                        All Categories ({videos.length})
-                    </option>
-                    {availableCategories.map(category => (
-                        <option key={category.id} value={category.id}>
-                            {category.title} ({categoryCounts[category.id] || 0})
+            <div className="video-view-sort-left-group">
+                <div className="category-filter">
+                    <Filter size={14} className="category-filter-icon" />
+                    <select
+                        className="category-filter-select"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        disabled={!categoriesService.isReady() || availableCategories.length === 0}
+                    >
+                        <option value="all">
+                            All Categories ({videos.length})
                         </option>
-                    ))}
-                    {!categoriesService.isReady() && (
-                        <option value="loading" disabled>
-                            Loading categories...
-                        </option>
-                    )}
-                </select>
+                        {availableCategories.map(category => (
+                            <option key={category.id} value={category.id}>
+                                {category.title} ({categoryCounts[category.id] || 0})
+                            </option>
+                        ))}
+                        {!categoriesService.isReady() && (
+                            <option value="loading" disabled>
+                                Loading categories...
+                            </option>
+                        )}
+                    </select>
+                </div>
+                <div className="music-filter-checkbox">
+                    <label className="music-filter-label">
+                        <input
+                            type="checkbox"
+                            className="music-filter-input"
+                            checked={musicFilterEnabled}
+                            onChange={(e) => setMusicFilterEnabled(e.target.checked)}
+                            title={musicFilterEnabled ? "Exclude music" : "Exclude music"}
+                        />
+                        <span className="music-filter-text">🎵 Exclude Music</span>
+                    </label>
+                </div>
+                <div className="short-videos-filter-checkbox">
+                    <label className="short-videos-filter-label">
+                        <input
+                            type="checkbox"
+                            className="short-videos-filter-input"
+                            checked={shortVideosFilterEnabled}
+                            onChange={(e) => setShortVideosFilterEnabled(e.target.checked)}
+                            title={shortVideosFilterEnabled ? "Exclude short videos" : "Exclude short videos (≤1.5 min)"}
+                        />
+                        <span className="short-videos-filter-text">⏱️ Exclude Short videos (≤1.5 min)</span>
+                    </label>
+                </div>
             </div>
             <div className="sort-controls">
                 <label htmlFor="sort-video-select">{UI_TEXT.SORT_LABEL}</label>
@@ -232,6 +294,7 @@ export const LikedVideoView: React.FC = () => {
                     <option value="likeViewRatio">{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}</option>
                     <option value="date">{UI_TEXT.SORT_BY_PUBLISHED_DATE}</option>
                     <option value="title">{UI_TEXT.SORT_BY_TITLE}</option>
+                    <option value="duration">{UI_TEXT.SORT_BY_DURATION}</option>
                 </select>
                 <button
                     title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}

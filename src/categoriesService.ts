@@ -5,6 +5,42 @@ import { debugLogger } from './debug';
 const CACHE_KEY = 'geulo-video-categories';
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
+// Default YouTube categories as fallback when API fetch fails
+const DEFAULT_CATEGORIES: YouTubeCategory[] = [
+    { id: '1', title: 'Film & Animation' },
+    { id: '2', title: 'Autos & Vehicles' },
+    { id: '10', title: 'Music' },
+    { id: '15', title: 'Pets & Animals' },
+    { id: '17', title: 'Sports' },
+    { id: '18', title: 'Short Movies' },
+    { id: '19', title: 'Travel & Events' },
+    { id: '20', title: 'Gaming' },
+    { id: '21', title: 'Videoblogging' },
+    { id: '22', title: 'People & Blogs' },
+    { id: '23', title: 'Comedy' },
+    { id: '24', title: 'Entertainment' },
+    { id: '25', title: 'News & Politics' },
+    { id: '26', title: 'Howto & Style' },
+    { id: '27', title: 'Education' },
+    { id: '28', title: 'Science & Technology' },
+    { id: '29', title: 'Nonprofits & Activism' },
+    { id: '30', title: 'Movies' },
+    { id: '31', title: 'Anime/Animation' },
+    { id: '32', title: 'Action/Adventure' },
+    { id: '33', title: 'Classics' },
+    { id: '34', title: 'Comedy' },
+    { id: '35', title: 'Documentary' },
+    { id: '36', title: 'Drama' },
+    { id: '37', title: 'Family' },
+    { id: '38', title: 'Foreign' },
+    { id: '39', title: 'Horror' },
+    { id: '40', title: 'Sci-Fi/Fantasy' },
+    { id: '41', title: 'Thriller' },
+    { id: '42', title: 'Shorts' },
+    { id: '43', title: 'Shows' },
+    { id: '44', title: 'Trailers' }
+];
+
 class CategoriesService {
     private categories: Map<string, YouTubeCategory> = new Map();
     private isLoaded = false;
@@ -48,11 +84,13 @@ class CategoriesService {
                 this.isLoaded = true;
                 debugLogger.info(`Fetched and cached ${this.categories.size} categories`);
             } else {
-                debugLogger.warn('No categories fetched from API');
+                debugLogger.warn('No categories fetched from API, using default categories');
+                this.loadDefaultCategories();
             }
         } catch (error) {
             debugLogger.error('Failed to load categories:', error);
-            // Continue with empty categories map - plugin should still function
+            debugLogger.info('Loading default categories as fallback');
+            this.loadDefaultCategories();
         } finally {
             this.isLoading = false;
         }
@@ -186,6 +224,22 @@ class CategoriesService {
             categoriesCount: this.categories.size,
             lastFetched: cached?.lastFetched
         };
+    }
+
+    /**
+     * Load default categories as fallback when API fetch fails
+     */
+    private loadDefaultCategories(): void {
+        try {
+            this.categories.clear();
+            DEFAULT_CATEGORIES.forEach(category => {
+                this.categories.set(category.id, category);
+            });
+            this.isLoaded = true;
+            debugLogger.info(`Loaded ${this.categories.size} default categories`);
+        } catch (error) {
+            debugLogger.error('Failed to load default categories:', error);
+        }
     }
 }
 

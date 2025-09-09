@@ -8,6 +8,71 @@ interface VideoInfoModalProps {
     getCategoryDisplay?: (categoryId: string) => string;
 }
 
+// Parse YouTube ISO 8601 duration format to seconds
+export const parseDurationToSeconds = (duration: string): number => {
+    if (!duration || !duration.startsWith('PT')) {
+        return 0;
+    }
+    
+    // Extract hours, minutes, and seconds
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!match) {
+        return 0;
+    }
+    
+    const hours = match[1] ? parseInt(match[1]) : 0;
+    const minutes = match[2] ? parseInt(match[2]) : 0;
+    const seconds = match[3] ? parseInt(match[3]) : 0;
+    
+    return hours * 3600 + minutes * 60 + seconds;
+};
+
+// Parse YouTube ISO 8601 duration format (e.g., "PT4M13S", "PT1H23M45S", "PT2H3S")
+const parseDuration = (duration: string): string => {
+    if (!duration || !duration.startsWith('PT')) {
+        return duration;
+    }
+    
+    // Extract hours, minutes, and seconds
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!match) {
+        return duration;
+    }
+    
+    const hours = match[1] ? parseInt(match[1]) : 0;
+    const minutes = match[2] ? parseInt(match[2]) : 0;
+    const seconds = match[3] ? parseInt(match[3]) : 0;
+    
+    // Format the output
+    const parts = [];
+    if (hours > 0) {
+        parts.push(`${hours}h`);
+    }
+    if (minutes > 0) {
+        parts.push(`${minutes}m`);
+    }
+    if (seconds > 0) {
+        parts.push(`${seconds}s`);
+    }
+    
+    // If all parts are 0, return "0s"
+    if (parts.length === 0) {
+        return '0s';
+    }
+    
+    // Also show formatted time in parentheses
+    const formattedTime = [];
+    if (hours > 0) {
+        formattedTime.push(hours.toString());
+        formattedTime.push(minutes.toString().padStart(2, '0'));
+    } else {
+        formattedTime.push(minutes.toString());
+    }
+    formattedTime.push(seconds.toString().padStart(2, '0'));
+    
+    return `${parts.join(' ')} (${formattedTime.join(':')})`; 
+};
+
 const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategoryDisplay }: VideoInfoModalProps) => {
     const formatKey = (key: string): string => {
         return key.replace(/([A-Z])/g, ' $1').trim();
@@ -16,6 +81,10 @@ const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategor
     const formatValue = (key: string, value: any): string => {
         if (key === 'categoryId' && getCategoryDisplay) {
             return getCategoryDisplay(value as string);
+        }
+
+        if (key === 'duration' && typeof value === 'string') {
+            return parseDuration(value);
         }
 
         if (key === 'tags' && Array.isArray(value)) {

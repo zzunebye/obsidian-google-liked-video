@@ -40,6 +40,16 @@ class LocalStorageService {
         return window.localStorage.getItem("likedVideoViewSelectedCategory") ?? "all";
     }
 
+    getMusicFilterEnabled(): boolean {
+        const enabled = window.localStorage.getItem("likedVideoViewMusicFilterEnabled");
+        return enabled === "true";
+    }
+
+    getShortVideosFilterEnabled(): boolean {
+        const enabled = window.localStorage.getItem("likedVideoViewShortVideosFilterEnabled");
+        return enabled === "true";
+    }
+
     /// SET
     setSortOption(sortOption: string): void {
         window.localStorage.setItem("likedVideoViewSortOption", sortOption);
@@ -51,6 +61,14 @@ class LocalStorageService {
 
     setSelectedCategory(categoryId: string): void {
         window.localStorage.setItem("likedVideoViewSelectedCategory", categoryId);
+    }
+
+    setMusicFilterEnabled(enabled: boolean): void {
+        window.localStorage.setItem("likedVideoViewMusicFilterEnabled", enabled.toString());
+    }
+
+    setShortVideosFilterEnabled(enabled: boolean): void {
+        window.localStorage.setItem("likedVideoViewShortVideosFilterEnabled", enabled.toString());
     }
 
     setLikedVideos = (likedVideos: YouTubeVideo[]): void => {

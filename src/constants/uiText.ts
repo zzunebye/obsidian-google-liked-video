@@ -10,13 +10,14 @@ export const UI_TEXT = {
 
     // Sort options
     SORT_LABEL: 'Sort by:',
-    SORT_BY_LIKED_ORDER: 'By Liked Order',
-    SORT_BY_VIEW_COUNT: 'By View Count',
-    SORT_BY_LIKE_COUNT: 'By Like Count',
-    SORT_BY_COMMENT_COUNT: 'By Comment Count',
-    SORT_BY_LIKE_VIEW_RATIO: 'By Like/View Ratio',
-    SORT_BY_PUBLISHED_DATE: 'By Published Date',
-    SORT_BY_TITLE: 'By Title',
+    SORT_BY_LIKED_ORDER: 'Liked Order',
+    SORT_BY_VIEW_COUNT: 'View Count',
+    SORT_BY_LIKE_COUNT: 'Like Count',
+    SORT_BY_COMMENT_COUNT: 'Comment Count',
+    SORT_BY_LIKE_VIEW_RATIO: 'Like/View Ratio',
+    SORT_BY_PUBLISHED_DATE: 'Published Date',
+    SORT_BY_TITLE: 'Title',
+    SORT_BY_DURATION: 'Duration',
 
     // Aria labels
     ARIA_SORT_VIDEOS: 'Sort videos',

@@ -335,6 +335,16 @@ If your plugin does not need CSS, delete this file.
 	padding-right: 24px;
 }
 
+.video-view-sort-left-group {
+	display: flex;
+	align-items: center;
+	gap: 1em;
+	padding: 6px 10px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+}
+
 .video-view-sort {
 	display: flex;
 	align-items: center;
@@ -575,10 +585,7 @@ If your plugin does not need CSS, delete this file.
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	padding: 6px 10px;
-	background-color: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
+
 	min-width: 180px;
 }
 
@@ -607,6 +614,66 @@ If your plugin does not need CSS, delete this file.
 	background-color: var(--background-primary);
 	color: var(--text-normal);
 	padding: 4px 8px;
+}
+
+.music-filter-checkbox {
+	display: flex;
+	align-items: center;
+}
+
+.music-filter-label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	cursor: pointer;
+	user-select: none;
+	font-size: 0.9em;
+	color: var(--text-normal);
+}
+
+.music-filter-input {
+	cursor: pointer;
+	width: 16px;
+	height: 16px;
+	margin: 0;
+}
+
+.music-filter-text {
+	white-space: nowrap;
+}
+
+.music-filter-label:hover .music-filter-text {
+	color: var(--text-normal);
+}
+
+.short-videos-filter-checkbox {
+	display: flex;
+	align-items: center;
+}
+
+.short-videos-filter-label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	cursor: pointer;
+	user-select: none;
+	font-size: 0.9em;
+	color: var(--text-normal);
+}
+
+.short-videos-filter-input {
+	cursor: pointer;
+	width: 16px;
+	height: 16px;
+	margin: 0;
+}
+
+.short-videos-filter-text {
+	white-space: nowrap;
+}
+
+.short-videos-filter-label:hover .short-videos-filter-text {
+	color: var(--text-normal);
 }
 
 .search-bar {
