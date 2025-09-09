@@ -286,7 +286,7 @@ export const LikedVideoView: React.FC = () => {
                             onChange={(e) => setMusicFilterEnabled(e.target.checked)}
                             title={musicFilterEnabled ? "Exclude music" : "Exclude music"}
                         />
-                        <span className="music-filter-text">🎵 Exclude Music</span>
+                        <span className="music-filter-text">Exclude Music</span>
                     </label>
                 </div>
                 <div className="short-videos-filter-checkbox">
@@ -298,7 +298,7 @@ export const LikedVideoView: React.FC = () => {
                             onChange={(e) => setShortVideosFilterEnabled(e.target.checked)}
                             title={shortVideosFilterEnabled ? "Exclude short videos" : "Exclude short videos (≤1.5 min)"}
                         />
-                        <span className="short-videos-filter-text">⏱️ Exclude Short videos (≤1.5 min)</span>
+                        <span className="short-videos-filter-text">Exclude Short videos (≤1.5 min)</span>
                     </label>
                 </div>
             </div>
