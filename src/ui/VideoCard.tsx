@@ -137,7 +137,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 className="video-card-inner"
 
             >
-                <img className="video-thumbnail" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" />
+                <img className="video-thumbnail" loading="lazy" decoding="async" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" />
                 <div className="video-details" >
                     <div className="video-details-inner">
                         <h2 className="video-title">{videoInfo.snippet.title}</h2>

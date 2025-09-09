@@ -9,68 +9,112 @@ interface VideoInfoModalProps {
 }
 
 // Parse YouTube ISO 8601 duration format to seconds
-export const parseDurationToSeconds = (duration: string): number => {
-    if (!duration || !duration.startsWith('PT')) {
-        return 0;
+export const parseDurationToSeconds = (duration: string): number | null => {
+    if (!duration || typeof duration !== 'string') {
+        return null;
     }
     
-    // Extract hours, minutes, and seconds
-    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-    if (!match) {
-        return 0;
+    // Handle duration that doesn't start with P
+    if (!duration.startsWith('P')) {
+        return null;
     }
     
-    const hours = match[1] ? parseInt(match[1]) : 0;
-    const minutes = match[2] ? parseInt(match[2]) : 0;
-    const seconds = match[3] ? parseInt(match[3]) : 0;
-    
-    return hours * 3600 + minutes * 60 + seconds;
+    try {
+        // Extract weeks, days, hours, minutes, and seconds
+        // Format: P[n]W[n]DT[n]H[n]M[n]S
+        const match = duration.match(/^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
+        if (!match) {
+            console.warn(`Invalid duration format: ${duration}`);
+            return null;
+        }
+        
+        const weeks = match[1] ? parseInt(match[1]) : 0;
+        const days = match[2] ? parseInt(match[2]) : 0;
+        const hours = match[3] ? parseInt(match[3]) : 0;
+        const minutes = match[4] ? parseInt(match[4]) : 0;
+        const seconds = match[5] ? parseInt(match[5]) : 0;
+        
+        // Convert all to seconds
+        const totalSeconds = 
+            weeks * 7 * 24 * 3600 +
+            days * 24 * 3600 +
+            hours * 3600 + 
+            minutes * 60 + 
+            seconds;
+        
+        return totalSeconds;
+    } catch (error) {
+        console.error(`Error parsing duration: ${duration}`, error);
+        return null;
+    }
 };
 
-// Parse YouTube ISO 8601 duration format (e.g., "PT4M13S", "PT1H23M45S", "PT2H3S")
+// Parse YouTube ISO 8601 duration format for display
 const parseDuration = (duration: string): string => {
-    if (!duration || !duration.startsWith('PT')) {
+    if (!duration || typeof duration !== 'string') {
+        return duration || '';
+    }
+    
+    // Handle duration that doesn't start with P
+    if (!duration.startsWith('P')) {
         return duration;
     }
     
-    // Extract hours, minutes, and seconds
-    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-    if (!match) {
+    try {
+        // Extract weeks, days, hours, minutes, and seconds
+        const match = duration.match(/^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
+        if (!match) {
+            return duration;
+        }
+        
+        const weeks = match[1] ? parseInt(match[1]) : 0;
+        const days = match[2] ? parseInt(match[2]) : 0;
+        const hours = match[3] ? parseInt(match[3]) : 0;
+        const minutes = match[4] ? parseInt(match[4]) : 0;
+        const seconds = match[5] ? parseInt(match[5]) : 0;
+        
+        // Calculate total days (including weeks)
+        const totalDays = weeks * 7 + days;
+        
+        // Format the output
+        const parts = [];
+        if (totalDays > 0) {
+            parts.push(`${totalDays}d`);
+        }
+        if (hours > 0) {
+            parts.push(`${hours}h`);
+        }
+        if (minutes > 0) {
+            parts.push(`${minutes}m`);
+        }
+        if (seconds > 0) {
+            parts.push(`${seconds}s`);
+        }
+        
+        // If all parts are 0, return "0s"
+        if (parts.length === 0) {
+            return '0s';
+        }
+        
+        // Format clock time (days:hours:minutes:seconds or hours:minutes:seconds)
+        const formattedTime = [];
+        if (totalDays > 0) {
+            formattedTime.push(`${totalDays}d`);
+            formattedTime.push(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+            return `${parts.join(' ')} (${formattedTime.join(' ')})`;
+        } else if (hours > 0) {
+            formattedTime.push(hours.toString());
+            formattedTime.push(minutes.toString().padStart(2, '0'));
+        } else {
+            formattedTime.push(minutes.toString());
+        }
+        formattedTime.push(seconds.toString().padStart(2, '0'));
+        
+        return `${parts.join(' ')} (${formattedTime.join(':')})`; 
+    } catch (error) {
+        console.error(`Error formatting duration: ${duration}`, error);
         return duration;
     }
-    
-    const hours = match[1] ? parseInt(match[1]) : 0;
-    const minutes = match[2] ? parseInt(match[2]) : 0;
-    const seconds = match[3] ? parseInt(match[3]) : 0;
-    
-    // Format the output
-    const parts = [];
-    if (hours > 0) {
-        parts.push(`${hours}h`);
-    }
-    if (minutes > 0) {
-        parts.push(`${minutes}m`);
-    }
-    if (seconds > 0) {
-        parts.push(`${seconds}s`);
-    }
-    
-    // If all parts are 0, return "0s"
-    if (parts.length === 0) {
-        return '0s';
-    }
-    
-    // Also show formatted time in parentheses
-    const formattedTime = [];
-    if (hours > 0) {
-        formattedTime.push(hours.toString());
-        formattedTime.push(minutes.toString().padStart(2, '0'));
-    } else {
-        formattedTime.push(minutes.toString());
-    }
-    formattedTime.push(seconds.toString().padStart(2, '0'));
-    
-    return `${parts.join(' ')} (${formattedTime.join(':')})`; 
 };
 
 const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategoryDisplay }: VideoInfoModalProps) => {

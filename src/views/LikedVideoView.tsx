@@ -26,9 +26,12 @@ export const LikedVideoView: React.FC = () => {
     const plugin = usePlugin();
     const videosPerPage = 10;
 
+    // Get categories ready state
+    const isCategoriesReady = categoriesService.isReady();
+    
     // Get available categories for filtering
     const availableCategories = useMemo(() => {
-        if (!categoriesService.isReady()) {
+        if (!isCategoriesReady) {
             return [];
         }
 
@@ -38,7 +41,7 @@ export const LikedVideoView: React.FC = () => {
 
         // Only show categories that exist in the current video collection
         return allCategories.filter(category => videoCategories.has(category.id));
-    }, [videos, categoriesService.isReady()]);
+    }, [videos, isCategoriesReady]);
 
     // Calculate category counts
     const categoryCounts = useMemo(() => {
@@ -57,7 +60,12 @@ export const LikedVideoView: React.FC = () => {
         const durations = new Map<string, number>();
         videos.forEach(video => {
             if (video.contentDetails?.duration) {
-                durations.set(video.id, parseDurationToSeconds(video.contentDetails.duration));
+                const seconds = parseDurationToSeconds(video.contentDetails.duration);
+                // Use 0 as fallback if parsing fails
+                durations.set(video.id, seconds ?? 0);
+            } else {
+                // Set 0 for videos without duration info
+                durations.set(video.id, 0);
             }
         });
         return durations;
@@ -236,7 +244,7 @@ export const LikedVideoView: React.FC = () => {
                         className="category-filter-select"
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        disabled={!categoriesService.isReady() || availableCategories.length === 0}
+                        disabled={!isCategoriesReady || availableCategories.length === 0}
                     >
                         <option value="all">
                             All Categories ({videos.length})
@@ -246,7 +254,7 @@ export const LikedVideoView: React.FC = () => {
                                 {category.title} ({categoryCounts[category.id] || 0})
                             </option>
                         ))}
-                        {!categoriesService.isReady() && (
+                        {!isCategoriesReady && (
                             <option value="loading" disabled>
                                 Loading categories...
                             </option>
