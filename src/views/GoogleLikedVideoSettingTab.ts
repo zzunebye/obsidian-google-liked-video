@@ -387,7 +387,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         let updatedLikedVideos;
         if (repetitive) {
-            const unlikedVideos = storedLikedVideos.filter(video => !fetchedLikedVideoIdsSet.has(video.id));
             updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos.filter(video => fetchedLikedVideoIdsSet.has(video.id))];
         } else {
             updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
