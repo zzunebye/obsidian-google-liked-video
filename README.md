@@ -22,9 +22,11 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 ### ✅ Available Now
 - **Video retrieval**: Access your entire YouTube liked video history
 - **Smart sidebar interface**: Search, filter, and sort your videos with multiple options. Search is based on the video title, channel title, and tags.
+- **Create Video Notes**: Create video notes with a single click and write your own notes. You can also organize them by channel.
 - **Daily note integration**: Add videos to your daily notes with a single click
 - **Collection curation**: Remove videos from your liked list directly within Obsidian
 - **Video info display**: Display video info with a single click
+- **Search by channel name**: Search by channel title when channel is clicked in the video card
 
 ### 🔄 Coming Soon
 - **Batch processing**: Bulk import and organize your entire video collection
