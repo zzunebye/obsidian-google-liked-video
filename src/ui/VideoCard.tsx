@@ -2,7 +2,7 @@ import { Menu, TFile, moment, Notice } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, ExternalLink } from "lucide-react";
 import { YouTubeVideo } from "src/types";
-import { VideoInfoModal } from "src/ui/VideoInfoModal";
+import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
 
@@ -15,6 +15,23 @@ interface VideoCardProps {
 }
 export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoCardProps) => {
     const plugin = usePlugin();
+
+    // Format duration from seconds to display format
+    const formatDuration = (duration: string | undefined): string => {
+        if (!duration) return '';
+        
+        const seconds = parseDurationToSeconds(duration);
+        if (seconds === null || seconds === 0) return '';
+        
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    };
 
     // Utility function to format large numbers
     const formatCount = (count: number | string): string => {
@@ -137,7 +154,14 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 className="video-card-inner"
 
             >
-                <img className="video-thumbnail" loading="lazy" decoding="async" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" />
+                <div className="video-thumbnail-wrapper">
+                    <img className="video-thumbnail" loading="lazy" decoding="async" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" />
+                    {videoInfo.contentDetails?.duration && (
+                        <span className="video-duration-badge">
+                            {formatDuration(videoInfo.contentDetails.duration)}
+                        </span>
+                    )}
+                </div>
                 <div className="video-details" >
                     <div className="video-details-inner">
                         <h2 className="video-title">{videoInfo.snippet.title}</h2>

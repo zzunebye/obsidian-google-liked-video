@@ -338,11 +338,12 @@ If your plugin does not need CSS, delete this file.
 .video-view-sort-left-group {
 	display: flex;
 	align-items: center;
-	gap: 1em;
+	gap: 0.75em;
 	padding: 6px 10px;
 	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 6px;
+	flex-wrap: wrap;
 }
 
 .video-view-sort {
@@ -459,11 +460,39 @@ If your plugin does not need CSS, delete this file.
 	white-space: nowrap;
 }
 
-.video-thumbnail {
-	border-radius: 4px;
-	min-width: 180px;
+.video-thumbnail-wrapper {
+	position: relative;
+	display: block;
+	width: fit-content;
 	max-width: 40%;
-	height: auto;
+	min-width: 180px;
+	height: 120px;
+	flex-shrink: 0;
+	align-self: flex-start;
+	overflow: hidden;
+	border-radius: 4px;
+}
+
+.video-thumbnail {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+	display: block;
+}
+
+.video-duration-badge {
+	position: absolute;
+	bottom: 4px;
+	right: 4px;
+	background-color: rgba(0, 0, 0, 0.8);
+	color: white;
+	padding: 2px 4px;
+	border-radius: 2px;
+	font-size: 0.85em;
+	font-weight: 500;
+	line-height: 1.2;
+	pointer-events: none;
 }
 
 .video-details {
@@ -674,6 +703,38 @@ If your plugin does not need CSS, delete this file.
 
 .short-videos-filter-label:hover .short-videos-filter-text {
 	color: var(--text-normal);
+}
+
+/* Responsive filter layout for narrow screens */
+@media (max-width: 768px) {
+	.video-view-sort-left-group {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0.5em;
+	}
+
+	.category-filter {
+		width: 100%;
+	}
+
+	.music-filter-checkbox,
+	.short-videos-filter-checkbox {
+		align-self: flex-start;
+	}
+}
+
+@media (max-width: 600px) {
+	.video-view-sort {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0.75em;
+	}
+	
+	.sort-controls {
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 0.5em;
+	}
 }
 
 .search-bar {
