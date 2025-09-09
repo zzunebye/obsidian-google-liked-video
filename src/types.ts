@@ -4,6 +4,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     googleClientSecret: string;
     dailyNotePath: string;
     videoNotePath: string;
+    organizeByChannel: boolean;
     fetchLimit: number;
     fullFetchLimit: number;
     autoFetchEnabled: boolean;

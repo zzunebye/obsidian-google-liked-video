@@ -143,10 +143,15 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
                 try {
                     const baseFileName = sanitizeFileName(videoInfo.snippet.title);
                     const customPath = plugin?.settings?.videoNotePath || '';
+                    const organizeByChannel = plugin?.settings?.organizeByChannel || false;
+                    const channelName = videoInfo.snippet.channelTitle;
+
                     const fileName = await generateUniqueFileName(
-                        plugin?.app || app, 
+                        plugin?.app || app,
                         baseFileName,
-                        customPath
+                        customPath,
+                        organizeByChannel,
+                        channelName
                     );
 
                     const noteContent = generateVideoNoteContent(

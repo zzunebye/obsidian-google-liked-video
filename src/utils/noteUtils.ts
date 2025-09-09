@@ -10,6 +10,14 @@ export const sanitizeFileName = (title: string): string => {
         .substring(0, 100);
 };
 
+export const sanitizeChannelName = (channelName: string): string => {
+    return channelName
+        .replace(/[\\/:*?"<>|]/g, '-')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 50); // Shorter limit for folder names
+};
+
 export const formatDurationForYAML = (duration: string): string => {
     const seconds = parseDurationToSeconds(duration);
     if (!seconds) return '';
@@ -48,22 +56,20 @@ export const generateVideoNoteContent = (
     const duration = formatDurationForYAML(videoInfo.contentDetails?.duration || '');
     const published = moment(videoInfo.snippet.publishedAt).format('YYYY-MM-DD');
     const category = getCategoryDisplay ? getCategoryDisplay(videoInfo.snippet.categoryId) : videoInfo.snippet.categoryId;
-    const tags = videoInfo.snippet.tags || [];
 
-    const yamlTags = tags.length > 0 ? tags.map(tag => `"${tag}"`).join(', ') : '[]';
+    // removed as tags won't be supported as of now
+    // const tags = videoInfo.snippet.tags || [];
+    // const yamlTags = tags.length > 0 ? tags.map(tag => `"${tag}"`).join(', ') : '[]';
 
     const frontmatter = `---
 title: "${title.replace(/"/g, '\\"')}"
 channel: "${channel.replace(/"/g, '\\"')}"
 duration: "${duration}"
 published: "${published}"
-category: "${category}"
-tags: [${yamlTags}]
-youtube_url: "${videoUrl}"
+category: "${category.replace(/\s*\(\d+\)\s*/g, '').trim()}"
+url: "${videoUrl}"
 created_at: "${moment().format('YYYY-MM-DD HH:mm:ss')}"
 ---
-
-# ${title}
 `;
 
     return frontmatter;
@@ -73,6 +79,8 @@ export const generateUniqueFileName = async (
     app: any,
     baseFileName: string,
     customPath?: string,
+    organizeByChannel?: boolean,
+    channelName?: string,
     extension = 'md'
 ): Promise<string> => {
     let targetPath = '';
@@ -80,22 +88,60 @@ export const generateUniqueFileName = async (
     if (customPath && customPath.trim()) {
         // Use custom path if provided
         const cleanPath = customPath.trim();
+
+        // Add channel subfolder if organizing by channel
+        let fullPath = cleanPath;
+        if (organizeByChannel && channelName) {
+            const sanitizedChannelName = sanitizeChannelName(channelName);
+            if (sanitizedChannelName) {
+                fullPath = `${cleanPath}/${sanitizedChannelName}`;
+            }
+        }
+
         // Ensure the folder exists or create it
         try {
-            if (!(await app.vault.adapter.exists(cleanPath))) {
-                await app.vault.createFolder(cleanPath);
+            if (!(await app.vault.adapter.exists(fullPath))) {
+                await app.vault.createFolder(fullPath);
             }
         } catch (error) {
             console.warn('Could not create custom folder, using default location:', error);
-            // Fall back to default location if folder creation fails
-            const defaultLocation = app.fileManager.getNewFileParent('');
-            targetPath = defaultLocation?.path || '';
+            // Fall back to base custom path without channel organization
+            try {
+                if (!(await app.vault.adapter.exists(cleanPath))) {
+                    await app.vault.createFolder(cleanPath);
+                }
+                fullPath = cleanPath;
+            } catch (fallbackError) {
+                // Fall back to Obsidian default location
+                const defaultLocation = app.fileManager.getNewFileParent('');
+                fullPath = defaultLocation?.path || '';
+            }
         }
-        targetPath = cleanPath;
+        targetPath = fullPath;
     } else {
-        // Use Obsidian's default new file location
+        // Use Obsidian's default new file location, optionally with channel subfolder
         const defaultLocation = app.fileManager.getNewFileParent('');
-        targetPath = defaultLocation?.path || '';
+        let basePath = defaultLocation?.path || '';
+
+        if (organizeByChannel && channelName && basePath) {
+            const sanitizedChannelName = sanitizeChannelName(channelName);
+            if (sanitizedChannelName) {
+                const channelPath = `${basePath}/${sanitizedChannelName}`;
+                try {
+                    if (!(await app.vault.adapter.exists(channelPath))) {
+                        await app.vault.createFolder(channelPath);
+                    }
+                    targetPath = channelPath;
+                } catch (error) {
+                    console.warn('Could not create channel folder in default location:', error);
+                    targetPath = basePath;
+                }
+            } else {
+                targetPath = basePath;
+            }
+        } else {
+            targetPath = basePath;
+        }
     }
 
     // Build the full file path

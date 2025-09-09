@@ -68,9 +68,20 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.videoNotePath = value.trim();
                     await this.plugin.saveSettings();
+                    // Refresh the display to update the organize by channel toggle state
+                    // this.display();
                 }));
 
-
+        new Setting(containerEl)
+            .setName('Organize by channel')
+            .setDesc('Create subfolders for each channel (e.g., Youtube/Channel Name/video.md). Only applies when using a custom video note location.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.organizeByChannel)
+                .setDisabled(!this.plugin.settings.videoNotePath || !this.plugin.settings.videoNotePath.trim())
+                .onChange(async (value) => {
+                    this.plugin.settings.organizeByChannel = value;
+                    await this.plugin.saveSettings();
+                }));
 
         new Setting(containerEl)
             .setHeading()

@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientSecret: '',
 	dailyNotePath: '',
 	videoNotePath: '',
+	organizeByChannel: false,
 	fetchLimit: 10,
 	fullFetchLimit: 100,
 	autoFetchEnabled: false,
