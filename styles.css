@@ -284,7 +284,7 @@ If your plugin does not need CSS, delete this file.
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 16px;
+	margin-bottom: 8px;
 	background-color: var(--background-secondary);
 	padding-top: 0.5em;
 	padding-bottom: 0.5em;
@@ -302,7 +302,7 @@ If your plugin does not need CSS, delete this file.
 	display: flex; /* Makes the container a flex container */
 	align-items: center;
 	font-weight: 600; /* Semi-bold font weight */
-	font-size: 1.75em; /* Slightly larger font size */
+	font-size: 1.5em; /* Slightly larger font size */
 	color: var(--text-normal); /* Elegant dark blue-gray color */
 	font-family: "Georgia", serif; /* Use elegant serif font */
 }
@@ -351,7 +351,6 @@ If your plugin does not need CSS, delete this file.
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.5em;
-	margin-bottom: 8px;
 	flex-wrap: wrap;
 }
 
@@ -729,7 +728,6 @@ If your plugin does not need CSS, delete this file.
 		align-items: stretch;
 		gap: 0.75em;
 	}
-	
 	.sort-controls {
 		justify-content: center;
 		flex-wrap: wrap;
