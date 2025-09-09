@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
 	googleClientSecret: '',
 	dailyNotePath: '',
+	videoNotePath: '',
 	fetchLimit: 10,
 	fullFetchLimit: 100,
 	autoFetchEnabled: false,
@@ -29,7 +30,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	vault: Vault;
 	likedVideoApi: LikedVideoApi;
 	autoFetchInterval: NodeJS.Timeout | null = null;
-	isFetching: boolean = false;
+	isFetching = false;
 	paneRef: LikedVideoListPane | null = null;
 	settingTabRef: GoogleLikedVideoSettingTab | null = null;
 

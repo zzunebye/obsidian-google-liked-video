@@ -47,25 +47,19 @@ export const generateVideoNoteContent = (
     const channel = videoInfo.snippet.channelTitle;
     const duration = formatDurationForYAML(videoInfo.contentDetails?.duration || '');
     const published = moment(videoInfo.snippet.publishedAt).format('YYYY-MM-DD');
-    const viewCount = formatCount(videoInfo.statistics.viewCount);
-    const likeCount = formatCount(videoInfo.statistics.likeCount);
     const category = getCategoryDisplay ? getCategoryDisplay(videoInfo.snippet.categoryId) : videoInfo.snippet.categoryId;
     const tags = videoInfo.snippet.tags || [];
 
     const yamlTags = tags.length > 0 ? tags.map(tag => `"${tag}"`).join(', ') : '[]';
 
     const frontmatter = `---
-video_id: "${videoInfo.id}"
 title: "${title.replace(/"/g, '\\"')}"
 channel: "${channel.replace(/"/g, '\\"')}"
 duration: "${duration}"
 published: "${published}"
-view_count: "${viewCount}"
-like_count: "${likeCount}"
 category: "${category}"
 tags: [${yamlTags}]
 youtube_url: "${videoUrl}"
-created_from: "geulo-plugin"
 created_at: "${moment().format('YYYY-MM-DD HH:mm:ss')}"
 ---
 
@@ -78,15 +72,46 @@ created_at: "${moment().format('YYYY-MM-DD HH:mm:ss')}"
 export const generateUniqueFileName = async (
     app: any,
     baseFileName: string,
-    extension: string = 'md'
+    customPath?: string,
+    extension = 'md'
 ): Promise<string> => {
+    let targetPath = '';
+
+    if (customPath && customPath.trim()) {
+        // Use custom path if provided
+        const cleanPath = customPath.trim();
+        // Ensure the folder exists or create it
+        try {
+            if (!(await app.vault.adapter.exists(cleanPath))) {
+                await app.vault.createFolder(cleanPath);
+            }
+        } catch (error) {
+            console.warn('Could not create custom folder, using default location:', error);
+            // Fall back to default location if folder creation fails
+            const defaultLocation = app.fileManager.getNewFileParent('');
+            targetPath = defaultLocation?.path || '';
+        }
+        targetPath = cleanPath;
+    } else {
+        // Use Obsidian's default new file location
+        const defaultLocation = app.fileManager.getNewFileParent('');
+        targetPath = defaultLocation?.path || '';
+    }
+
+    // Build the full file path
+    const buildPath = (fileName: string) => {
+        return targetPath ? `${targetPath}/${fileName}` : fileName;
+    };
+
     let fileName = `${baseFileName}.${extension}`;
+    let fullPath = buildPath(fileName);
     let counter = 1;
 
-    while (await app.vault.adapter.exists(fileName)) {
+    while (await app.vault.adapter.exists(fullPath)) {
         fileName = `${baseFileName} ${counter}.${extension}`;
+        fullPath = buildPath(fileName);
         counter++;
     }
 
-    return fileName;
+    return fullPath;
 };

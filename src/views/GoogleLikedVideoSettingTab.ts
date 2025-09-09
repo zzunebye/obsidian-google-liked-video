@@ -8,7 +8,6 @@ import { LikedVideoApi } from 'src/api';
 import GoogleLikedVideoPlugin from '../main';
 import { LikedVideoListPane } from './LikedVideoListPane';
 import { debugLogger } from 'src/debug';
-import { userPreferencesService } from 'src/services/userPreferencesService';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
@@ -59,6 +58,18 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setValue(`${fetchLimit}`)
                 .setDisabled(true));
+
+        new Setting(containerEl)
+            .setName('Video note location')
+            .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path.')
+            .addText(text => text
+                .setPlaceholder('e.g. Youtube, Inbox, Youtube/Videos')
+                .setValue(this.plugin.settings.videoNotePath)
+                .onChange(async (value) => {
+                    this.plugin.settings.videoNotePath = value.trim();
+                    await this.plugin.saveSettings();
+                }));
+
 
 
         new Setting(containerEl)
@@ -350,39 +361,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setName('Debug Console Commands')
                 .setDesc('Enable: enableGeuloDebug() | Disable: disableGeuloDebug()');
         }
-
-        // User Preferences section
-        new Setting(containerEl)
-            .setName('User Preferences')
-            .setHeading();
-
-        const preferences = userPreferencesService.getPreferences();
-
-        new Setting(containerEl)
-            .setName('Skip unlike confirmation')
-            .setDesc('When enabled, unlike actions will not show a confirmation dialog')
-            .addToggle(toggle => toggle
-                .setValue(preferences.skipUnlikeConfirmation)
-                .onChange(async (value) => {
-                    userPreferencesService.setSkipUnlikeConfirmation(value);
-                    new Notice(value ? 
-                        'Unlike confirmations disabled' : 
-                        'Unlike confirmations enabled'
-                    );
-                }));
-
-        new Setting(containerEl)
-            .setName('Reset all preferences')
-            .setDesc('Reset all user preferences to their default values')
-            .addButton(button => button
-                .setButtonText('Reset Preferences')
-                .setWarning()
-                .onClick(async () => {
-                    userPreferencesService.resetPreferences();
-                    new Notice('All user preferences have been reset');
-                    // Refresh the settings display
-                    this.display();
-                }));
     }
 
     async fetchAndUpdateLikedVideos(app: App, limit = 50, repetitive = false): Promise<void> {

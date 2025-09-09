@@ -3,6 +3,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     googleClientId: string;
     googleClientSecret: string;
     dailyNotePath: string;
+    videoNotePath: string;
     fetchLimit: number;
     fullFetchLimit: number;
     autoFetchEnabled: boolean;

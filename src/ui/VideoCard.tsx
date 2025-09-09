@@ -142,7 +142,12 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote }: VideoC
             item.onClick(async () => {
                 try {
                     const baseFileName = sanitizeFileName(videoInfo.snippet.title);
-                    const fileName = await generateUniqueFileName(plugin?.app || app, baseFileName);
+                    const customPath = plugin?.settings?.videoNotePath || '';
+                    const fileName = await generateUniqueFileName(
+                        plugin?.app || app, 
+                        baseFileName,
+                        customPath
+                    );
 
                     const noteContent = generateVideoNoteContent(
                         videoInfo,
