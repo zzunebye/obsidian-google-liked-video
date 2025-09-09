@@ -1,7 +1,7 @@
 {
 	"id": "geulo-youtube-liked-video",
 	"name": "Geulo",
-	"version": "1.10.0",
+	"version": "1.10.1",
 	"minAppVersion": "0.15.0",
 	"description": "Effortlessly fetch and manage all the YouTube videos you've liked, search and sort them, and add them to your daily note.",
 	"author": "Junyoung Bang",
