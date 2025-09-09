@@ -166,16 +166,22 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote, onChanne
                     // Check if a note already exists at the expected path
                     const existingFile = appInstance.vault.getAbstractFileByPath(expectedPath);
 
-                    if (existingFile && 'extension' in existingFile) {
+                    // Only treat as a file if it is a TFile (has 'extension' and 'basename')
+                    if (
+                        existingFile &&
+                        typeof (existingFile as any).extension === 'string' &&
+                        typeof (existingFile as any).basename === 'string' &&
+                        typeof (existingFile as any).path === 'string'
+                    ) {
                         // Note already exists, open it
-                        await appInstance.workspace.openLinkText(existingFile.path, '', true);
-                        new Notice(`Opened existing note: ${existingFile.name}`);
+                        await appInstance.workspace.openLinkText((existingFile as any).path, '', true);
+                        new Notice(`Opened existing note: ${(existingFile as any).basename}`);
                     } else {
                         // Note doesn't exist, create it
                         const noteContent = generateVideoNoteContent(
                             videoInfo,
                             url,
-                            plugin?.getCategoryDisplay.bind(plugin)
+                            plugin?.getCategoryDisplay?.bind(plugin)
                         );
 
                         const file = await appInstance.vault.create(expectedPath, noteContent);
