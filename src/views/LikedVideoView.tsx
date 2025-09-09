@@ -15,6 +15,7 @@ import { parseDurationToSeconds } from 'src/ui/VideoInfoModal';
 
 export const LikedVideoView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [sortOption, setSortOption] = useState(localStorageService.getSortOption());
     const [sortOrder, setSortOrder] = useState(localStorageService.getSortOrder());
@@ -28,7 +29,7 @@ export const LikedVideoView: React.FC = () => {
 
     // Get categories ready state
     const isCategoriesReady = categoriesService.isReady();
-    
+
     // Get available categories for filtering
     const availableCategories = useMemo(() => {
         if (!isCategoriesReady) {
@@ -88,13 +89,28 @@ export const LikedVideoView: React.FC = () => {
         localStorageService.setShortVideosFilterEnabled(shortVideosFilterEnabled);
     }, [shortVideosFilterEnabled]);
 
+    // Debounce search term
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
     const filteredVideos = useMemo(() => {
+        // Pre-calculate lowercase search term once
+        const lowerSearchTerm = debouncedSearchTerm.toLowerCase();
+
         return videos.filter(video => {
-            // Search filter
-            const titleMatch = video.snippet.title.toLowerCase().includes(searchTerm.toLowerCase());
-            const tagsMatch = (video.snippet.tags ?? []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-            const channelMatch = video.snippet.channelTitle.toLowerCase().includes(searchTerm.toLowerCase());
-            const searchMatch = titleMatch || tagsMatch || channelMatch;
+            // Search filter - only calculate if search term exists
+            let searchMatch = true;
+            if (lowerSearchTerm) {
+                const titleMatch = video.snippet.title.toLowerCase().includes(lowerSearchTerm);
+                const tagsMatch = (video.snippet.tags ?? []).some(tag => tag.toLowerCase().includes(lowerSearchTerm));
+                const channelMatch = video.snippet.channelTitle.toLowerCase().includes(lowerSearchTerm);
+                searchMatch = titleMatch || tagsMatch || channelMatch;
+            }
 
             // Category filter
             const categoryMatch = selectedCategory === 'all' || video.snippet.categoryId === selectedCategory;
@@ -108,7 +124,7 @@ export const LikedVideoView: React.FC = () => {
 
             return searchMatch && categoryMatch && musicMatch && shortVideoMatch;
         });
-    }, [videos, searchTerm, selectedCategory, musicFilterEnabled, shortVideosFilterEnabled, videoDurations]);
+    }, [videos, debouncedSearchTerm, selectedCategory, musicFilterEnabled, shortVideosFilterEnabled, videoDurations]);
 
     const sortedVideos = useMemo(() => {
         const sorted = [...filteredVideos];
@@ -161,10 +177,10 @@ export const LikedVideoView: React.FC = () => {
         return sortedVideos.slice(startIndex, endIndex);
     }, [sortedVideos, startIndex, endIndex]);
 
-    // Reset currentPage to 1 when searchTerm, sortOption, or filters change
+    // Reset currentPage to 1 when debouncedSearchTerm, sortOption, or filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, sortOption, selectedCategory, musicFilterEnabled, shortVideosFilterEnabled]);
+    }, [debouncedSearchTerm, sortOption, selectedCategory, musicFilterEnabled, shortVideosFilterEnabled]);
 
     return <div
         className="liked-video-view">
