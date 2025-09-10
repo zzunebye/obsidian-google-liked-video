@@ -1,6 +1,7 @@
 export const UI_TEXT = {
     // Header
     HEADER_TITLE: 'My Liked videos',
+    HEADER_TITLE_USER_PLAYLISTS: 'My Playlists',
 
     // Buttons
     BTN_REFRESH: 'Refresh',
