@@ -60,6 +60,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setDisabled(true));
 
         new Setting(containerEl)
+            .setHeading()
+            .setName('Video notes')
+            .setDesc('Configure the video note settings');
+
+        new Setting(containerEl)
             .setName('Video note location')
             .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path.')
             .addText(text => text

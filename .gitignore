@@ -23,3 +23,5 @@ data.json
 CLAUDE.md
 structure
 docs
+.claude/settings.local.json
+.claude
