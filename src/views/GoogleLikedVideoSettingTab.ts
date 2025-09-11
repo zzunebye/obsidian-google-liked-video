@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { App, Modal, Notice, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
 import { LikedVideoApi } from 'src/api';
 import GoogleLikedVideoPlugin from '../main';

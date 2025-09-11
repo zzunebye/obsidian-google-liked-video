@@ -94,6 +94,7 @@ export const openConfirmationModal = (
     app: App,
     options: ConfirmationModalProps & { title?: string }
 ): ReactModal => {
+    // eslint-disable-next-line prefer-const
     let modalInstance: ReactModal;
 
     const handleConfirm = (rememberChoice?: boolean) => {

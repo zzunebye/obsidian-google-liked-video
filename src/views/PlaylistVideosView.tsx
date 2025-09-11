@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { usePlugin } from '../store/pluginContext';
 import { Play, Search, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
@@ -23,20 +23,21 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
     const [error, setError] = useState<string | null>(null);
     const [hasMoreToShow, setHasMoreToShow] = useState(false);
     const plugin = usePlugin();
+    const loadingRef = useRef(false);
 
     const videosPerBatch = 20; // Number of videos to show in each batch
 
-    // Helper function to get a consistent identifier for the playlist source
-    const getPlaylistSourceKey = (source: PlaylistSource): string => {
-        switch (source.type) {
+    // Create a stable cache key for the playlist source
+    const playlistSourceKey = useMemo(() => {
+        switch (playlistSource.type) {
             case 'liked':
                 return 'liked';
             case 'playlist':
-                return source.playlistId;
+                return playlistSource.playlistId;
             default:
                 return 'unknown';
         }
-    };
+    }, [playlistSource.type, playlistSource.type === 'playlist' ? playlistSource.playlistId : null]);
 
     // Debounce search term with proper cleanup
     useEffect(() => {
@@ -79,11 +80,17 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
             isMounted = false;
             abortController.abort();
         };
-    }, [getPlaylistSourceKey(playlistSource), playlistInfo.id]);
+    }, [playlistSourceKey, playlistInfo.id]);
 
     const loadAllVideos = async (forceRefresh = false) => {
         if (!plugin?.playlistApi) {
             setError('Playlist API not available');
+            return;
+        }
+
+        // Prevent duplicate calls
+        if (loadingRef.current && !forceRefresh) {
+            console.log('Already loading videos, skipping duplicate call');
             return;
         }
 
@@ -98,6 +105,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
             }
         }
 
+        loadingRef.current = true;
         setIsLoading(true);
         setError(null);
 
@@ -115,6 +123,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
             setError(`Failed to load videos: ${error.message || 'Unknown error'}`);
             new Notice(`Failed to load videos: ${error.message || 'Unknown error'}`);
         } finally {
+            loadingRef.current = false;
             setIsLoading(false);
         }
     };
@@ -191,6 +200,9 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
         setDisplayedVideos([]);
         setHasMoreToShow(false);
         setIsLoadingMore(false);
+        
+        // Reset loading ref to allow the force refresh
+        loadingRef.current = false;
 
         // Force refresh will bypass cache and fetch new data
         loadAllVideos(true);

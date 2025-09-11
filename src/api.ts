@@ -19,6 +19,7 @@ export interface PlaylistInfo {
     publishedAt?: string; // Playlist creation date
 }
 
+
 // Type-safe YouTube API response interfaces
 interface YouTubePlaylistResponse {
     id: string;
@@ -51,8 +52,8 @@ interface PlaylistCache {
     tokens: Map<number, string>;
     totalResults?: number;
     allVideos?: YouTubeVideo[];  // Cache all videos for the playlist
-    lastFetched: number;  // Timestamp of last fetch (required)
-    ttl: number; // Time to live in milliseconds
+    lastFetched?: number;  // Timestamp of last fetch (required)
+    ttl?: number; // Time to live in milliseconds
 }
 
 // Generic Playlist API that can handle different playlist sources
@@ -76,14 +77,14 @@ export class PlaylistApi {
     // Cache management methods
     private isValidCache(cache: PlaylistCache): boolean {
         const now = Date.now();
-        return (now - cache.lastFetched) < cache.ttl;
+        return (now - (cache.lastFetched || 0)) < (cache.ttl || 0);
     }
 
     private enforceMaxCacheSize(): void {
         if (this.paginationCache.size >= PlaylistApi.MAX_CACHE_SIZE) {
             // Remove oldest cache entries
             const sortedEntries = Array.from(this.paginationCache.entries())
-                .sort(([, a], [, b]) => a.lastFetched - b.lastFetched);
+                .sort(([, a], [, b]) => (a.lastFetched || 0) - (b.lastFetched || 0));
 
             // Remove oldest 20% of entries
             const toRemove = Math.ceil(PlaylistApi.MAX_CACHE_SIZE * 0.2);
@@ -159,7 +160,7 @@ export class PlaylistApi {
                 return this.fetchPlaylistVideos(source.playlistId, limit, pageToken);
 
             default:
-                throw new Error(`Unsupported playlist source type: ${(source as any).type}`);
+                throw new Error(`Unsupported playlist source type: ${(source as PlaylistSource).type}`);
         }
     }
 
@@ -177,7 +178,7 @@ export class PlaylistApi {
         const data: YouTubeVideosResponse = await response.json();
 
         // Add pulled_at timestamp to each video
-        data.items.forEach(video => {
+        data.items.forEach((video: YouTubeVideo) => {
             video.pulled_at = new Date().toISOString();
         });
 
@@ -218,7 +219,7 @@ export class PlaylistApi {
                 'resourceId' in (item as any).snippet &&
                 typeof (item as any).snippet.resourceId?.videoId === 'string'
             )
-            .map(item => item.snippet.resourceId.videoId);
+            .map((item: { snippet: { resourceId: { videoId: string } } }) => item.snippet.resourceId.videoId);
 
         if (videoIds.length === 0) {
             return {
@@ -239,7 +240,7 @@ export class PlaylistApi {
         const videosData: YouTubeVideosResponse = await videosResponse.json();
 
         // Filter out any videos that don't have required properties and add pulled_at timestamp
-        videosData.items = (videosData.items || []).filter(video => {
+        videosData.items = (videosData.items || []).filter((video: YouTubeVideo) => {
             // Ensure video has all required properties
             const isValid = video && video.snippet && video.id && video.statistics;
             if (!isValid) {
@@ -249,7 +250,7 @@ export class PlaylistApi {
         });
 
         // Add pulled_at timestamp to each valid video
-        videosData.items.forEach(video => {
+        videosData.items.forEach((video: YouTubeVideo) => {
             video.pulled_at = new Date().toISOString();
             // Ensure statistics exist with default values if missing
             if (!video.statistics) {
@@ -268,46 +269,6 @@ export class PlaylistApi {
 
         debugLogger.api(`Fetched ${videosData.items?.length || 0} videos from playlist ${playlistId}`);
         return videosData;
-    }
-
-    async fetchPlaylistInfo(source: PlaylistSource): Promise<PlaylistInfo> {
-        switch (source.type) {
-            case 'liked':
-                return {
-                    id: 'liked',
-                    title: 'Liked Videos',
-                    description: 'Your liked videos',
-                    itemCount: 0 // Could be fetched separately if needed
-                };
-
-            case 'playlist': {
-                const url = BASE_URL + 'playlists?'
-                    + 'part=snippet,contentDetails'
-                    + `&id=${source.playlistId}`;
-
-                console.log(url);
-
-                const response = await this.sendRequest('GET', url, {});
-                const data = await response.json();
-
-                if (!data.items || data.items.length === 0) {
-                    throw new Error(`Playlist not found: ${source.playlistId}`);
-                }
-
-                const playlist = data.items[0];
-                console.dir(playlist);
-                return {
-                    id: playlist.id,
-                    title: playlist.snippet.title,
-                    description: playlist.snippet.description || '',
-                    itemCount: playlist.contentDetails.itemCount,
-                    thumbnailUrl: playlist.snippet.thumbnails?.medium?.url
-                };
-            }
-
-            default:
-                throw new Error(`Unsupported playlist source type: ${(source as any).type}`);
-        }
     }
 
     async fetchUserPlaylists(): Promise<PlaylistInfo[]> {
@@ -399,7 +360,7 @@ export class PlaylistApi {
 
     async fetchVideosPage(source: PlaylistSource, page = 1, videosPerPage = 10): Promise<PaginatedResult> {
         const cacheKey = this.getCacheKey(source);
-        let cache = this.paginationCache.get(cacheKey);
+        let cache: PlaylistCache | undefined = this.paginationCache.get(cacheKey);
 
         if (!cache) {
             cache = {
