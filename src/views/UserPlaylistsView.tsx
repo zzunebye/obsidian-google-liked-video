@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { PlaylistInfo } from 'src/api';
-import { List, Search, Play, Loader2, AlertCircle, RefreshCw, Video, Plus, Youtube } from 'lucide-react';
+import { List, Search, Play, Loader2, AlertCircle, RefreshCw, Video, Plus, Youtube, Pin } from 'lucide-react';
 import { UI_TEXT } from 'src/constants/uiText';
 import { SearchBar } from 'src/ui/SearchBar';
 import { localStorageService } from 'src/storage';
@@ -35,6 +35,9 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
     const [sortOption, setSortOption] = useState(() => localStorageService.getPlaylistsSortOption());
     const [sortOrder, setSortOrder] = useState(() => localStorageService.getPlaylistsSortOrder());
 
+    // Force re-render state for pin changes
+    const [forceUpdateFlag, setForceUpdateFlag] = useState(0);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -50,8 +53,17 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
             playlist.description.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
-        // Then sort
+        // Then sort with pinned playlists first
         const sorted = [...filtered].sort((a, b) => {
+            // Check if playlists are pinned
+            const aPinned = localStorageService.isPlaylistPinned(a.id);
+            const bPinned = localStorageService.isPlaylistPinned(b.id);
+
+            // Pinned playlists always come first
+            if (aPinned && !bPinned) return -1;
+            if (!aPinned && bPinned) return 1;
+
+            // If both are pinned or both are not pinned, sort by selected criteria
             let comparison = 0;
 
             switch (sortOption) {
@@ -73,7 +85,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
         });
 
         return sorted;
-    }, [playlists, searchTerm, sortOption, sortOrder]);
+    }, [playlists, searchTerm, sortOption, sortOrder, forceUpdateFlag]);
 
     // Handle sort option changes
     const handleSortOptionChange = (newSortOption: string) => {
@@ -85,6 +97,17 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
         const newSortOrder = sortOrder === 'ASC' ? 'DESC' : 'ASC';
         setSortOrder(newSortOrder);
         localStorageService.setPlaylistsSortOrder(newSortOrder);
+    };
+
+    // Handle pin/unpin operations
+    const handleTogglePin = (playlistId: string) => {
+        if (localStorageService.isPlaylistPinned(playlistId)) {
+            localStorageService.unpinPlaylist(playlistId);
+        } else {
+            localStorageService.pinPlaylist(playlistId);
+        }
+        // Force re-render to update pin states and sorting
+        setForceUpdateFlag(prev => prev + 1);
     };
 
     const handleAddPlaylist = async () => {
@@ -287,7 +310,13 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
             ) : (
                 <div className="playlists-grid">
                     {sortedAndFilteredPlaylists.map((playlist: PlaylistInfo) => (
-                        <PlaylistCard key={playlist.id} playlist={playlist} onPlaylistSelect={onPlaylistSelect} />
+                        <PlaylistCard
+                            key={playlist.id}
+                            playlist={playlist}
+                            onPlaylistSelect={onPlaylistSelect}
+                            onTogglePin={handleTogglePin}
+                            isPinned={localStorageService.isPlaylistPinned(playlist.id)}
+                        />
                     ))}
                 </div>
             )}
@@ -295,16 +324,30 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
     );
 };
 
-const PlaylistCard = ({ playlist, onPlaylistSelect }: { playlist: PlaylistInfo, onPlaylistSelect: (playlist: PlaylistInfo) => void }) => {
+interface PlaylistCardProps {
+    playlist: PlaylistInfo;
+    onPlaylistSelect: (playlist: PlaylistInfo) => void;
+    onTogglePin: (playlistId: string) => void;
+    isPinned: boolean;
+}
+
+const PlaylistCard = ({ playlist, onPlaylistSelect, onTogglePin, isPinned }: PlaylistCardProps) => {
     const formatItemCount = (count: number): string => {
         if (count === 0) return 'Empty';
         if (count === 1) return '1 video';
         return `${count} videos`;
     };
+
+    const handlePinClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent triggering playlist selection
+        onTogglePin(playlist.id);
+    };
+
     return (
         <div
             key={playlist.id}
-            className="playlist-card"
+            className={`playlist-card ${isPinned ? 'playlist-card--pinned' : ''}`}
             onClick={() => onPlaylistSelect(playlist)}
             role="button"
             tabIndex={0}
@@ -315,6 +358,16 @@ const PlaylistCard = ({ playlist, onPlaylistSelect }: { playlist: PlaylistInfo, 
                 }
             }}
         >
+            {/* Pin button */}
+            <button
+                className={`playlist-card__pin-button ${isPinned ? 'playlist-card__pin-button--pinned' : 'playlist-card__pin-button--hover'}`}
+                onClick={handlePinClick}
+                title={isPinned ? 'Unpin playlist' : 'Pin playlist'}
+                aria-label={isPinned ? 'Unpin playlist' : 'Pin playlist'}
+            >
+                <Pin size={24} className={isPinned ? 'playlist-card__pin-icon--pinned' : ''} />
+            </button>
+
             <div className="playlist-card__thumbnail">
                 {playlist.thumbnailUrl ? (
                     <img
@@ -443,3 +496,4 @@ const AddPlaylistForm = ({ resetAddForm, isAdding, playlistIdInput, setPlaylistI
         </div>
     );
 };
+

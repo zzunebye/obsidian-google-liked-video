@@ -9,6 +9,7 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 **Key capabilities:**
 
 - Instantly access your entire YouTube liked video collection
+- Browse and manage your YouTube playlists with infinite scroll
 - Smart search and sorting to rediscover forgotten gems  
 - One-click integration with your daily notes
 - Curate your collection by removing videos directly from the sidebar
@@ -18,7 +19,9 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 ## Features
 
 ### ✅ Available Now
+
 - **Video retrieval**: Access your entire YouTube liked video history
+- **Playlist browsing**: Browse your YouTube playlists and add custom playlists by ID
 - **Smart sidebar interface**: Search, filter, and sort your videos with multiple options. Search is based on the video title, channel title, and tags.
 - **Create Video Notes**: Create video notes with a single click and write your own notes. You can also organize them by channel.
 - **Daily note integration**: Add videos to your daily notes with a single click

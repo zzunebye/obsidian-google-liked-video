@@ -101,6 +101,35 @@ class LocalStorageService {
         window.localStorage.setItem("userPlaylistsSortOrder", sortOrder);
     }
 
+    // Pinned playlists management
+    getPinnedPlaylistIds(): string[] {
+        const pinnedIds = window.localStorage.getItem("pinnedPlaylistIds");
+        return pinnedIds ? JSON.parse(pinnedIds) : [];
+    }
+
+    setPinnedPlaylistIds(playlistIds: string[]): void {
+        window.localStorage.setItem("pinnedPlaylistIds", JSON.stringify(playlistIds));
+    }
+
+    pinPlaylist(playlistId: string): void {
+        const pinnedIds = this.getPinnedPlaylistIds();
+        if (!pinnedIds.includes(playlistId)) {
+            pinnedIds.push(playlistId);
+            this.setPinnedPlaylistIds(pinnedIds);
+        }
+    }
+
+    unpinPlaylist(playlistId: string): void {
+        const pinnedIds = this.getPinnedPlaylistIds();
+        const updatedIds = pinnedIds.filter(id => id !== playlistId);
+        this.setPinnedPlaylistIds(updatedIds);
+    }
+
+    isPlaylistPinned(playlistId: string): boolean {
+        const pinnedIds = this.getPinnedPlaylistIds();
+        return pinnedIds.includes(playlistId);
+    }
+
     setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
         window.localStorage.setItem("googleYtbLikedVideoLikedVideos", JSON.stringify(likedVideos));
     };
