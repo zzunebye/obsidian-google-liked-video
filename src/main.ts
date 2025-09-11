@@ -83,17 +83,17 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.addSettingTab(this.settingTabRef);
 
 
-		this.addRibbonIcon("youtube", "Activate Liked Video List View", () => {
+		this.addRibbonIcon("youtube", "Geulo: Open YouTube Liked Videos View", () => {
 			this.activateView();
 		});
 
-		this.addRibbonIcon("list-video", "Activate User Playlists View", () => {
+		this.addRibbonIcon("list-video", "Geulo: Open YouTube Playlists View", () => {
 			this.activatePlaylistsView();
 		});
 
 		this.addCommand({
 			id: 'open-liked-video-list-view',
-			name: 'Open Liked Video List View',
+			name: 'Open YouTube Liked Videos View',
 			callback: () => {
 				this.activateView();
 			}
@@ -101,7 +101,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'open-user-playlists-view',
-			name: 'Open User Playlists View',
+			name: 'Open YouTube Playlists View',
 			callback: () => {
 				this.activatePlaylistsView();
 			}
