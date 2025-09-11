@@ -241,6 +241,7 @@ export const LikedVideoView: React.FC = () => {
                 ><Settings size={16} /></button>
             </div>
         </div>
+
         <div className="search-bar-container">
             <div className="search-bar-wrapper">
                 <SearchBar
@@ -252,6 +253,7 @@ export const LikedVideoView: React.FC = () => {
                 <p style={{ margin: '0' }}>{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(filteredVideos.length, videos.length)}</p>
             </div>
         </div>
+
         <div className="video-view-sort">
             <div className="video-view-sort-left-group">
                 <div className="category-filter">
@@ -379,6 +381,7 @@ export const LikedVideoView: React.FC = () => {
             {currentVideos.map((video) => (
                 <VideoCard
                     key={video.id}
+                    source="liked"
                     id={video.id}
                     url={`https://www.youtube.com/watch?v=${video.id}`}
                     videoInfo={video}

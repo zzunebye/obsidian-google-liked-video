@@ -5,6 +5,596 @@ import { debugLogger } from "./debug";
 
 const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
 
+// Playlist source types for generic playlist handling
+export type PlaylistSource =
+    | { type: 'liked' }
+    | { type: 'playlist', playlistId: string };
+
+export interface PlaylistInfo {
+    id: string;
+    title: string;
+    description: string;
+    itemCount: number;
+    thumbnailUrl?: string;
+    publishedAt?: string; // Playlist creation date
+}
+
+// Type-safe YouTube API response interfaces
+interface YouTubePlaylistResponse {
+    id: string;
+    snippet: {
+        title: string;
+        description?: string;
+        publishedAt: string;
+        thumbnails?: {
+            medium?: {
+                url: string;
+            };
+        };
+    };
+    contentDetails: {
+        itemCount: number;
+    };
+}
+
+export interface PaginatedResult {
+    videos: YouTubeVideo[];
+    currentPage: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    totalResults?: number;
+    totalPages?: number;
+}
+
+interface PlaylistCache {
+    pages: Map<number, YouTubeVideo[]>;
+    tokens: Map<number, string>;
+    totalResults?: number;
+    allVideos?: YouTubeVideo[];  // Cache all videos for the playlist
+    lastFetched: number;  // Timestamp of last fetch (required)
+    ttl: number; // Time to live in milliseconds
+}
+
+// Generic Playlist API that can handle different playlist sources
+export class PlaylistApi {
+    private paginationCache = new Map<string, PlaylistCache>();
+    private static readonly MAX_CACHE_SIZE = 50; // Maximum number of cached playlists
+    private static readonly DEFAULT_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+    constructor(private pluginSettings: ObsidianGoogleLikedVideoSettings) { }
+
+    // Type-safe validation for YouTube playlist responses
+    private validatePlaylistResponse(playlist: unknown): playlist is YouTubePlaylistResponse {
+        return typeof playlist === 'object' && playlist !== null &&
+            'id' in playlist && typeof (playlist as any).id === 'string' &&
+            'snippet' in playlist && typeof (playlist as any).snippet === 'object' &&
+            'contentDetails' in playlist && typeof (playlist as any).contentDetails === 'object' &&
+            typeof (playlist as any).snippet.title === 'string' &&
+            typeof (playlist as any).contentDetails.itemCount === 'number';
+    }
+
+    // Cache management methods
+    private isValidCache(cache: PlaylistCache): boolean {
+        const now = Date.now();
+        return (now - cache.lastFetched) < cache.ttl;
+    }
+
+    private enforceMaxCacheSize(): void {
+        if (this.paginationCache.size >= PlaylistApi.MAX_CACHE_SIZE) {
+            // Remove oldest cache entries
+            const sortedEntries = Array.from(this.paginationCache.entries())
+                .sort(([, a], [, b]) => a.lastFetched - b.lastFetched);
+
+            // Remove oldest 20% of entries
+            const toRemove = Math.ceil(PlaylistApi.MAX_CACHE_SIZE * 0.2);
+            for (let i = 0; i < toRemove; i++) {
+                this.paginationCache.delete(sortedEntries[i][0]);
+            }
+        }
+    }
+
+    async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
+        let accessToken = getGoogleAccessTokenFromLocal();
+        debugLogger.api(`${method} request to: ${url}`);
+
+        // Add request timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        try {
+            accessToken = await getValidAccessToken(
+                this.pluginSettings.googleClientId,
+                this.pluginSettings.googleClientSecret
+            );
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    ...headers,
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                signal: controller.signal,
+                ...options
+            });
+
+            debugLogger.api(`Response status: ${response.status}`);
+
+            // Handle different HTTP error types
+            if (!response.ok) {
+                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+
+                if (response.status === 403) {
+                    errorMessage = 'API quota exceeded or insufficient permissions';
+                } else if (response.status === 404) {
+                    errorMessage = 'Playlist not found or has been deleted';
+                } else if (response.status >= 500) {
+                    errorMessage = 'YouTube service temporarily unavailable';
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            return response;
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                debugLogger.error('Request timeout');
+                new Notice("Request timeout - please try again");
+                throw new Error('Request timeout - please try again');
+            }
+            debugLogger.error('API request failed:', error);
+            new Notice("API request failed: " + error.message);
+            throw error;
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    async fetchVideos(source: PlaylistSource, limit = 50, pageToken?: string): Promise<YouTubeVideosResponse> {
+        debugLogger.api(`Fetching videos for source: ${JSON.stringify(source)}, limit: ${limit}, pageToken: ${pageToken || 'none'}`);
+
+        switch (source.type) {
+            case 'liked':
+                return this.fetchLikedVideos(limit, pageToken);
+
+            case 'playlist':
+                return this.fetchPlaylistVideos(source.playlistId, limit, pageToken);
+
+            default:
+                throw new Error(`Unsupported playlist source type: ${(source as any).type}`);
+        }
+    }
+
+    private async fetchLikedVideos(limit: number, pageToken?: string): Promise<YouTubeVideosResponse> {
+        let url = BASE_URL + 'videos?'
+            + 'part=snippet,contentDetails,statistics'
+            + `&maxResults=${limit}`
+            + '&myRating=like';
+
+        if (pageToken) {
+            url += `&pageToken=${pageToken}`;
+        }
+
+        const response = await this.sendRequest('GET', url, {});
+        const data: YouTubeVideosResponse = await response.json();
+
+        // Add pulled_at timestamp to each video
+        data.items.forEach(video => {
+            video.pulled_at = new Date().toISOString();
+        });
+
+        debugLogger.api(`Fetched ${data.items?.length || 0} liked videos`);
+        return data;
+    }
+
+
+    private async fetchPlaylistVideos(playlistId: string, limit: number, pageToken?: string): Promise<YouTubeVideosResponse> {
+        let url = BASE_URL + 'playlistItems?'
+            + 'part=snippet,contentDetails'
+            + `&playlistId=${playlistId}`
+            + `&maxResults=${limit}`;
+
+        if (pageToken) {
+            url += `&pageToken=${pageToken}`;
+        }
+
+        const response = await this.sendRequest('GET', url, {});
+        const playlistResponse = await response.json();
+
+        if (!playlistResponse.items || playlistResponse.items.length === 0) {
+            return {
+                kind: playlistResponse.kind,
+                etag: playlistResponse.etag,
+                items: [],
+                nextPageToken: playlistResponse.nextPageToken,
+                pageInfo: playlistResponse.pageInfo
+            };
+        }
+
+        // Extract video IDs from playlist items, filtering out any invalid items with proper type checking
+        const videoIds = playlistResponse.items
+            .filter((item: unknown): item is { snippet: { resourceId: { videoId: string } } } =>
+                typeof item === 'object' && item !== null &&
+                'snippet' in item &&
+                typeof (item as any).snippet === 'object' &&
+                'resourceId' in (item as any).snippet &&
+                typeof (item as any).snippet.resourceId?.videoId === 'string'
+            )
+            .map(item => item.snippet.resourceId.videoId);
+
+        if (videoIds.length === 0) {
+            return {
+                kind: playlistResponse.kind,
+                etag: playlistResponse.etag,
+                items: [],
+                nextPageToken: playlistResponse.nextPageToken,
+                pageInfo: playlistResponse.pageInfo
+            };
+        }
+
+        // Fetch detailed video information
+        const videosUrl = BASE_URL + 'videos?'
+            + 'part=snippet,contentDetails,statistics'
+            + `&id=${videoIds.join(',')}`;
+
+        const videosResponse = await this.sendRequest('GET', videosUrl, {});
+        const videosData: YouTubeVideosResponse = await videosResponse.json();
+
+        // Filter out any videos that don't have required properties and add pulled_at timestamp
+        videosData.items = (videosData.items || []).filter(video => {
+            // Ensure video has all required properties
+            const isValid = video && video.snippet && video.id && video.statistics;
+            if (!isValid) {
+                debugLogger.warn(`Filtering out invalid video: ${video?.id || 'unknown'}`);
+            }
+            return isValid;
+        });
+
+        // Add pulled_at timestamp to each valid video
+        videosData.items.forEach(video => {
+            video.pulled_at = new Date().toISOString();
+            // Ensure statistics exist with default values if missing
+            if (!video.statistics) {
+                video.statistics = {
+                    viewCount: 0,
+                    likeCount: 0,
+                    favoriteCount: "0",
+                    commentCount: "0"
+                };
+            }
+        });
+
+        // Preserve pagination info from playlist response
+        videosData.nextPageToken = playlistResponse.nextPageToken;
+        videosData.pageInfo = playlistResponse.pageInfo;
+
+        debugLogger.api(`Fetched ${videosData.items?.length || 0} videos from playlist ${playlistId}`);
+        return videosData;
+    }
+
+    async fetchPlaylistInfo(source: PlaylistSource): Promise<PlaylistInfo> {
+        switch (source.type) {
+            case 'liked':
+                return {
+                    id: 'liked',
+                    title: 'Liked Videos',
+                    description: 'Your liked videos',
+                    itemCount: 0 // Could be fetched separately if needed
+                };
+
+            case 'playlist': {
+                const url = BASE_URL + 'playlists?'
+                    + 'part=snippet,contentDetails'
+                    + `&id=${source.playlistId}`;
+
+                console.log(url);
+
+                const response = await this.sendRequest('GET', url, {});
+                const data = await response.json();
+
+                if (!data.items || data.items.length === 0) {
+                    throw new Error(`Playlist not found: ${source.playlistId}`);
+                }
+
+                const playlist = data.items[0];
+                console.dir(playlist);
+                return {
+                    id: playlist.id,
+                    title: playlist.snippet.title,
+                    description: playlist.snippet.description || '',
+                    itemCount: playlist.contentDetails.itemCount,
+                    thumbnailUrl: playlist.snippet.thumbnails?.medium?.url
+                };
+            }
+
+            default:
+                throw new Error(`Unsupported playlist source type: ${(source as any).type}`);
+        }
+    }
+
+    async fetchUserPlaylists(): Promise<PlaylistInfo[]> {
+        const url = BASE_URL + 'playlists?'
+            + 'part=snippet,contentDetails'
+            + '&maxResults=50'
+            + '&mine=true';
+
+        const response = await this.sendRequest('GET', url, {});
+        const data = await response.json();
+
+        if (!data.items) {
+            return [];
+        }
+
+        // Filter and map with type validation
+        return data.items
+            .filter((playlist: unknown) => this.validatePlaylistResponse(playlist))
+            .map((playlist: YouTubePlaylistResponse): PlaylistInfo => ({
+                id: playlist.id,
+                title: playlist.snippet.title,
+                description: playlist.snippet.description || '',
+                itemCount: playlist.contentDetails.itemCount,
+                thumbnailUrl: playlist.snippet.thumbnails?.medium?.url,
+                publishedAt: playlist.snippet.publishedAt
+            }));
+    }
+
+    async fetchPlaylistById(playlistId: string): Promise<PlaylistInfo> {
+        debugLogger.api(`Fetching playlist by ID: ${playlistId}`);
+
+        // Clean playlist ID (remove URL parts if user pasted a full YouTube URL)
+        const cleanPlaylistId = this.extractPlaylistId(playlistId);
+
+        const url = BASE_URL + 'playlists?'
+            + 'part=snippet,contentDetails'
+            + `&id=${cleanPlaylistId}`;
+
+        const response = await this.sendRequest('GET', url, {});
+        const data = await response.json();
+
+        if (!data.items || data.items.length === 0) {
+            throw new Error(`Playlist not found or not accessible: ${cleanPlaylistId}`);
+        }
+
+        const playlist = data.items[0];
+
+        // Check if playlist is private
+        if (playlist.snippet.privacyStatus === 'private') {
+            throw new Error(`Playlist is private and cannot be accessed: ${cleanPlaylistId}`);
+        }
+
+        debugLogger.api(`Successfully fetched playlist: ${playlist.snippet.title}`);
+
+        return {
+            id: playlist.id,
+            title: playlist.snippet.title,
+            description: playlist.snippet.description || '',
+            itemCount: playlist.contentDetails.itemCount,
+            thumbnailUrl: playlist.snippet.thumbnails?.medium?.url
+        };
+    }
+
+    private extractPlaylistId(input: string): string {
+        const trimmed = input.trim();
+
+        // If it's already just an ID, return it
+        if (/^[A-Za-z0-9_-]+$/.test(trimmed) && trimmed.length > 10) {
+            return trimmed;
+        }
+
+        // Extract from various YouTube playlist URL formats
+        const urlPatterns = [
+            /[?&]list=([A-Za-z0-9_-]+)/,           // ?list=ID or &list=ID
+            /playlist\?list=([A-Za-z0-9_-]+)/,     // playlist?list=ID
+            /^([A-Za-z0-9_-]+)$/                   // Just the ID
+        ];
+
+        for (const pattern of urlPatterns) {
+            const match = trimmed.match(pattern);
+            if (match) {
+                return match[1] || match[0];
+            }
+        }
+
+        // If no patterns match, return the input (might be a valid ID)
+        return trimmed;
+    }
+
+    async fetchVideosPage(source: PlaylistSource, page = 1, videosPerPage = 10): Promise<PaginatedResult> {
+        const cacheKey = this.getCacheKey(source);
+        let cache = this.paginationCache.get(cacheKey);
+
+        if (!cache) {
+            cache = {
+                pages: new Map(),
+                tokens: new Map(),
+                totalResults: undefined
+            };
+            this.paginationCache.set(cacheKey, cache);
+        }
+
+        // Check if we already have this page
+        if (cache.pages.has(page)) {
+            const videos = cache.pages.get(page) || [];
+            return {
+                videos,
+                currentPage: page,
+                hasNext: cache.pages.has(page + 1) || cache.tokens.has(page),
+                hasPrev: page > 1,
+                totalResults: cache.totalResults,
+                totalPages: cache.totalResults ? Math.ceil(cache.totalResults / videosPerPage) : undefined
+            };
+        }
+
+        // Calculate which page token to use
+        let pageToken: string | undefined;
+        if (page > 1) {
+            // For pages after the first, we need the token from the previous page
+            pageToken = cache.tokens.get(page - 1);
+            if (!pageToken && !cache.pages.has(page - 1)) {
+                // If we don't have the previous page, we need to fetch from the beginning
+                await this.fetchPagesUpTo(source, page - 1, videosPerPage, cache);
+                pageToken = cache.tokens.get(page - 1);
+            }
+        }
+
+        // Fetch the current page
+        const response = await this.fetchVideos(source, videosPerPage, pageToken);
+
+        // Store the page data
+        cache.pages.set(page, response.items);
+
+        // Store the next page token if available
+        if (response.nextPageToken) {
+            cache.tokens.set(page, response.nextPageToken);
+        }
+
+        // Store total results if available
+        if (response.pageInfo?.totalResults !== undefined) {
+            cache.totalResults = response.pageInfo.totalResults;
+        }
+
+        return {
+            videos: response.items,
+            currentPage: page,
+            hasNext: !!response.nextPageToken,
+            hasPrev: page > 1,
+            totalResults: cache.totalResults,
+            totalPages: cache.totalResults ? Math.ceil(cache.totalResults / videosPerPage) : undefined
+        };
+    }
+
+    private async fetchPagesUpTo(source: PlaylistSource, targetPage: number, videosPerPage: number, cache: PlaylistCache): Promise<void> {
+        let currentPage = 1;
+        let pageToken: string | undefined;
+
+        while (currentPage <= targetPage) {
+            if (cache.pages.has(currentPage)) {
+                pageToken = cache.tokens.get(currentPage);
+                currentPage++;
+                continue;
+            }
+
+            const response = await this.fetchVideos(source, videosPerPage, pageToken);
+            cache.pages.set(currentPage, response.items);
+
+            if (response.nextPageToken) {
+                cache.tokens.set(currentPage, response.nextPageToken);
+                pageToken = response.nextPageToken;
+            } else {
+                pageToken = undefined;
+            }
+
+            if (response.pageInfo?.totalResults !== undefined) {
+                cache.totalResults = response.pageInfo.totalResults;
+            }
+
+            currentPage++;
+
+            if (!response.nextPageToken) {
+                break;
+            }
+        }
+    }
+
+    private getCacheKey(source: PlaylistSource): string {
+        switch (source.type) {
+            case 'liked':
+                return 'liked';
+            case 'playlist':
+                return `playlist_${source.playlistId}`;
+            default:
+                return 'unknown';
+        }
+    }
+
+    clearAllCaches(): void {
+        this.paginationCache.clear();
+        debugLogger.api('All playlist caches cleared');
+    }
+
+    clearCache(source: PlaylistSource): void {
+        const cacheKey = this.getCacheKey(source);
+        this.paginationCache.delete(cacheKey);
+        debugLogger.api(`Cache cleared for: ${cacheKey}`);
+    }
+
+    // Get all cached videos for a playlist
+    getCachedVideos(source: PlaylistSource): YouTubeVideo[] | null {
+        const cacheKey = this.getCacheKey(source);
+        const cache = this.paginationCache.get(cacheKey);
+
+        if (cache?.allVideos && cache.allVideos.length > 0) {
+            // Check if cache is still valid
+            if (this.isValidCache(cache)) {
+                debugLogger.api(`Found ${cache.allVideos.length} valid cached videos for ${cacheKey}`);
+                return cache.allVideos;
+            } else {
+                // Cache expired, remove it
+                this.paginationCache.delete(cacheKey);
+                debugLogger.api(`Cache expired for ${cacheKey}, removed from cache`);
+            }
+        }
+
+        debugLogger.api(`No valid cached videos found for ${cacheKey}`);
+        return null;
+    }
+
+    // Cache all videos for a playlist
+    setCachedVideos(source: PlaylistSource, videos: YouTubeVideo[]): void {
+        const cacheKey = this.getCacheKey(source);
+
+        // Enforce max cache size before adding new entry
+        this.enforceMaxCacheSize();
+
+        let cache = this.paginationCache.get(cacheKey);
+
+        if (!cache) {
+            cache = {
+                pages: new Map(),
+                tokens: new Map(),
+                totalResults: videos.length,
+                lastFetched: Date.now(),
+                ttl: PlaylistApi.DEFAULT_TTL
+            };
+        } else {
+            cache.lastFetched = Date.now();
+            cache.ttl = PlaylistApi.DEFAULT_TTL;
+        }
+
+        cache.allVideos = videos;
+        this.paginationCache.set(cacheKey, cache);
+
+        debugLogger.api(`Cached ${videos.length} videos for ${cacheKey} with TTL ${cache.ttl}ms`);
+    }
+
+    // Fetch all videos for a playlist (with caching)
+    async fetchAllPlaylistVideos(source: PlaylistSource, forceRefresh = false): Promise<YouTubeVideo[]> {
+        // Check cache first unless force refresh
+        if (!forceRefresh) {
+            const cached = this.getCachedVideos(source);
+            if (cached) {
+                debugLogger.api(`Returning cached videos for playlist`);
+                return cached;
+            }
+        }
+
+        debugLogger.api(`Fetching all videos for playlist (no cache or force refresh)`);
+        let allVideos: YouTubeVideo[] = [];
+        let nextPageToken: string | undefined = undefined;
+
+        do {
+            const response = await this.fetchVideos(source, 50, nextPageToken);
+            if (response.items && response.items.length > 0) {
+                allVideos = [...allVideos, ...response.items];
+            }
+            nextPageToken = response.nextPageToken;
+        } while (nextPageToken);
+
+        // Cache the results
+        this.setCachedVideos(source, allVideos);
+
+        return allVideos;
+    }
+}
+
 export class LikedVideoApi {
     constructor(private pluginSettings: ObsidianGoogleLikedVideoSettings) {
         this.pluginSettings = pluginSettings;
@@ -145,21 +735,3 @@ export class LikedVideoApi {
         }
     }
 }
-
-/// wrap a request to handle error and refresh access token if needed
-// export async function sendRequest(url: string, headers: Record<string, string>, pluginSettings: ObsidianGoogleLikedVideoSettings): Promise<Response> {
-//     let accessToken = getGoogleAccessToken();
-//     if (!accessToken) {
-//         accessToken = await refreshAccessToken(pluginSettings.googleClientId, pluginSettings.googleClientSecret);
-//     }
-
-//     return await fetch(url, {
-//         headers: {
-//             ...headers,
-//             'Authorization': `Bearer ${accessToken}`,
-//         }
-//     });
-// }
-
-
-

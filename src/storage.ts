@@ -1,4 +1,10 @@
 import { YouTubeVideo } from "./types";
+import { PlaylistInfo } from "./api";
+
+export interface SavedPlaylist extends PlaylistInfo {
+    savedAt: string; // ISO string
+    isUserSaved: boolean; // true for manually saved playlists
+}
 
 class LocalStorageService {
     /**
@@ -10,8 +16,16 @@ class LocalStorageService {
         return likedVideos ? JSON.parse(likedVideos) : [];
     }
 
+    getWatchLaterVideos(): YouTubeVideo[] {
+        const watchLaterVideos = window.localStorage.getItem("googleYtbLikedVideoWatchLaterVideos");
+        return watchLaterVideos ? JSON.parse(watchLaterVideos) : [];
+    }
+
     getLastLikedVideoId(): string {
         const likedVideos = this.getLikedVideos();
+        if (likedVideos.length === 0) {
+            throw new Error('No liked videos found');
+        }
         return likedVideos[0].id;
     }
 
@@ -50,6 +64,14 @@ class LocalStorageService {
         return enabled === "true";
     }
 
+    getPlaylistsSortOption(): string {
+        return window.localStorage.getItem("userPlaylistsSortOption") ?? "title";
+    }
+
+    getPlaylistsSortOrder(): string {
+        return window.localStorage.getItem("userPlaylistsSortOrder") ?? "ASC";
+    }
+
     /// SET
     setSortOption(sortOption: string): void {
         window.localStorage.setItem("likedVideoViewSortOption", sortOption);
@@ -71,8 +93,20 @@ class LocalStorageService {
         window.localStorage.setItem("likedVideoViewShortVideosFilterEnabled", enabled.toString());
     }
 
+    setPlaylistsSortOption(sortOption: string): void {
+        window.localStorage.setItem("userPlaylistsSortOption", sortOption);
+    }
+
+    setPlaylistsSortOrder(sortOrder: string): void {
+        window.localStorage.setItem("userPlaylistsSortOrder", sortOrder);
+    }
+
     setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
         window.localStorage.setItem("googleYtbLikedVideoLikedVideos", JSON.stringify(likedVideos));
+    };
+
+    setWatchLaterVideos = (watchLaterVideos: YouTubeVideo[]): void => {
+        window.localStorage.setItem("googleYtbLikedVideoWatchLaterVideos", JSON.stringify(watchLaterVideos));
     };
 
     setAccessToken(googleAccessToken: string): void {
@@ -87,6 +121,65 @@ class LocalStorageService {
     setAccessTokenExpirationTime(googleExpirationTime: number): void {
         if (isNaN(googleExpirationTime)) return;
         window.localStorage.setItem("googleYtbLikedVideoExpirationTime", googleExpirationTime.toString());
+    }
+
+    // Saved playlists management
+    getSavedPlaylists(): SavedPlaylist[] {
+        const savedPlaylists = window.localStorage.getItem("googleYtbSavedPlaylists");
+        return savedPlaylists ? JSON.parse(savedPlaylists) : [];
+    }
+
+    setSavedPlaylists(playlists: SavedPlaylist[]): void {
+        window.localStorage.setItem("googleYtbSavedPlaylists", JSON.stringify(playlists));
+    }
+
+    addSavedPlaylist(playlistInfo: PlaylistInfo): boolean {
+        const savedPlaylists = this.getSavedPlaylists();
+
+        // Check if playlist already exists
+        if (savedPlaylists.some(p => p.id === playlistInfo.id)) {
+            return false; // Already exists
+        }
+
+        const savedPlaylist: SavedPlaylist = {
+            ...playlistInfo,
+            savedAt: new Date().toISOString(),
+            isUserSaved: true
+        };
+
+        savedPlaylists.push(savedPlaylist);
+        this.setSavedPlaylists(savedPlaylists);
+        return true; // Successfully added
+    }
+
+    removeSavedPlaylist(playlistId: string): boolean {
+        const savedPlaylists = this.getSavedPlaylists();
+        const initialLength = savedPlaylists.length;
+
+        const updatedPlaylists = savedPlaylists.filter(p => p.id !== playlistId);
+        this.setSavedPlaylists(updatedPlaylists);
+
+        return updatedPlaylists.length < initialLength; // True if something was removed
+    }
+
+    isPlaylistSaved(playlistId: string): boolean {
+        const savedPlaylists = this.getSavedPlaylists();
+        return savedPlaylists.some(p => p.id === playlistId);
+    }
+
+    updateSavedPlaylist(playlistInfo: PlaylistInfo): void {
+        const savedPlaylists = this.getSavedPlaylists();
+        const index = savedPlaylists.findIndex(p => p.id === playlistInfo.id);
+
+        if (index !== -1) {
+            // Keep the original savedAt and isUserSaved values
+            savedPlaylists[index] = {
+                ...playlistInfo,
+                savedAt: savedPlaylists[index].savedAt,
+                isUserSaved: savedPlaylists[index].isUserSaved
+            };
+            this.setSavedPlaylists(savedPlaylists);
+        }
     }
 
 }

@@ -3,7 +3,9 @@ import { App, Notice, Plugin, PluginManifest, Vault, WorkspaceLeaf } from 'obsid
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideosResponse } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
-import { LikedVideoApi } from './api';
+import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
+import { PlaylistVideosPane, VIEW_TYPE_PLAYLIST_VIDEOS } from 'src/views/PlaylistVideosPane';
+import { LikedVideoApi, PlaylistApi } from './api';
 import { localStorageService } from './storage';
 import { debugLogger } from './debug';
 import { UI_TEXT } from './constants/uiText';
@@ -30,6 +32,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings;
 	vault: Vault;
 	likedVideoApi: LikedVideoApi;
+	playlistApi: PlaylistApi;
 	autoFetchInterval: NodeJS.Timeout | null = null;
 	isFetching = false;
 	paneRef: LikedVideoListPane | null = null;
@@ -44,7 +47,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		await this.loadSettings();
 		if (this.settings) {
 			this.likedVideoApi = new LikedVideoApi(this.settings);
-			debugLogger.debug('API client initialized');
+			this.playlistApi = new PlaylistApi(this.settings);
+			debugLogger.debug('API clients initialized');
 		}
 
 		this.vault = this.app.vault;
@@ -57,6 +61,21 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			}
 		);
 
+		this.registerView(
+			VIEW_TYPE_USER_PLAYLISTS,
+			(leaf) => {
+				return new UserPlaylistsPane(leaf, this);
+			}
+		);
+
+		this.registerView(
+			VIEW_TYPE_PLAYLIST_VIDEOS,
+			(leaf) => {
+				// PlaylistVideosPane requires additional parameters, but we'll handle them via state
+				return new PlaylistVideosPane(leaf, this, { type: 'liked' }, { id: 'liked', title: 'Loading...', description: '', itemCount: 0 });
+			}
+		);
+
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.settingTabRef = new GoogleLikedVideoSettingTab(this.app, this);
 		this.addSettingTab(this.settingTabRef);
@@ -66,11 +85,23 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			this.activateView();
 		});
 
+		this.addRibbonIcon("list-video", "Activate User Playlists View", () => {
+			this.activatePlaylistsView();
+		});
+
 		this.addCommand({
 			id: 'open-liked-video-list-view',
 			name: 'Open Geulo (Youtube Liked Video) List View',
 			callback: () => {
 				this.activateView();
+			}
+		});
+
+		this.addCommand({
+			id: 'open-user-playlists-view',
+			name: 'Open User Playlists View',
+			callback: () => {
+				this.activatePlaylistsView();
 			}
 		});
 
@@ -111,6 +142,27 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			// in the right sidebar for it
 			leaf = workspace.getRightLeaf(false);
 			await leaf?.setViewState({ type: VIEW_TYPE_LIKED_VIDEO_LIST, active: true });
+		}
+		if (leaf) {
+			// "Reveal" the leaf in case it is in a collapsed sidebar
+			workspace.revealLeaf(leaf);
+		}
+	}
+
+	async activatePlaylistsView() {
+		const { workspace } = this.app;
+
+		let leaf: WorkspaceLeaf | null = null;
+		const leaves = workspace.getLeavesOfType(VIEW_TYPE_USER_PLAYLISTS);
+
+		if (leaves.length > 0) {
+			// A leaf with our view already exists, use that
+			leaf = leaves[0];
+		} else {
+			// Our view could not be found in the workspace, create a new leaf
+			// in the right sidebar for it
+			leaf = workspace.getRightLeaf(false);
+			await leaf?.setViewState({ type: VIEW_TYPE_USER_PLAYLISTS, active: true });
 		}
 		if (leaf) {
 			// "Reveal" the leaf in case it is in a collapsed sidebar

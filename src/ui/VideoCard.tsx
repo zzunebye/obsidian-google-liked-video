@@ -1,6 +1,6 @@
 import { Menu, TFile, moment, Notice } from "obsidian";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
-import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, ExternalLink } from "lucide-react";
+import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, ExternalLink, FilePlus } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
@@ -8,6 +8,7 @@ import { usePlugin } from "../store/pluginContext";
 import { sanitizeFileName, generateVideoNoteContent, getExpectedNotePath } from "src/utils/noteUtils";
 
 interface VideoCardProps {
+    source: 'liked' | 'playlist';
     videoInfo: YouTubeVideo;
     id: string;
     url: string;
@@ -15,7 +16,8 @@ interface VideoCardProps {
     onAddToDailyNote: (videoData: string, file: TFile) => void;
     onChannelClick: (channelTitle: string) => void;
 }
-export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick }: VideoCardProps) => {
+
+export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick }: VideoCardProps) => {
     const plugin = usePlugin();
 
     // Format duration from seconds to display format
@@ -68,7 +70,53 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote, onChanne
         e.stopPropagation();
         onChannelClick(videoInfo.snippet.channelTitle);
     };
+    const handleCreateVideoNote = async () => {
+        try {
+            const baseFileName = sanitizeFileName(videoInfo.snippet.title);
+            const customPath = plugin?.settings?.videoNotePath || '';
+            const organizeByChannel = plugin?.settings?.organizeByChannel || false;
+            const channelName = videoInfo.snippet.channelTitle;
+            const appInstance = plugin?.app || app;
 
+            // Get the expected path for this video note
+            const expectedPath = await getExpectedNotePath(
+                appInstance,
+                baseFileName,
+                customPath,
+                organizeByChannel,
+                channelName
+            );
+
+            // Check if a note already exists at the expected path
+            const existingFile = appInstance.vault.getAbstractFileByPath(expectedPath);
+
+            // Only treat as a file if it is a TFile (has 'extension' and 'basename')
+            if (
+                existingFile &&
+                typeof (existingFile as any).extension === 'string' &&
+                typeof (existingFile as any).basename === 'string' &&
+                typeof (existingFile as any).path === 'string'
+            ) {
+                // Note already exists, open it
+                await appInstance.workspace.openLinkText((existingFile as any).path, '', true);
+                new Notice(`Opened existing note: ${(existingFile as any).basename}`);
+            } else {
+                // Note doesn't exist, create it
+                const noteContent = generateVideoNoteContent(
+                    videoInfo,
+                    url,
+                    plugin?.getCategoryDisplay?.bind(plugin)
+                );
+
+                const file = await appInstance.vault.create(expectedPath, noteContent);
+                await appInstance.workspace.openLinkText(file.path, '', true);
+                new Notice(`Created note: ${file.basename}`);
+            }
+        } catch (error) {
+            console.error('Error handling video note:', error);
+            new Notice('Failed to create/open video note. Check console for details.');
+        }
+    }
     const handleContextMenu = (e: any): void => {
         e.preventDefault();
         e.stopPropagation();
@@ -81,20 +129,24 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote, onChanne
             });
         });
 
-        menu.addItem(item => {
-            item.setTitle("Unlike");
-            item.setIcon("heart-off")
-            item.onClick(async () => {
-                const confirmed = await confirmUnlikeAction(
-                    plugin?.app || app,
-                    videoInfo.snippet.title
-                );
+        if (source === 'liked') {
+            menu.addItem(item => {
+                item.setTitle("Unlike");
+                item.setIcon("heart-off")
+                item.onClick(async () => {
+                    const confirmed = await confirmUnlikeAction(
+                        plugin?.app || app,
+                        videoInfo.snippet.title
+                    );
 
-                if (confirmed) {
-                    onUnlike();
-                }
+                    if (confirmed) {
+                        onUnlike();
+                    }
+                });
             });
-        });
+        }
+
+
 
         menu.addItem(item => {
             item.setTitle("Add to daily note");
@@ -146,53 +198,7 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote, onChanne
         menu.addItem(item => {
             item.setTitle("Create note");
             item.setIcon("file-plus");
-            item.onClick(async () => {
-                try {
-                    const baseFileName = sanitizeFileName(videoInfo.snippet.title);
-                    const customPath = plugin?.settings?.videoNotePath || '';
-                    const organizeByChannel = plugin?.settings?.organizeByChannel || false;
-                    const channelName = videoInfo.snippet.channelTitle;
-                    const appInstance = plugin?.app || app;
-
-                    // Get the expected path for this video note
-                    const expectedPath = await getExpectedNotePath(
-                        appInstance,
-                        baseFileName,
-                        customPath,
-                        organizeByChannel,
-                        channelName
-                    );
-
-                    // Check if a note already exists at the expected path
-                    const existingFile = appInstance.vault.getAbstractFileByPath(expectedPath);
-
-                    // Only treat as a file if it is a TFile (has 'extension' and 'basename')
-                    if (
-                        existingFile &&
-                        typeof (existingFile as any).extension === 'string' &&
-                        typeof (existingFile as any).basename === 'string' &&
-                        typeof (existingFile as any).path === 'string'
-                    ) {
-                        // Note already exists, open it
-                        await appInstance.workspace.openLinkText((existingFile as any).path, '', true);
-                        new Notice(`Opened existing note: ${(existingFile as any).basename}`);
-                    } else {
-                        // Note doesn't exist, create it
-                        const noteContent = generateVideoNoteContent(
-                            videoInfo,
-                            url,
-                            plugin?.getCategoryDisplay?.bind(plugin)
-                        );
-
-                        const file = await appInstance.vault.create(expectedPath, noteContent);
-                        await appInstance.workspace.openLinkText(file.path, '', true);
-                        new Notice(`Created note: ${file.basename}`);
-                    }
-                } catch (error) {
-                    console.error('Error handling video note:', error);
-                    new Notice('Failed to create/open video note. Check console for details.');
-                }
-            });
+            item.onClick(async () => handleCreateVideoNote());
         });
 
         menu.showAtPosition({ x: e.clientX, y: e.clientY });
@@ -256,6 +262,14 @@ export const VideoCard = ({ videoInfo, url, onUnlike, onAddToDailyNote, onChanne
                 >
                     <ExternalLink size={16} />
                 </button>
+                <button
+                    className="video-card-btn"
+                    aria-label="Create Video Note"
+                    onClick={(e) => handleCreateVideoNote()}
+                >
+                    <FilePlus size={16} />
+                </button>
+
                 <button
                     className="video-card-btn"
                     aria-label="More options"

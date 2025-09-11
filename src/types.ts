@@ -111,3 +111,6 @@ export interface CategoriesCache {
     categories: { [key: string]: YouTubeCategory };
     lastFetched: number;
 }
+
+export type PlaylistType = 'liked' | 'playlist';
+
