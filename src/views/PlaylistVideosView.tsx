@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePlugin } from '../store/pluginContext';
-import { Play, Search, Loader2, AlertCircle, RefreshCw, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Play, Search, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
 import { PlaylistSource, PlaylistInfo } from 'src/api';
@@ -16,13 +16,27 @@ interface PlaylistVideosViewProps {
 export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlistSource, playlistInfo }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
     const [allVideos, setAllVideos] = useState<YouTubeVideo[]>([]);
+    const [displayedVideos, setDisplayedVideos] = useState<YouTubeVideo[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [hasMoreToShow, setHasMoreToShow] = useState(false);
     const plugin = usePlugin();
 
-    const videosPerPage = 10;
+    const videosPerBatch = 20; // Number of videos to show in each batch
+
+    // Helper function to get a consistent identifier for the playlist source
+    const getPlaylistSourceKey = (source: PlaylistSource): string => {
+        switch (source.type) {
+            case 'liked':
+                return 'liked';
+            case 'playlist':
+                return source.playlistId;
+            default:
+                return 'unknown';
+        }
+    };
 
     // Debounce search term with proper cleanup
     useEffect(() => {
@@ -35,16 +49,18 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
         };
     }, [searchTerm]);
 
-    // Reset current page when search changes
+    // Reset displayed videos when search changes
     useEffect(() => {
-        setCurrentPage(1);
-    }, [debouncedSearchTerm]);
+        const filtered = getFilteredVideos();
+        setDisplayedVideos(filtered.slice(0, videosPerBatch));
+        setHasMoreToShow(filtered.length > videosPerBatch);
+    }, [debouncedSearchTerm, allVideos]);
 
     // Load all videos when component mounts or playlist changes with abort controller
     useEffect(() => {
         const abortController = new AbortController();
         let isMounted = true;
-        
+
         const loadVideosWithAbort = async () => {
             try {
                 if (isMounted && !abortController.signal.aborted) {
@@ -56,14 +72,14 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                 }
             }
         };
-        
+
         loadVideosWithAbort();
-        
+
         return () => {
             isMounted = false;
             abortController.abort();
         };
-    }, [playlistSource.playlistId, playlistInfo.id]);
+    }, [getPlaylistSourceKey(playlistSource), playlistInfo.id]);
 
     const loadAllVideos = async (forceRefresh = false) => {
         if (!plugin?.playlistApi) {
@@ -103,8 +119,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
         }
     };
 
-    // Filter videos based on search
-    const filteredVideos = useMemo(() => {
+    // Filter videos based on search (extracted from useMemo for reuse)
+    const getFilteredVideos = () => {
         if (!allVideos.length) return [];
 
         // Filter out any invalid videos (missing required properties)
@@ -121,15 +137,61 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
             const channelMatch = video.snippet.channelTitle.toLowerCase().includes(lowerSearchTerm);
             return titleMatch || tagsMatch || channelMatch;
         });
-    }, [allVideos, debouncedSearchTerm]);
+    };
 
-    // Client-side pagination
-    const totalPages = Math.ceil(filteredVideos.length / videosPerPage);
-    const startIndex = (currentPage - 1) * videosPerPage;
-    const endIndex = startIndex + videosPerPage;
-    const currentVideos = filteredVideos.slice(startIndex, endIndex);
+    // Memoized filtered videos for performance
+    const filteredVideos = useMemo(() => getFilteredVideos(), [allVideos, debouncedSearchTerm]);
+
+    // Load more videos for infinite scroll
+    const loadMoreVideos = () => {
+        if (!hasMoreToShow || isLoadingMore) return;
+
+        setIsLoadingMore(true);
+
+        const filtered = getFilteredVideos();
+        const currentCount = displayedVideos.length;
+        const nextBatch = filtered.slice(currentCount, currentCount + videosPerBatch);
+
+        // Simulate slight delay for better UX
+        setTimeout(() => {
+            setDisplayedVideos(prev => [...prev, ...nextBatch]);
+            setHasMoreToShow(currentCount + nextBatch.length < filtered.length);
+            setIsLoadingMore(false);
+        }, 100);
+    };
+
+    // Intersection Observer for infinite scroll
+    useEffect(() => {
+        const sentinel = document.getElementById('scroll-sentinel');
+        if (!sentinel) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (entry.isIntersecting && hasMoreToShow && !isLoadingMore) {
+                    loadMoreVideos();
+                }
+            },
+            {
+                root: null,
+                rootMargin: '100px', // Start loading 100px before reaching the sentinel
+                threshold: 0.1
+            }
+        );
+
+        observer.observe(sentinel);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, [hasMoreToShow, isLoadingMore]);
 
     const handleRefresh = () => {
+        // Reset infinite scroll state
+        setDisplayedVideos([]);
+        setHasMoreToShow(false);
+        setIsLoadingMore(false);
+
         // Force refresh will bypass cache and fetch new data
         loadAllVideos(true);
     };
@@ -229,6 +291,11 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                 </div>
                 <div className="video-count">
                     <p style={{ margin: '0' }}>{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(filteredVideos.length, allVideos.length)}</p>
+                    {displayedVideos.length < filteredVideos.length && (
+                        <p style={{ margin: '0', fontSize: '0.85em', opacity: 0.7 }}>
+                            Showing {displayedVideos.length} of {filteredVideos.length}
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -258,7 +325,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
             ) : (
                 <>
                     <div className="videos-grid">
-                        {currentVideos.map((video) => (
+                        {displayedVideos.map((video) => (
                             <VideoCard
                                 key={video.id}
                                 source="playlist"
@@ -282,34 +349,24 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                         ))}
                     </div>
 
-                    {/* Pagination Controls */}
-                    {totalPages > 1 && (
-                        <div className="pagination">
-                            <div className="pagination__info">
-                                Page {currentPage} of {totalPages}
-                                <span className="pagination__total">
-                                    ({filteredVideos.length}
-                                    {debouncedSearchTerm ? ` matching "${debouncedSearchTerm}"` : ''} videos)
-                                </span>
-                            </div>
-                            <div className="pagination__controls">
-                                <button
-                                    className="pagination__button"
-                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                    disabled={currentPage <= 1 || isLoading}
-                                >
-                                    <ArrowLeft size={16} />
-                                    Previous
-                                </button>
-                                <button
-                                    className="pagination__button"
-                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                    disabled={currentPage >= totalPages || isLoading}
-                                >
-                                    Next
-                                    <ArrowRight size={16} />
-                                </button>
-                            </div>
+                    {/* Infinite Scroll Loading Indicator */}
+                    {hasMoreToShow && (
+                        <div className="infinite-scroll-loading">
+                            {isLoadingMore && (
+                                <div className="infinite-scroll-loading__content">
+                                    <Loader2 size={24} className="animate-spin" />
+                                    <span>Loading more videos...</span>
+                                </div>
+                            )}
+                            {/* Sentinel element for intersection observer */}
+                            <div id="scroll-sentinel" style={{ height: '1px', width: '100%' }} />
+                        </div>
+                    )}
+
+                    {/* Show when all videos are loaded */}
+                    {!hasMoreToShow && displayedVideos.length > 0 && displayedVideos.length < filteredVideos.length && (
+                        <div className="infinite-scroll-complete">
+                            <p>All videos loaded</p>
                         </div>
                     )}
                 </>
