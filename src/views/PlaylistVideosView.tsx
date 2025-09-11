@@ -26,6 +26,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
     const loadingRef = useRef(false);
 
     const videosPerBatch = 20; // Number of videos to show in each batch
+    const maxVideosToShow = 999; // Maximum number of videos to show in infinite scroll
 
     // Create a stable cache key for the playlist source
     const playlistSourceKey = useMemo(() => {
@@ -132,10 +133,10 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
     const getFilteredVideos = () => {
         if (!allVideos.length) return [];
 
-        // Filter out any invalid videos (missing required properties)
-        const validVideos = allVideos.filter(video =>
-            video && video.snippet && video.id
-        );
+        // Filter out any invalid videos (missing required properties) and cap at maxVideosToShow
+        const validVideos = allVideos
+            .filter(video => video && video.snippet && video.id)
+            .slice(0, maxVideosToShow);
 
         if (!debouncedSearchTerm) return validVideos;
 
@@ -200,7 +201,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
         setDisplayedVideos([]);
         setHasMoreToShow(false);
         setIsLoadingMore(false);
-        
+
         // Reset loading ref to allow the force refresh
         loadingRef.current = false;
 
@@ -302,10 +303,20 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                     />
                 </div>
                 <div className="video-count">
-                    <p style={{ margin: '0' }}>{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(filteredVideos.length, allVideos.length)}</p>
+                    <p style={{ margin: '0' }}>
+                        {allVideos.length > maxVideosToShow
+                            ? `Showing ${filteredVideos.length} of first ${maxVideosToShow} videos (${allVideos.length} total)`
+                            : UI_TEXT.VIDEO_COUNT_WITH_TOTAL(filteredVideos.length, allVideos.length)
+                        }
+                    </p>
                     {displayedVideos.length < filteredVideos.length && (
                         <p style={{ margin: '0', fontSize: '0.85em', opacity: 0.7 }}>
-                            Showing {displayedVideos.length} of {filteredVideos.length}
+                            Displaying {displayedVideos.length} of {filteredVideos.length}
+                        </p>
+                    )}
+                    {allVideos.length > maxVideosToShow && (
+                        <p style={{ margin: '0', fontSize: '0.8em', opacity: 0.6, fontStyle: 'italic' }}>
+                            Limited to {maxVideosToShow} videos for performance
                         </p>
                     )}
                 </div>
@@ -376,9 +387,14 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                     )}
 
                     {/* Show when all videos are loaded */}
-                    {!hasMoreToShow && displayedVideos.length > 0 && displayedVideos.length < filteredVideos.length && (
+                    {!hasMoreToShow && displayedVideos.length > 0 && displayedVideos.length >= filteredVideos.length && (
                         <div className="infinite-scroll-complete">
-                            <p>All videos loaded</p>
+                            <p>
+                                {allVideos.length > maxVideosToShow
+                                    ? `All available videos loaded (limited to ${maxVideosToShow})`
+                                    : 'All videos loaded'
+                                }
+                            </p>
                         </div>
                     )}
                 </>
