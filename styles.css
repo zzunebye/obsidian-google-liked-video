@@ -1279,3 +1279,146 @@ If your plugin does not need CSS, delete this file.
 .search-bar__clear {
 	cursor: pointer;
 } */
+
+/* Feature Introduction Modal */
+.feature-intro-modal-container .modal-content {
+	padding: 0;
+	max-width: 600px;
+	border-radius: 16px;
+	overflow: hidden;
+}
+
+.feature-intro-modal {
+	padding: 32px;
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.feature-intro-modal .modal-header {
+	text-align: center;
+	margin-bottom: 8px;
+}
+
+.feature-intro-modal .modal-header h2 {
+	font-size: 28px;
+	font-weight: 700;
+	color: var(--text-normal);
+	margin: 0 0 12px 0;
+	background: linear-gradient(
+		135deg,
+		var(--interactive-accent),
+		var(--text-accent)
+	);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.feature-intro-modal .modal-header p {
+	font-size: 16px;
+	color: var(--text-muted);
+	margin: 0;
+	line-height: 1.5;
+}
+
+.features-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 20px;
+}
+
+.feature-card {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 20px;
+	background: var(--background-secondary);
+	border-radius: 12px;
+	border: 1px solid var(--background-modifier-border);
+	transition: all 0.2s ease;
+}
+
+.feature-icon {
+	font-size: 24px;
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--background-modifier-form-field);
+	border-radius: 12px;
+}
+
+.feature-content {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.feature-card h5 {
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--text-normal);
+	margin: 0;
+}
+
+.feature-card p {
+	font-size: 14px;
+	color: var(--text-muted);
+	margin: 0;
+	line-height: 1.5;
+}
+
+.modal-footer {
+	text-align: center;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.modal-footer p {
+	font-size: 14px;
+	color: var(--text-muted);
+	margin: 0 0 20px 0;
+	line-height: 1.5;
+}
+
+.modal-footer button {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+	padding: 12px 32px;
+	border-radius: 8px;
+	font-size: 16px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: background 0.2s ease;
+}
+
+.modal-footer button:hover {
+	background: var(--interactive-accent-hover);
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+	.feature-intro-modal {
+		padding: 24px;
+	}
+
+	.feature-intro-modal .modal-header h2 {
+		font-size: 24px;
+	}
+
+	.feature-card {
+		flex-direction: column;
+		text-align: center;
+		gap: 12px;
+	}
+
+	.feature-icon {
+		align-self: center;
+	}
+}

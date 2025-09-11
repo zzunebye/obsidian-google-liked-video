@@ -10,6 +10,7 @@ import { localStorageService } from './storage';
 import { debugLogger } from './debug';
 import { UI_TEXT } from './constants/uiText';
 import { categoriesService } from './categoriesService';
+import { FeatureIntroModal } from './components/FeatureIntroModal';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
@@ -23,7 +24,8 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	autoFetchEnabled: false,
 	autoFetchInterval: 60,
 	fetchOnStartup: false,
-	lastAutoFetchTime: 0
+	lastAutoFetchTime: 0,
+	lastSeenVersion: ''
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';
@@ -105,6 +107,25 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'show-feature-intro-modal',
+			name: 'Show Feature Introduction Modal (Dev)',
+			callback: () => {
+				const modal = new FeatureIntroModal(this.app);
+				modal.open();
+			}
+		});
+
+		this.addCommand({
+			id: 'reset-version-for-testing',
+			name: 'Reset Version (Dev - triggers modal on reload)',
+			callback: async () => {
+				this.settings.lastSeenVersion = '';
+				await this.saveSettings();
+				new Notice('Version reset! Reload the plugin to see the intro modal.');
+			}
+		});
+
 
 		if (this.settings.fetchOnStartup && localStorageService.getAccessToken()) {
 			debugLogger.info('Fetch on startup enabled, scheduling fetch in 5 seconds');
@@ -117,6 +138,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		// Initialize categories in the background
 		this.initializeCategories();
+
+		// Check if this is a version update and show feature intro modal
+		this.checkVersionUpdate();
 	}
 
 	onunload() {
@@ -294,5 +318,51 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	 */
 	getCategoryDisplay(categoryId: string): string {
 		return categoriesService.getCategoryDisplay(categoryId);
+	}
+
+	/**
+	 * Check if this is a version update and show feature intro modal
+	 */
+	private async checkVersionUpdate(): Promise<void> {
+		const currentVersion = this.manifest.version;
+		const lastSeenVersion = this.settings.lastSeenVersion;
+
+		// Show modal if this is a new installation or version update
+		if (!lastSeenVersion || this.isNewerVersion(currentVersion, lastSeenVersion)) {
+			// Wait a bit for the plugin to fully load before showing the modal
+			setTimeout(() => {
+				const modal = new FeatureIntroModal(this.app);
+				modal.open();
+			}, 2000);
+
+			// Update the last seen version
+			this.settings.lastSeenVersion = currentVersion;
+			await this.saveSettings();
+		}
+	}
+
+	/**
+	 * Compare version strings to determine if current is newer than last seen
+	 */
+	private isNewerVersion(current: string, lastSeen: string): boolean {
+		if (!lastSeen) return true;
+
+		const currentParts = current.split('.').map(Number);
+		const lastSeenParts = lastSeen.split('.').map(Number);
+
+		// Ensure arrays have the same length by padding with zeros
+		const maxLength = Math.max(currentParts.length, lastSeenParts.length);
+		while (currentParts.length < maxLength) currentParts.push(0);
+		while (lastSeenParts.length < maxLength) lastSeenParts.push(0);
+
+		for (let i = 0; i < maxLength; i++) {
+			if (currentParts[i] > lastSeenParts[i]) {
+				return true;
+			} else if (currentParts[i] < lastSeenParts[i]) {
+				return false;
+			}
+		}
+
+		return false; // Versions are equal
 	}
 }

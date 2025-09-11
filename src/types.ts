@@ -11,6 +11,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     autoFetchInterval: number;
     fetchOnStartup: boolean;
     lastAutoFetchTime: number;
+    lastSeenVersion: string;
 }
 
 export interface YouTubeVideo {
