@@ -542,7 +542,7 @@ export class PlaylistApi {
         let nextPageToken: string | undefined = undefined;
 
         do {
-            const response = await this.fetchVideos(source, 50, nextPageToken);
+            const response: YouTubeVideosResponse = await this.fetchVideos(source, 50, nextPageToken);
             if (response.items && response.items.length > 0) {
                 allVideos = [...allVideos, ...response.items];
             }
