@@ -391,14 +391,15 @@ export const LikedVideoView: React.FC = () => {
                         setVideos(videos.filter(v => v.id !== video.id));
                     }}
                     onAddToDailyNote={async (videoData, file) => {
-
                         const contentToAppend = `\n${videoData}`;
-
-                        plugin?.app.vault.process(file,
-                            (data) => {
-                                return data + contentToAppend;
-                            }
-                        )
+                        // Append content to the daily note
+                        await plugin?.app.vault.process(file, (data) => {
+                            return data + contentToAppend;
+                        });
+                        // Open the daily note in the main panel
+                        await plugin?.app.workspace.openLinkText(file.path, '', false);
+                        // Show success notification
+                        new Notice(`Added video to ${file.basename} and opened the note`);
                     }}
                     onChannelClick={(channelTitle) => {
                         setSearchTerm(channelTitle);

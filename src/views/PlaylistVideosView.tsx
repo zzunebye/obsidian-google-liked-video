@@ -361,9 +361,17 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                                 }}
                                 onAddToDailyNote={async (videoData, file) => {
                                     const contentToAppend = `\n${videoData}`;
+
+                                    // Append content to the daily note
                                     plugin?.app.vault.process(file, (data) => {
                                         return data + contentToAppend;
                                     });
+
+                                    // Open the daily note in the main panel
+                                    await plugin?.app.workspace.openLinkText(file.path, '', false);
+
+                                    // Show success notification
+                                    new Notice(`Added video to ${file.basename} and opened the note`);
                                 }}
                                 onChannelClick={(channelTitle) => {
                                     setSearchTerm(channelTitle);

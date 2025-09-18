@@ -1,5 +1,5 @@
 import { Menu, TFile, moment, Notice } from "obsidian";
-import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
+import { getDailyNote, getAllDailyNotes, createDailyNote } from "obsidian-daily-notes-interface";
 import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, ExternalLink, FilePlus } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
@@ -146,19 +146,26 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             });
         }
 
-
-
         menu.addItem(item => {
             item.setTitle("Add to daily note");
-            item.onClick(() => {
-                // find a daily note and add the video to the daily note
-                // create a new daily note if it doesn't exist
-                const today = moment().startOf('day');
-                const dailyNotes = getAllDailyNotes();
-                const dailyNote = getDailyNote(today, dailyNotes);
+            item.onClick(async () => {
+                try {
+                    // find a daily note and add the video to the daily note
+                    // create a new daily note if it doesn't exist
+                    const today = moment().startOf('day');
+                    const dailyNotes = getAllDailyNotes();
+                    let dailyNote = getDailyNote(today, dailyNotes);
+                    // Create daily note if it doesn't exist
+                    if (!dailyNote) {
+                        dailyNote = await createDailyNote(today);
+                    }
 
-                const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
-                onAddToDailyNote(videoData, dailyNote);
+                    const dataToAdd = `[${videoInfo.snippet.title} - ${videoInfo.snippet.channelTitle}](${url})`;
+                    onAddToDailyNote(dataToAdd, dailyNote);
+                } catch (error) {
+                    console.error('Error adding to daily note:', error);
+                    new Notice('Failed to add video to daily note. Check console for details.');
+                }
             });
         });
 
