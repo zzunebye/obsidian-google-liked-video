@@ -4,6 +4,7 @@ import { List, Search, Play, Loader2, AlertCircle, RefreshCw, Video, Plus, Youtu
 import { UI_TEXT } from 'src/constants/uiText';
 import { SearchBar } from 'src/ui/SearchBar';
 import { localStorageService } from 'src/storage';
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
 
 interface UserPlaylistsViewProps {
     playlists: PlaylistInfo[];
@@ -271,7 +272,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
                             onClick={handleSortOrderToggle}
                             className="video-view-sort__order"
                         >
-                            {sortOrder === 'ASC' ? '↑' : '↓'}
+                            {sortOrder === 'ASC' ? <ArrowDownWideNarrow size={16} /> : <ArrowUpNarrowWide size={16} />}
                         </button>
                     </div>
                 </div>

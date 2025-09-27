@@ -2,7 +2,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { usePlugin } from '../store/pluginContext';
 import { localStorageService } from 'src/storage';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
-import { Youtube, Settings, RefreshCcw, Filter } from 'lucide-react';
+import { Youtube, Settings, RefreshCcw, Filter, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowRight, ArrowRightToLine, ArrowLeftToLine, ArrowLeft } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
 import { APP_ID } from 'src/main';
@@ -328,7 +328,7 @@ export const LikedVideoView: React.FC = () => {
                     className="video-view-sort__order"
                     aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
                 >
-                    {sortOrder === 'ASC' ? UI_TEXT.SORT_ASC : UI_TEXT.SORT_DESC}
+                    {sortOrder === 'ASC' ? <ArrowDownWideNarrow size={16} /> : <ArrowUpNarrowWide size={16} />}
                 </button>
             </div>
         </div>
@@ -414,25 +414,25 @@ export const LikedVideoView: React.FC = () => {
                 {currentPage > 1 && (
                     <>
                         <button onClick={() => setCurrentPage(1)}>
-                            {UI_TEXT.PAGE_FIRST}
+                            <ArrowLeft size={16} />
                         </button>
                         <button onClick={() => setCurrentPage(currentPage - 1)}>
-                            {UI_TEXT.PAGE_PREV}
+                            <ArrowLeftToLine size={16} />
                         </button>
                     </>
                 )}
             </div>
-            <button disabled>
+            <button disabled style={{ width: '48px' }}>
                 {currentPage}
             </button>
             <div className="video-view__pagination__controls">
                 {currentPage < totalPages && (
                     <>
                         <button type="button" onClick={() => setCurrentPage(currentPage + 1)}>
-                            {UI_TEXT.PAGE_NEXT}
+                            <ArrowRight size={16} />
                         </button>
                         <button type="button" onClick={() => setCurrentPage(totalPages)}>
-                            {UI_TEXT.PAGE_LAST}
+                            <ArrowRightToLine size={16} />
                         </button>
                     </>
                 )}

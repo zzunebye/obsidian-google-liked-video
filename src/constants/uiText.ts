@@ -40,14 +40,4 @@ export const UI_TEXT = {
     // Error
     ERROR_TITLE: 'error',
     ERROR_MESSAGE: (error: any) => `error: ${error}`,
-
-    // Pagination
-    PAGE_FIRST: '<--',
-    PAGE_PREV: '<-',
-    PAGE_NEXT: '->',
-    PAGE_LAST: '-->',
-
-    // Sort order icons
-    SORT_ASC: '🔼',
-    SORT_DESC: '🔽',
 } as const;
