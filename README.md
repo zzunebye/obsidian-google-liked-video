@@ -79,11 +79,28 @@ Follow the steps below to set it up:
 - In Authorized redirect URIs, add `http://127.0.0.1:42813/callback`.
 - Click "Create" and copy the Client ID and Client secret.
 
-#### 4. Enter Credentials in Plugin
+#### 4. Create Login Permissions
+
+- Open **Google Cloud Console** for the project you created for this plugin.
+- Go to **Google Auth Platform → Audience** (this replaces the older “OAuth consent screen” UI).
+- Confirm:
+  - **Publishing status** = **Testing**
+  - **User type** = **External**
+- Under **Test users**, click **Add users** and add the Google account you use in Obsidian (for example `yourname@gmail.com`).
+- Save.
+
+#### 5. Enter Credentials in Plugin
 
 - Open Obsidian and go to the settings of the YouTube Liked Videos plugin.
 - Enter your Client ID and Client secret in the respective fields.
 - Click "Login" to login to your Google account.
+
+#### 6. Successful Authentication Confirmation
+
+- When the OAuth flow succeeds, your browser will open a page at a URL like: `http://127.0.0.1:42813/callback?code=...&scope=...`
+- The page will display:
+> **Authentication successful! Please return to Obsidian.**
+- At that point you can close the tab and Obsidian should show that you are logged in.
 
 ### Troubleshooting
 
