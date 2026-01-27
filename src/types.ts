@@ -12,6 +12,8 @@ export interface ObsidianGoogleLikedVideoSettings {
     fetchOnStartup: boolean;
     lastAutoFetchTime: number;
     lastSeenVersion: string;
+    autoCreateNoteEnabled: boolean;
+    linkToDailyNote: boolean;
 }
 
 export interface YouTubeVideo {

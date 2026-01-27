@@ -11,41 +11,46 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 
-const context = await esbuild.context({
-	banner: {
-		js: banner,
-	},
-	entryPoints: ["src/main.ts"],
-	bundle: true,
-	external: [
-		"obsidian",
-		"electron",
-		"@codemirror/autocomplete",
-		"@codemirror/collab",
-		"@codemirror/commands",
-		"@codemirror/language",
-		"@codemirror/lint",
-		"@codemirror/search",
-		"@codemirror/state",
-		"@codemirror/view",
-		"@lezer/common",
-		"@lezer/highlight",
-		"@lezer/lr",
-		...builtins],
-	format: "cjs",
-	target: "es2018",
-	logLevel: "info",
-	sourcemap: prod ? false : "inline",
-	treeShaking: true,
-	outfile: "main.js",
-	define: {
-		'process.env.NODE_ENV': prod ? '"production"' : '"development"',
-	},
-});
+async function buildPlugin() {
+    await esbuild.build({
+        banner: {
+            js: banner,
+        },
+        entryPoints: ["src/main.ts"],
+        bundle: true,
+        external: [
+            "obsidian",
+            "electron",
+            "@codemirror/autocomplete",
+            "@codemirror/collab",
+            "@codemirror/commands",
+            "@codemirror/language",
+            "@codemirror/lint",
+            "@codemirror/search",
+            "@codemirror/state",
+            "@codemirror/view",
+            "@lezer/common",
+            "@lezer/highlight",
+            "@lezer/lr",
+            ...builtins],
+        format: "cjs",
+        target: "es2018",
+        logLevel: "info",
+        sourcemap: prod ? false : "inline",
+        treeShaking: true,
+        outfile: "main.js",
+        define: {
+            'process.env.NODE_ENV': prod ? '"production"' : '"development"',
+        },
+    });
+}
 
 if (prod) {
-	await context.rebuild();
-	process.exit(0);
+    buildPlugin().catch(() => process.exit(1));
 } else {
-	await context.watch();
+    // For development, we might still want a watch mode or similar,
+    // but for now, we'll just build once or exit.
+    // This part would typically be handled by esbuild.context().watch()
+    // For simplicity, just building once for dev if not in watch mode.
+    buildPlugin().catch(() => process.exit(1));
 }

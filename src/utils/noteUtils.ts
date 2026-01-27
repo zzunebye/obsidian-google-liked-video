@@ -1,6 +1,7 @@
-import { moment } from "obsidian";
+import { moment, TFile, Notice } from "obsidian";
 import { YouTubeVideo } from "src/types";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
+import { getAllDailyNotes, getDailyNote, createDailyNote } from "obsidian-daily-notes-interface";
 
 export const sanitizeFileName = (title: string): string => {
     return title
@@ -81,6 +82,28 @@ content-language: "${videoInfo.snippet.defaultAudioLanguage || 'unknown'}"
 
     return frontmatter;
 };
+
+export const getVideoUrl = (videoId: string): string => `https://www.youtube.com/watch?v=${videoId}`;
+
+export const linkToDailyNote = async (app: any, file: TFile) => {
+    try {
+        const today = moment().startOf('day');
+        const dailyNotes = getAllDailyNotes();
+        let dailyNote = getDailyNote(today, dailyNotes);
+
+        if (!dailyNote) {
+            dailyNote = await createDailyNote(today);
+        }
+
+        const dataToAdd = `\n- [[${file.basename}]]`;
+        await app.vault.append(dailyNote, dataToAdd);
+        new Notice(`Linked ${file.basename} to daily note.`);
+    } catch (error) {
+        console.error('Error linking to daily note:', error);
+        new Notice('Failed to link to daily note. Check console for details.');
+    }
+};
+
 
 export const getExpectedNotePath = async (
     app: any,
