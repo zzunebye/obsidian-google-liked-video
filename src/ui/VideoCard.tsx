@@ -5,7 +5,7 @@ import { YouTubeVideo } from "src/types";
 import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
-import { sanitizeFileName, generateVideoNoteContent, getExpectedNotePath } from "src/utils/noteUtils";
+import { sanitizeFileName, generateVideoNoteContent, generateUniqueFileName } from "src/utils/noteUtils";
 
 interface VideoCardProps {
     source: 'liked' | 'playlist';
@@ -78,8 +78,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             const channelName = videoInfo.snippet.channelTitle;
             const appInstance = plugin?.app || app;
 
-            // Get the expected path for this video note
-            const expectedPath = await getExpectedNotePath(
+            const expectedPath = await generateUniqueFileName(
                 appInstance,
                 baseFileName,
                 customPath,
@@ -87,31 +86,16 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
                 channelName
             );
 
-            // Check if a note already exists at the expected path
-            const existingFile = appInstance.vault.getAbstractFileByPath(expectedPath);
+            // Note doesn't exist, create it
+            const noteContent = generateVideoNoteContent(
+                videoInfo,
+                url,
+                plugin?.getCategoryDisplay?.bind(plugin)
+            );
 
-            // Only treat as a file if it is a TFile (has 'extension' and 'basename')
-            if (
-                existingFile &&
-                typeof (existingFile as any).extension === 'string' &&
-                typeof (existingFile as any).basename === 'string' &&
-                typeof (existingFile as any).path === 'string'
-            ) {
-                // Note already exists, open it
-                await appInstance.workspace.openLinkText((existingFile as any).path, '', true);
-                new Notice(`Opened existing note: ${(existingFile as any).basename}`);
-            } else {
-                // Note doesn't exist, create it
-                const noteContent = generateVideoNoteContent(
-                    videoInfo,
-                    url,
-                    plugin?.getCategoryDisplay?.bind(plugin)
-                );
-
-                const file = await appInstance.vault.create(expectedPath, noteContent);
-                await appInstance.workspace.openLinkText(file.path, '', true);
-                new Notice(`Created note: ${file.basename}`);
-            }
+            const file = await appInstance.vault.create(expectedPath, noteContent);
+            await appInstance.workspace.openLinkText(file.path, '', true);
+            new Notice(`Created note: ${file.basename}`);
         } catch (error) {
             console.error('Error handling video note:', error);
             new Notice('Failed to create/open video note. Check console for details.');

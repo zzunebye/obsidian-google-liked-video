@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { App, Notice, Plugin, PluginManifest, Vault, WorkspaceLeaf } from 'obsidian';
-import { ObsidianGoogleLikedVideoSettings, YouTubeVideosResponse } from 'src/types';
+import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
@@ -11,6 +11,7 @@ import { debugLogger } from './debug';
 import { UI_TEXT } from './constants/uiText';
 import { categoriesService } from './categoriesService';
 import { FeatureIntroModal } from './components/FeatureIntroModal';
+import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
@@ -25,7 +26,9 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	autoFetchInterval: 60,
 	fetchOnStartup: false,
 	lastAutoFetchTime: 0,
-	lastSeenVersion: ''
+	lastSeenVersion: '',
+	autoCreateNoteEnabled: false,
+	linkToDailyNote: false,
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';
@@ -247,21 +250,30 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			debugLogger.time('auto-fetch');
 
 			if (this.likedVideoApi && localStorageService.getAccessToken()) {
-				const limit = this.settings.fetchLimit;
-				const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(limit);
-				if (response && response.items.length > 0) {
-					debugLogger.autoFetch(`Fetched ${response.items.length} videos`);
+				let allLikedVideos: YouTubeVideo[] = [];
+				let nextPageToken: string | undefined = undefined;
 
-					const storedLikedVideos = localStorageService.getLikedVideos();
-					const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
+				do {
+					const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(this.settings.fullFetchLimit, nextPageToken);
+					if (response && response.items.length > 0) {
+						allLikedVideos = allLikedVideos.concat(response.items);
+						nextPageToken = response.nextPageToken;
+					} else {
+						// No more videos or an error occurred
+						nextPageToken = undefined;
+					}
+				} while (nextPageToken !== undefined);
 
-					const newLikedVideos = response.items.filter(video => !storedLikedVideoIdsSet.has(video.id));
+				debugLogger.autoFetch(`Fetched total ${allLikedVideos.length} videos`);
 
-					const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
+				const storedLikedVideos = localStorageService.getLikedVideos();
+				const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
 
-					// Batch state updates to avoid unnecessary re-renders
+				const newLikedVideos = allLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
+				const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos]; // All fetched videos are now considered 'stored'
+
+				if (newLikedVideos.length > 0) {
 					localStorageService.setLikedVideos(updatedLikedVideos);
-
 					new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
 
 					this.settings.lastAutoFetchTime = now;
@@ -269,11 +281,17 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 					const view = this.paneRef;
 					if (view) {
-						// update state of the view
 						this.reloadView();
 					}
-					// update the last auto fetch time in setting tab
 					this.settingTabRef?.display();
+
+					if (this.settings.autoCreateNoteEnabled) {
+						for (const video of newLikedVideos) {
+							await this.automateVideoProcessing(video);
+						}
+					}
+				} else {
+					debugLogger.autoFetch('No new videos found during auto-fetch.');
 				}
 			}
 		} catch (error) {
@@ -284,6 +302,63 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			this.isFetching = false;
 			debugLogger.autoFetch('Auto-fetch completed');
 		}
+	}
+
+	async automateVideoProcessing(video: YouTubeVideo) {
+		try {
+			const baseFileName = sanitizeFileName(video.snippet.title);
+			const customPath = this.settings?.videoNotePath || '';
+			const organizeByChannel = this.settings?.organizeByChannel || false;
+			const channelName = video.snippet.channelTitle;
+
+			// Get the expected path for this video note
+			const expectedPath = await getExpectedNotePath(
+				this.app,
+				baseFileName,
+				customPath,
+				organizeByChannel,
+				channelName
+			);
+
+			// Check if a note already exists at the expected path
+			const existingFile = this.app.vault.getAbstractFileByPath(expectedPath);
+
+			if (!existingFile) {
+				const videoUrl = getVideoUrl(video.id);
+				// Note doesn't exist, create it
+				const noteContent = generateVideoNoteContent(
+					video,
+					videoUrl,
+					this.getCategoryDisplay.bind(this)
+				);
+
+				const newNote = await this.app.vault.create(expectedPath, noteContent);
+				new Notice(`Created note: ${newNote.basename}`);
+
+				// Get AI Summary
+				const summary = await this.getAISummary(video.snippet.title, video.snippet.description);
+
+				// Append summary to the newly created note
+				if (summary) {
+					await this.app.vault.append(newNote, `\n\n## AI Summary\n${summary}`);
+				}
+
+				// Link to Daily Note
+				if (this.settings.linkToDailyNote) {
+					await linkToDailyNote(this.app, newNote);
+				}
+			}
+		} catch (error) {
+			console.error('Error handling video note automation:', error);
+			new Notice('Failed to create video note automatically. Check console for details.');
+		}
+	}
+
+	async getAISummary(title: string, description: string): Promise<string> {
+		// This is a placeholder for AI summary generation.
+		// You can implement this using an AI service like OpenAI, etc.
+		console.log("AI summary generation for video:", title);
+		return "";
 	}
 
 	/**
