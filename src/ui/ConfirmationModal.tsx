@@ -53,7 +53,7 @@ const ConfirmationContent: React.FC<ConfirmationModalProps> = ({
             <div className="confirmation-modal__icon">
                 {getTypeIcon()}
             </div>
-            <div className="confirmation-modal__message">
+            <div className="confirmation-modal__message" style={{ whiteSpace: 'pre-line' }}>
                 {message}
             </div>
             {showRememberChoice && (
@@ -118,7 +118,7 @@ export const openConfirmationModal = (
         />,
         {
             title: options.title || 'Confirmation',
-            width: '400px'
+            width: '600px'
         }
     );
 

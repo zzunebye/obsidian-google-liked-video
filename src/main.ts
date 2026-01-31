@@ -253,9 +253,16 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			if (this.likedVideoApi && localStorageService.getAccessToken()) {
 				let allLikedVideos: YouTubeVideo[] = [];
 				const shouldFetchAllVideos = this.settings.fullFetchOnEveryAutoFetch;
+				const fetchInterval = this.settings.autoFetchInterval;
 
 				if (shouldFetchAllVideos) {
 					// Fetch all videos using pagination
+					debugLogger.warn(
+						'⚠️ Full fetch mode enabled - fetching ALL liked videos. ' +
+						'This may consume significant resources.'
+					);
+					new Notice(UI_TEXT.FULL_FETCH_STARTED_NOTICE);
+
 					let nextPageToken: string | undefined = undefined;
 					do {
 						const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(this.settings.fullFetchLimit, nextPageToken);
@@ -268,6 +275,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 						}
 					} while (nextPageToken !== undefined);
 					debugLogger.autoFetch(`Fetched all videos: ${allLikedVideos.length} total`);
+
+					// Warn if we fetched a very large number of videos
+					if (allLikedVideos.length > 2000 && fetchInterval < 120) {
+						debugLogger.warn(
+							`Fetched ${allLikedVideos.length} videos with full fetch. ` +
+							`Consider increasing auto-fetch interval to reduce resource usage.`
+						);
+					}
 				} else {
 					// Fetch only limited number of videos
 					const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(this.settings.fetchLimit);

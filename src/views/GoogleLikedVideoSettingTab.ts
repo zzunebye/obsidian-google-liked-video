@@ -9,6 +9,8 @@ import { LikedVideoApi } from 'src/api';
 import GoogleLikedVideoPlugin from '../main';
 import { LikedVideoListPane } from './LikedVideoListPane';
 import { debugLogger } from 'src/debug';
+import { confirmAction } from '../ui/ConfirmationModal';
+import { UI_TEXT } from '../constants/uiText';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
@@ -225,14 +227,70 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 });
 
             new Setting(containerEl)
-                .setName('Full fetch on every auto-fetch instead of limit')
-                .setDesc('If enabled, the plugin will fetch all videos instead of the limit set in the fetch limit setting. This will fetch all videos from the YouTube API and store them in the local storage. The limit can be set in the fetch limit setting.')
+                .setName('Full fetch on every auto-fetch')
+                .setDesc(UI_TEXT.FULL_FETCH_WARNING_DESC)
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.fullFetchOnEveryAutoFetch)
                     .onChange(async (value) => {
+                        // If user is ENABLING full fetch, show confirmation modal
+                        if (value && !this.plugin.settings.fullFetchOnEveryAutoFetch) {
+                            const result = await confirmAction(
+                                this.app,
+                                UI_TEXT.FULL_FETCH_CONFIRM_MESSAGE,
+                                {
+                                    title: UI_TEXT.FULL_FETCH_WARNING_TITLE,
+                                    confirmText: 'Yes, Enable Full Fetch',
+                                    cancelText: 'Cancel',
+                                    type: 'warning',
+                                    showRememberChoice: false
+                                }
+                            );
+
+                            if (!result.confirmed) {
+                                // User cancelled - don't change the setting
+                                // Reset the toggle to its previous state
+                                toggle.setValue(false);
+                                return;
+                            }
+                        }
+
+                        // Apply the setting change
                         this.plugin.settings.fullFetchOnEveryAutoFetch = value;
                         await this.plugin.saveSettings();
+
+                        // Show toast notice when enabled
+                        if (value) {
+                            new Notice(UI_TEXT.FULL_FETCH_ENABLED_NOTICE);
+                        }
+
+                        // Refresh display to show/hide conditional warnings
+                        this.display();
                     }));
+
+            // Show warning info box when full fetch is enabled
+            if (this.plugin.settings.fullFetchOnEveryAutoFetch) {
+                new Setting(containerEl)
+                    .setName('⚠️ Full Fetch Mode Active')
+                    .setDesc(UI_TEXT.FULL_FETCH_ACTIVE_INFO)
+                    .setClass('setting-item-warning');
+            }
+
+            // Show aggressive interval warning if interval is less than 6 hours
+            if (this.plugin.settings.fullFetchOnEveryAutoFetch &&
+                this.plugin.settings.autoFetchInterval < 360) {
+                new Setting(containerEl)
+                    .setName('⚠️ Aggressive Fetch Interval')
+                    .setDesc(UI_TEXT.FULL_FETCH_AGGRESSIVE_INTERVAL_WARNING(this.plugin.settings.autoFetchInterval))
+                    .setClass('setting-item-danger');
+            }
+
+            // Show recommendations when full fetch is enabled
+            if (this.plugin.settings.fullFetchOnEveryAutoFetch) {
+                new Setting(containerEl)
+                    .setName('💡 Recommendations')
+                    .setDesc(UI_TEXT.FULL_FETCH_RECOMMENDATIONS)
+                    .setClass('setting-item-info');
+            }
 
             new Setting(containerEl)
                 .setName('Fetch on startup')

@@ -40,4 +40,36 @@ export const UI_TEXT = {
     // Error
     ERROR_TITLE: 'error',
     ERROR_MESSAGE: (error: any) => `error: ${error}`,
+
+    // Full Fetch Mode Warnings
+    FULL_FETCH_WARNING_TITLE: 'Full Fetch Mode - Resource Intensive',
+    FULL_FETCH_CONFIRM_MESSAGE:
+        'Full fetch mode makes continuous API calls to retrieve ALL your liked videos. \n\nIf you have more than thousands of videos, this can:\n\n' +
+        '• Consume significant memory (5-10KB per video)\n' +
+        '• Use substantial API quota (~1 call per 50 videos)\n' +
+        '• Drain battery and network resources\n\n' +
+        'Recommended: Reduce the auto-fetch interval.\n\n' +
+        'Enable full fetch mode?',
+    FULL_FETCH_ENABLED_NOTICE: '⚠️ Full fetch mode enabled - this will fetch ALL videos on each auto-fetch',
+    FULL_FETCH_STARTED_NOTICE: '⚠️ Full fetch started - this may take several minutes',
+    FULL_FETCH_WARNING_DESC:
+        '⚠️ WARNING: Fetches ALL liked videos instead of the fetch limit. ' +
+        'Uses more API quota and resources but ensures you never miss new videos. ' +
+        'Recommended only for infrequent auto-fetch (6+ hours).',
+    FULL_FETCH_ACTIVE_INFO:
+        '⚠️ Full Fetch Mode Active\n\n' +
+        'Impact per fetch:\n' +
+        '• Memory: ~5-10KB per video (~50MB for 5,000 videos)\n' +
+        '• API Quota: ~1 call per 50 videos (100+ calls for 5,000 videos)\n' +
+        '• Fetch Time: 5-30+ minutes for thousands of videos\n' +
+        '• Battery/Network: Continuous pagination drains resources',
+    FULL_FETCH_AGGRESSIVE_INTERVAL_WARNING: (interval: number) =>
+        `⚠️ Aggressive interval detected (${interval} min). ` +
+        'Full fetch should run every 6+ hours (360 min) to avoid overwhelming API/device.',
+    FULL_FETCH_RECOMMENDATIONS:
+        'Recommended Configuration:\n' +
+        '• Auto-fetch Interval: 360+ minutes (6+ hours)\n' +
+        '• Run during off-peak hours when device is charging\n' +
+        '• Monitor Obsidian performance after enabling\n' +
+        '• Consider limiting to 1-2 full fetches per day',
 } as const;
