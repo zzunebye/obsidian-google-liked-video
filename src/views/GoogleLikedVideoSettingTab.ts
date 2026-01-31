@@ -166,87 +166,97 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     this.updateListPaneView();
                 }));
 
-		new Setting(containerEl)
-			.setName('Automatically create notes')
-			.setDesc('If enabled, a new note will be created for each new video fetched.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.autoCreateNoteEnabled)
-				.onChange(async (value) => {
-					this.plugin.settings.autoCreateNoteEnabled = value;
-					await this.plugin.saveSettings();
-					this.display();
-				}));
+        new Setting(containerEl)
+            .setName('Automatically create notes')
+            .setDesc('If enabled, a new note will be created for each new video fetched.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoCreateNoteEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.autoCreateNoteEnabled = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
 
-		if (this.plugin.settings.autoCreateNoteEnabled) {
-			new Setting(containerEl)
-				.setName('Link to daily note')
-				.setDesc('If enabled, a link to the new video note will be added to your daily note.')
-				.addToggle(toggle => toggle
-					.setValue(this.plugin.settings.linkToDailyNote)
-					.onChange(async (value) => {
-						this.plugin.settings.linkToDailyNote = value;
-						await this.plugin.saveSettings();
-					}));
-		}
+        if (this.plugin.settings.autoCreateNoteEnabled) {
+            new Setting(containerEl)
+                .setName('Link to daily note')
+                .setDesc('If enabled, a link to the new video note will be added to your daily note.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.linkToDailyNote)
+                    .onChange(async (value) => {
+                        this.plugin.settings.linkToDailyNote = value;
+                        await this.plugin.saveSettings();
+                    }));
+        }
 
-        		if (this.plugin.settings.autoFetchEnabled) {
-        			new Setting(containerEl)
-        				.setName('Fetch interval')
-        				.setDesc('How often to automatically fetch videos (in minutes)')
-        				.addDropdown(dropdown => {
-        					// Add debug option for 5 seconds if in debug mode
-        					const debugConfig = debugLogger.getConfig();
-        					if (debugConfig.enabled) {
-        						dropdown.addOption('0.083', '🔧 5 seconds (Debug)');
-        						dropdown.addOption('1', '🔧 1 minute (Debug)');
-        					}
-        
-        					dropdown
-        						.addOption('10', '10 minutes')
-        						.addOption('30', '30 minutes')
-        						.addOption('60', '1 hour')
-        						.addOption('120', '2 hours')
-        						.addOption('360', '6 hours')
-        						.addOption('720', '12 hours')
-        						.addOption('1440', '24 hours')
-        						.setValue(String(this.plugin.settings.autoFetchInterval))
-        						.onChange(async (value) => {
-        							this.plugin.settings.autoFetchInterval = parseFloat(value);
-        							await this.plugin.saveSettings();
-        
-        							if (parseFloat(value) < 1) {
-        								new Notice('⚠️ Debug mode: Using very short fetch interval!');
-        							}
-        							this.updateListPaneView();
-        							this.display();
-        						});
-        
-        					return dropdown;
-        				});
-        
-        			new Setting(containerEl)
-        				.setName('Fetch on startup')
-        				.setDesc('Automatically fetch videos when Obsidian starts')
-        				.addToggle(toggle => toggle
-        					.setValue(this.plugin.settings.fetchOnStartup)
-        					.onChange(async (value) => {
-        						this.plugin.settings.fetchOnStartup = value;
-        						await this.plugin.saveSettings();
-        					}));
-        
-        			if (this.plugin.settings.lastAutoFetchTime > 0) {
-        				const lastFetch = new Date(this.plugin.settings.lastAutoFetchTime);
-        
-        				// Format the interval display
-        				const intervalDisplay = this.plugin.settings.autoFetchInterval < 1
-        					? `${Math.round(this.plugin.settings.autoFetchInterval * 60)}s`
-        					: `${this.plugin.settings.autoFetchInterval}min`;
-        
-        				new Setting(containerEl)
-        					.setName('Last auto-fetch')
-        					.setDesc(`Last: ${lastFetch.toLocaleString()} (every ${intervalDisplay})`);
-        			}
-        		}
+        if (this.plugin.settings.autoFetchEnabled) {
+            new Setting(containerEl)
+                .setName('Fetch interval')
+                .setDesc('How often to automatically fetch videos (in minutes)')
+                .addDropdown(dropdown => {
+                    // Add debug option for 5 seconds if in debug mode
+                    const debugConfig = debugLogger.getConfig();
+                    if (debugConfig.enabled) {
+                        dropdown.addOption('0.083', '🔧 5 seconds (Debug)');
+                        dropdown.addOption('1', '🔧 1 minute (Debug)');
+                    }
+
+                    dropdown
+                        .addOption('10', '10 minutes')
+                        .addOption('30', '30 minutes')
+                        .addOption('60', '1 hour')
+                        .addOption('120', '2 hours')
+                        .addOption('360', '6 hours')
+                        .addOption('720', '12 hours')
+                        .addOption('1440', '24 hours')
+                        .setValue(String(this.plugin.settings.autoFetchInterval))
+                        .onChange(async (value) => {
+                            this.plugin.settings.autoFetchInterval = parseFloat(value);
+                            await this.plugin.saveSettings();
+
+                            if (parseFloat(value) < 1) {
+                                new Notice('⚠️ Debug mode: Using very short fetch interval!');
+                            }
+                            this.updateListPaneView();
+                            this.display();
+                        });
+
+                    return dropdown;
+                });
+
+            new Setting(containerEl)
+                .setName('Full fetch on every auto-fetch instead of limit')
+                .setDesc('If enabled, the plugin will fetch all videos instead of the limit set in the fetch limit setting. This will fetch all videos from the YouTube API and store them in the local storage. The limit can be set in the fetch limit setting.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.fullFetchOnEveryAutoFetch)
+                    .onChange(async (value) => {
+                        this.plugin.settings.fullFetchOnEveryAutoFetch = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Fetch on startup')
+                .setDesc('Automatically fetch videos when Obsidian starts')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.fetchOnStartup)
+                    .onChange(async (value) => {
+                        this.plugin.settings.fetchOnStartup = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            if (this.plugin.settings.lastAutoFetchTime > 0) {
+                const lastFetch = new Date(this.plugin.settings.lastAutoFetchTime);
+
+                // Format the interval display
+                const intervalDisplay = this.plugin.settings.autoFetchInterval < 1
+                    ? `${Math.round(this.plugin.settings.autoFetchInterval * 60)}s`
+                    : `${this.plugin.settings.autoFetchInterval}min`;
+
+                new Setting(containerEl)
+                    .setName('Last auto-fetch')
+                    .setDesc(`Last: ${lastFetch.toLocaleString()} (every ${intervalDisplay})`);
+            }
+        }
         new Setting(containerEl)
             .setHeading()
             .setName('Functions')

@@ -29,6 +29,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	lastSeenVersion: '',
 	autoCreateNoteEnabled: false,
 	linkToDailyNote: false,
+	fullFetchOnEveryAutoFetch: false,
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';
@@ -251,20 +252,30 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 			if (this.likedVideoApi && localStorageService.getAccessToken()) {
 				let allLikedVideos: YouTubeVideo[] = [];
-				let nextPageToken: string | undefined = undefined;
+				const shouldFetchAllVideos = this.settings.fullFetchOnEveryAutoFetch;
 
-				do {
-					const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(this.settings.fullFetchLimit, nextPageToken);
+				if (shouldFetchAllVideos) {
+					// Fetch all videos using pagination
+					let nextPageToken: string | undefined = undefined;
+					do {
+						const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(this.settings.fullFetchLimit, nextPageToken);
+						if (response && response.items.length > 0) {
+							allLikedVideos = allLikedVideos.concat(response.items);
+							nextPageToken = response.nextPageToken;
+						} else {
+							// No more videos or an error occurred
+							nextPageToken = undefined;
+						}
+					} while (nextPageToken !== undefined);
+					debugLogger.autoFetch(`Fetched all videos: ${allLikedVideos.length} total`);
+				} else {
+					// Fetch only limited number of videos
+					const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(this.settings.fetchLimit);
 					if (response && response.items.length > 0) {
-						allLikedVideos = allLikedVideos.concat(response.items);
-						nextPageToken = response.nextPageToken;
-					} else {
-						// No more videos or an error occurred
-						nextPageToken = undefined;
+						allLikedVideos = response.items;
 					}
-				} while (nextPageToken !== undefined);
-
-				debugLogger.autoFetch(`Fetched total ${allLikedVideos.length} videos`);
+					debugLogger.autoFetch(`Fetched limited videos: ${allLikedVideos.length} (limit: ${this.settings.fetchLimit})`);
+				}
 
 				const storedLikedVideos = localStorageService.getLikedVideos();
 				const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
