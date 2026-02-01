@@ -16,6 +16,13 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 
 *Features are still at its early stages - your feedback shapes the future.* Connect with us at [zzunebye@gmail.com](mailto:zzunebye@gmail.com) or open an issue for suggestions.
 
+## Table of Contents
+
+- [Features](#features)
+- [Tips](#tips)
+- [Requirements](#requirements)
+- [Release Notes](#release-notes)
+
 ## Features
 
 ### ✅ Available Now
@@ -28,11 +35,6 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 - **Collection curation**: Remove videos from your liked list directly within Obsidian
 - **Video info display**: Display video info with a single click
 - **Search by channel name**: Search by channel title when channel is clicked in the video card
-
-### 🔄 Coming Soon
-- **Batch processing**: Bulk import and organize your entire video collection
-- **Trending insights**: Surface your most-watched and popular videos
-
 It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/obsidian-google-calendar) plugin.
 
 ## Tips
@@ -109,4 +111,34 @@ If you encounter any issues, consider the following steps:
 1. **Credentials**: Double-check that your Client ID and Client secret are correctly entered in the plugin settings.
 2. **Authorized URIs**: Verify that http://127.0.0.1:42813 is listed in the Authorized JavaScript origins and http://127.0.0.1:42813/callback in the Authorized redirect URIs.
 3. If granting permission to your google project fails, check if there are multiple window/tabs for login process opened. If so, close all of them and try again.
+
+## Release Notes
+
+### 2.2.0
+
+- **Automatic note creation**: Automatically create video notes for newly liked videos during auto-fetch
+- **Daily note linking**: Option to automatically link new video notes to your daily note
+- **Full fetch mode**: New option to fetch all liked videos on every auto-fetch (with quota warnings and user confirmation)
+- **Template system**: Customize video notes with your own markdown templates
+  - Configure template folder and default template
+  - Fallback to built-in template option
+  - Create example templates with one click
+
+### 2.1.0
+
+- **UI improvements**: Replaced icons with Lucide React icons for better consistency
+- **Bug fix**: Fixed duration badge color display
+
+### 2.0.1
+
+- **Type safety**: Improved type safety in PlaylistApi
+
+### 2.0.0
+
+- **Enhanced daily note integration**: Add video entries to daily notes with improved error handling
+- **Playlist pinning**: Pin your favorite playlists for quick access
+- **Infinite scroll**: Smooth infinite scroll for video loading in playlists
+- **Performance optimization**: Video display limit for better performance
+- **Improved caching**: Enhanced cache management in PlaylistApi
+- **UI refinements**: Updated ribbon icon labels and command names for clarity
 
