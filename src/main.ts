@@ -144,7 +144,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.initializeCategories();
 
 		// Check if this is a version update and show feature intro modal
-		this.checkVersionUpdate();
+		// TODO: Re-enable after implementing version-specific changelog display
+		// this.checkVersionUpdate();
 	}
 
 	onunload() {
