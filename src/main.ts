@@ -12,7 +12,7 @@ import { UI_TEXT } from './constants/uiText';
 import { categoriesService } from './categoriesService';
 import { FeatureIntroModal } from './components/FeatureIntroModal';
 import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
-import { DEFAULT_TEMPLATE } from './utils/exampleTemplates';
+import { DEFAULT_TEMPLATE } from './utils/templateConstants';
 import { TemplateService } from './services/templateService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {

@@ -4,7 +4,6 @@ import { localStorageService } from 'src/storage';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
 import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { getAllDailyNotes, getDailyNote } from 'obsidian-daily-notes-interface';
 import { LikedVideoApi } from 'src/api';
 import GoogleLikedVideoPlugin from '../main';
 import { LikedVideoListPane } from './LikedVideoListPane';
@@ -466,7 +465,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setButtonText('Fetch')
                 .onClick(async () => {
                     try {
-                        await this.fetchAndUpdateLikedVideos(this.app, 20, false);
+                        await this.fetchAndUpdateLikedVideos(this.app, fetchLimit, false);
                         this.display();
                         this.updateListPaneView()
                     } catch (error) {
@@ -480,6 +479,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setButtonText('Clear stored liked videos in local storage')
                 .onClick(async () => {
                     localStorageService.setLikedVideos([]);
+                    this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
+                        { videos: [] },
+                        { history: true });
+
                     this.display();
                     this.updateListPaneView();
 
@@ -569,9 +572,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     async fetchAndUpdateLikedVideos(app: App, limit = 50, repetitive = false): Promise<void> {
-        const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
-        new Notice(`${totalLikedVideos} videos in total`);
-
         let allLikedVideos: YouTubeVideo[] = [];
         let nextPageToken: string | undefined = undefined;
         do {
@@ -596,13 +596,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         } else {
             updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
         }
-
         localStorageService.setLikedVideos(updatedLikedVideos);
         this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
             { videos: updatedLikedVideos },
             { history: true });
 
-        new Notice(`New liked videos have been fetched and added to LocalStorage - ${newLikedVideos.length} new videos.`);
+        new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
 
         // Automatically create notes for new videos if enabled
         if (this.plugin.settings.autoCreateNoteEnabled) {
