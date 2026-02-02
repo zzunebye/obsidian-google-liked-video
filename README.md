@@ -14,7 +14,7 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 - One-click integration with your daily notes
 - Curate your collection by removing videos directly from the sidebar
 
-*Features are still at its early stages - your feedback shapes the future.* Connect with us at [zzunebye@gmail.com](mailto:zzunebye@gmail.com) or open an issue for suggestions.
+*Features are still at its early stages - your feedback shapes the future.* Connect with me at [zzunebye@gmail.com](mailto:zzunebye@gmail.com) or open an issue for suggestions.
 
 ## Table of Contents
 
