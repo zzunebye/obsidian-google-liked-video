@@ -464,6 +464,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setButtonText('Full scan')
                 .onClick(async () => {
                     try {
+                        // Store existing videos before fetch to identify new ones
+                        const storedLikedVideosBefore = localStorageService.getLikedVideos();
+                        const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
+
                         /// get number of the videos in the liked videos
                         const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
                         new Notice(`${totalLikedVideos} videos in total`);
@@ -493,6 +497,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         this.display();
                         this.updateListPaneView()
                         new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
+
+                        // Auto-create notes for new videos if enabled
+                        const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
+                        if (this.plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
+                            for (const video of newLikedVideos) {
+                                await this.plugin.automateVideoProcessing(video);
+                            }
+                            new Notice(`Created ${newLikedVideos.length} new video notes`);
+                        }
 
                     } catch (error) {
                         new Modal(this.app).setTitle('error').setContent("error: " + error).open();
