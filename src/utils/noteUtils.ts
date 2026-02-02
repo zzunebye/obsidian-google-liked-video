@@ -133,7 +133,7 @@ export const buildTemplateVariables = (
             .map(tag => `"${tag.replace(/"/g, '\\"')}"`)
             .join(', '),
         'tags_array': JSON.stringify(videoInfo.snippet.tags || []),
-        'tags': videoInfo.snippet.tags.toString(),
+        'tags': videoInfo.snippet.tags?.toString() || '',
         'language': videoInfo.snippet.defaultAudioLanguage || '',
         'language_name': getLanguageName(videoInfo.snippet.defaultAudioLanguage),
 
