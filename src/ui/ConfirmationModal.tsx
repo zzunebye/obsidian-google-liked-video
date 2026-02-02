@@ -92,7 +92,7 @@ const ConfirmationContent: React.FC<ConfirmationModalProps> = ({
 // Utility function to open confirmation modal
 export const openConfirmationModal = (
     app: App,
-    options: ConfirmationModalProps & { title?: string }
+    options: ConfirmationModalProps & { title?: string; onClose?: () => void }
 ): ReactModal => {
     // eslint-disable-next-line prefer-const
     let modalInstance: ReactModal;
@@ -118,7 +118,8 @@ export const openConfirmationModal = (
         />,
         {
             title: options.title || 'Confirmation',
-            width: '600px'
+            width: '600px',
+            onClose: options.onClose
         }
     );
 
@@ -139,13 +140,23 @@ export const confirmAction = (
     }
 ): Promise<{ confirmed: boolean; rememberChoice?: boolean }> => {
     return new Promise((resolve) => {
+        let resolved = false;
+
+        const safeResolve = (result: { confirmed: boolean; rememberChoice?: boolean }) => {
+            if (!resolved) {
+                resolved = true;
+                resolve(result);
+            }
+        };
+
         openConfirmationModal(app, {
             message,
-            onConfirm: (rememberChoice?: boolean) => resolve({
+            onConfirm: (rememberChoice?: boolean) => safeResolve({
                 confirmed: true,
                 rememberChoice
             }),
-            onCancel: () => resolve({ confirmed: false }),
+            onCancel: () => safeResolve({ confirmed: false }),
+            onClose: () => safeResolve({ confirmed: false }),
             ...options
         });
     });
