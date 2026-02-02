@@ -114,6 +114,12 @@ If you encounter any issues, consider the following steps:
 
 ## Release Notes
 
+### 2.3.0
+
+- **Template system**: Added template for video note, and reference for available template variables
+- **Updated fetching logics**: Adjusted default fetch limit to 10 and maximum to 50 for better API quota management
+- **Full fetch warning**: Added warning when auto note creation is enabled with full fetch mode
+
 ### 2.2.0
 
 - **Automatic note creation**: Automatically create video notes for newly liked videos during auto-fetch
