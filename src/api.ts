@@ -607,7 +607,7 @@ export class LikedVideoApi {
         debugLogger.api(`Fetched ${data.items?.length || 0} videos`);
         debugLogger.verbose('API Response:', data);
 
-        data.items.forEach(video => {
+        data.items?.forEach(video => {
             video.pulled_at = new Date().toISOString();
         });
 

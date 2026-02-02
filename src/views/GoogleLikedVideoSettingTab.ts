@@ -38,6 +38,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         const progressValue = likedVideosCount / maxVideos;
         const fetchLimit = this.plugin.settings.fetchLimit;
 
+        const refreshToken = localStorageService.getRefreshToken();
+
         new Setting(containerEl)
             .setName('Quota')
             .setDesc('Displays the quota of liked videos fetched from the YouTube Data API v3, indicating how many videos you can store (up to 5000).')
@@ -62,129 +64,397 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setValue(`${fetchLimit}`)
                 .setDisabled(true));
 
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Video notes')
-            .setDesc('Configure the video note settings');
-
-        new Setting(containerEl)
-            .setName('Video note location')
-            .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path.')
-            .addText(text => text
-                .setPlaceholder('e.g. Youtube, Inbox, Youtube/Videos')
-                .setValue(this.plugin.settings.videoNotePath)
-                .onChange(async (value) => {
-                    this.plugin.settings.videoNotePath = value.trim();
-                    await this.plugin.saveSettings();
-                    // Refresh the display to update the organize by channel toggle state
-                    // this.display();
-                }));
-
-        new Setting(containerEl)
-            .setName('Organize by channel')
-            .setDesc('Create subfolders for each channel (e.g., Youtube/Channel Name/video.md). Only applies when using a custom video note location.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.organizeByChannel)
-                .setDisabled(!this.plugin.settings.videoNotePath || !this.plugin.settings.videoNotePath.trim())
-                .onChange(async (value) => {
-                    this.plugin.settings.organizeByChannel = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Automatically create notes')
-            .setDesc('If enabled, a new note will be created for each new video fetched.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.autoCreateNoteEnabled)
-                .onChange(async (value) => {
-                    this.plugin.settings.autoCreateNoteEnabled = value;
-                    await this.plugin.saveSettings();
-                    this.display();
-                }));
-
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Template System')
-            .setDesc('Customize video note templates');
-
-        new Setting(containerEl)
-            .setName('Enable custom templates')
-            .setDesc('Use custom markdown templates for video notes instead of the default format')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableTemplateSystem)
-                .onChange(async (value) => {
-                    this.plugin.settings.enableTemplateSystem = value;
-                    await this.plugin.saveSettings();
-                    this.display(); // Refresh to show/hide template settings
-                }));
-
-        if (this.plugin.settings.enableTemplateSystem) {
-            // Custom Template Textarea
+        if (refreshToken !== null && refreshToken !== "") {
             new Setting(containerEl)
-                .setName('Custom template')
-                .setDesc('Edit your video note template directly. Use {{variable}} syntax for dynamic content.')
-                .addButton(button => button
-                    .setButtonText('Reset to Default')
-                    .onClick(async () => {
-                        const confirmed = await confirmAction(
-                            this.app,
-                            'This will reset your template to the default. Any customizations will be lost.',
-                            {
-                                title: 'Reset Template?',
-                                confirmText: 'Reset',
-                                cancelText: 'Cancel',
-                                type: 'warning'
-                            }
-                        );
-                        if (confirmed.confirmed) {
-                            this.plugin.settings.customTemplate = DEFAULT_TEMPLATE;
+                .setHeading()
+                .setName('Video notes')
+                .setDesc('Configure the video note settings');
+
+            new Setting(containerEl)
+                .setName('Video note location')
+                .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path.')
+                .addText(text => text
+                    .setPlaceholder('e.g. Youtube, Inbox, Youtube/Videos')
+                    .setValue(this.plugin.settings.videoNotePath)
+                    .onChange(async (value) => {
+                        this.plugin.settings.videoNotePath = value.trim();
+                        await this.plugin.saveSettings();
+                        // Refresh the display to update the organize by channel toggle state
+                        // this.display();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Organize by channel')
+                .setDesc('Create subfolders for each channel (e.g., Youtube/Channel Name/video.md). Only applies when using a custom video note location.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.organizeByChannel)
+                    .setDisabled(!this.plugin.settings.videoNotePath || !this.plugin.settings.videoNotePath.trim())
+                    .onChange(async (value) => {
+                        this.plugin.settings.organizeByChannel = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Automatically create notes')
+                .setDesc('If enabled, a new note will be created for each new video fetched.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.autoCreateNoteEnabled)
+                    .onChange(async (value) => {
+                        this.plugin.settings.autoCreateNoteEnabled = value;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }));
+
+            if (this.plugin.settings.autoCreateNoteEnabled) {
+                new Setting(containerEl)
+                    .setName('Link to daily note')
+                    .setDesc('If enabled, a link to the new video note will be added to your daily note.')
+                    .addToggle(toggle => toggle
+                        .setValue(this.plugin.settings.linkToDailyNote)
+                        .onChange(async (value) => {
+                            this.plugin.settings.linkToDailyNote = value;
                             await this.plugin.saveSettings();
+                        }));
+            }
+
+            new Setting(containerEl)
+                .setHeading()
+                .setName('Template System')
+                .setDesc('Customize video note templates');
+
+            new Setting(containerEl)
+                .setName('Enable custom templates')
+                .setDesc('Use custom markdown templates for video notes instead of the default format')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.enableTemplateSystem)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableTemplateSystem = value;
+                        await this.plugin.saveSettings();
+                        this.display(); // Refresh to show/hide template settings
+                    }));
+
+            if (this.plugin.settings.enableTemplateSystem) {
+                // Custom Template Textarea
+                new Setting(containerEl)
+                    .setName('Custom template')
+                    .setDesc('Edit your video note template directly. Use {{variable}} syntax for dynamic content.')
+                    .addButton(button => button
+                        .setButtonText('Reset to Default')
+                        .onClick(async () => {
+                            const confirmed = await confirmAction(
+                                this.app,
+                                'This will reset your template to the default. Any customizations will be lost.',
+                                {
+                                    title: 'Reset Template?',
+                                    confirmText: 'Reset',
+                                    cancelText: 'Cancel',
+                                    type: 'warning'
+                                }
+                            );
+                            if (confirmed.confirmed) {
+                                this.plugin.settings.customTemplate = DEFAULT_TEMPLATE;
+                                await this.plugin.saveSettings();
+                                this.display();
+                                new Notice('Template reset to default');
+                            }
+                        }));
+
+                // Add textarea below the setting
+                const textareaContainer = containerEl.createDiv('template-textarea-container');
+                const textarea = textareaContainer.createEl('textarea', {
+                    cls: 'template-textarea',
+                    text: this.plugin.settings.customTemplate
+                });
+                textarea.rows = 20;
+                textarea.style.width = '100%';
+                textarea.style.fontFamily = 'monospace';
+                textarea.style.fontSize = '12px';
+                textarea.style.resize = 'vertical';
+                textarea.style.minHeight = '300px';
+                textarea.style.padding = '10px';
+                textarea.style.borderRadius = '4px';
+                textarea.style.border = '1px solid var(--background-modifier-border)';
+                textarea.style.backgroundColor = 'var(--background-primary)';
+
+                textarea.addEventListener('change', async () => {
+                    this.plugin.settings.customTemplate = textarea.value;
+                    await this.plugin.saveSettings();
+                });
+
+                // Collapsible Variable Reference Section
+                const detailsEl = containerEl.createEl('details', {
+                    cls: 'template-variables-reference'
+                });
+                detailsEl.style.marginTop = '16px';
+                detailsEl.style.padding = '12px';
+                detailsEl.style.backgroundColor = 'var(--background-secondary)';
+                detailsEl.style.borderRadius = '8px';
+
+                const summaryEl = detailsEl.createEl('summary', {
+                    text: '📖 Available Variables (click to expand)'
+                });
+                summaryEl.style.cursor = 'pointer';
+                summaryEl.style.fontWeight = 'bold';
+                summaryEl.style.marginBottom = '8px';
+
+                const referenceContent = detailsEl.createDiv();
+                referenceContent.innerHTML = TEMPLATE_VARIABLES_REFERENCE;
+            }
+
+
+            new Setting(containerEl)
+                .setHeading()
+                .setName('Automatic Fetch')
+                .setDesc('Configure automatic fetching of liked videos');
+
+            new Setting(containerEl)
+                .setName('Enable automatic fetch')
+                .setDesc('Automatically fetch liked videos at regular intervals')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.autoFetchEnabled)
+                    .onChange(async (value) => {
+                        this.plugin.settings.autoFetchEnabled = value;
+                        await this.plugin.saveSettings();
+                        this.display();
+                        this.updateListPaneView();
+                    }));
+
+
+            if (this.plugin.settings.autoFetchEnabled) {
+                new Setting(containerEl)
+                    .setName('Fetch interval')
+                    .setDesc('How often to automatically fetch videos (in minutes)')
+                    .addDropdown(dropdown => {
+                        // Add debug option for 5 seconds if in debug mode
+                        const debugConfig = debugLogger.getConfig();
+                        if (debugConfig.enabled) {
+                            dropdown.addOption('0.083', '🔧 5 seconds (Debug)');
+                            dropdown.addOption('1', '🔧 1 minute (Debug)');
+                        }
+
+                        dropdown
+                            .addOption('10', '10 minutes')
+                            .addOption('30', '30 minutes')
+                            .addOption('60', '1 hour')
+                            .addOption('120', '2 hours')
+                            .addOption('360', '6 hours')
+                            .addOption('720', '12 hours')
+                            .addOption('1440', '24 hours')
+                            .setValue(String(this.plugin.settings.autoFetchInterval))
+                            .onChange(async (value) => {
+                                this.plugin.settings.autoFetchInterval = parseFloat(value);
+                                await this.plugin.saveSettings();
+
+                                if (parseFloat(value) < 1) {
+                                    new Notice('⚠️ Debug mode: Using very short fetch interval!');
+                                }
+                                this.updateListPaneView();
+                                this.display();
+                            });
+
+                        return dropdown;
+                    });
+
+                new Setting(containerEl)
+                    .setName('Full fetch on every auto-fetch')
+                    .setDesc(UI_TEXT.FULL_FETCH_WARNING_DESC)
+                    .addToggle(toggle => toggle
+                        .setValue(this.plugin.settings.fullFetchOnEveryAutoFetch)
+                        .onChange(async (value) => {
+                            // If user is ENABLING full fetch, show confirmation modal
+                            if (value && !this.plugin.settings.fullFetchOnEveryAutoFetch) {
+                                const result = await confirmAction(
+                                    this.app,
+                                    UI_TEXT.FULL_FETCH_CONFIRM_MESSAGE,
+                                    {
+                                        title: UI_TEXT.FULL_FETCH_WARNING_TITLE,
+                                        confirmText: 'Yes, Enable Full Fetch',
+                                        cancelText: 'Cancel',
+                                        type: 'warning',
+                                        showRememberChoice: false
+                                    }
+                                );
+
+                                if (!result.confirmed) {
+                                    // User cancelled - don't change the setting
+                                    // Reset the toggle to its previous state
+                                    toggle.setValue(false);
+                                    return;
+                                }
+                            }
+
+                            // Apply the setting change
+                            this.plugin.settings.fullFetchOnEveryAutoFetch = value;
+                            await this.plugin.saveSettings();
+
+                            // Show toast notice when enabled
+                            if (value) {
+                                new Notice(UI_TEXT.FULL_FETCH_ENABLED_NOTICE);
+                            }
+
+                            // Refresh display to show/hide conditional warnings
                             this.display();
-                            new Notice('Template reset to default');
+                        }));
+
+                // Show recommendations when full fetch is enabled
+                if (this.plugin.settings.fullFetchOnEveryAutoFetch) {
+                    new Setting(containerEl)
+                        .setName('💡 Recommendations')
+                        .setDesc(UI_TEXT.FULL_FETCH_RECOMMENDATIONS)
+                        .setClass('setting-item-info');
+                }
+
+                new Setting(containerEl)
+                    .setName('Fetch on startup')
+                    .setDesc('Automatically fetch videos when Obsidian starts')
+                    .addToggle(toggle => toggle
+                        .setValue(this.plugin.settings.fetchOnStartup)
+                        .onChange(async (value) => {
+                            this.plugin.settings.fetchOnStartup = value;
+                            await this.plugin.saveSettings();
+                        }));
+
+                if (this.plugin.settings.lastAutoFetchTime > 0) {
+                    const lastFetch = new Date(this.plugin.settings.lastAutoFetchTime);
+
+                    // Format the interval display
+                    const intervalDisplay = this.plugin.settings.autoFetchInterval < 1
+                        ? `${Math.round(this.plugin.settings.autoFetchInterval * 60)}s`
+                        : `${this.plugin.settings.autoFetchInterval}min`;
+
+                    new Setting(containerEl)
+                        .setName('Last auto-fetch')
+                        .setDesc(`Last: ${lastFetch.toLocaleString()} (every ${intervalDisplay})`);
+                }
+            }
+        }
+
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Functions')
+            .setDesc('Functions to fetch and update liked videos');
+        if (refreshToken !== null && refreshToken !== "") {
+
+
+            new Setting(containerEl)
+                .setName('Fetch all liked videos so far and add to local storage. This will override all the liked videos in local storage.')
+                .addButton(button => button
+                    .setButtonText('Full scan')
+                    .onClick(async () => {
+                        try {
+                            // Store existing videos before fetch to identify new ones
+                            const storedLikedVideosBefore = localStorageService.getLikedVideos();
+                            const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
+
+                            /// get number of the videos in the liked videos
+                            const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
+                            new Notice(`${totalLikedVideos} videos in total`);
+
+                            // repeat fetching liked videos
+                            // this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
+                            // If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
+                            // Then, merge the fetched videos data and save to LocalStorage.
+                            let allLikedVideos: YouTubeVideo[] = [];
+                            let nextPageToken: string | undefined = undefined;
+
+                            do {
+                                const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fullFetchLimit, nextPageToken);
+                                allLikedVideos = allLikedVideos.concat(response.items);
+                                if (response.nextPageToken === undefined || response.nextPageToken === '' || response.nextPageToken === null) {
+                                    break;
+                                } else {
+                                    nextPageToken = response.nextPageToken;
+                                }
+                            } while (nextPageToken !== undefined);
+
+                            // Save the fetched videos to LocalStorage
+                            localStorageService.setLikedVideos(allLikedVideos);
+                            this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
+                                { videos: allLikedVideos },
+                                { history: true });
+                            this.display();
+                            this.updateListPaneView()
+                            new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
+
+                            // Auto-create notes for new videos if enabled
+                            const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
+                            if (this.plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
+                                for (const video of newLikedVideos) {
+                                    await this.plugin.automateVideoProcessing(video);
+                                }
+                                new Notice(`Created ${newLikedVideos.length} new video notes`);
+                            }
+
+                        } catch (error) {
+                            new Modal(this.app).setTitle('error').setContent("error: " + error).open();
                         }
                     }));
 
-            // Add textarea below the setting
-            const textareaContainer = containerEl.createDiv('template-textarea-container');
-            const textarea = textareaContainer.createEl('textarea', {
-                cls: 'template-textarea',
-                text: this.plugin.settings.customTemplate
-            });
-            textarea.rows = 20;
-            textarea.style.width = '100%';
-            textarea.style.fontFamily = 'monospace';
-            textarea.style.fontSize = '12px';
-            textarea.style.resize = 'vertical';
-            textarea.style.minHeight = '300px';
-            textarea.style.padding = '10px';
-            textarea.style.borderRadius = '4px';
-            textarea.style.border = '1px solid var(--background-modifier-border)';
-            textarea.style.backgroundColor = 'var(--background-primary)';
+            new Setting(containerEl)
+                .setName('Fetch all liked videos so far, compare to the stored videos and filter/add the new videos to local storage')
+                .addButton(button => button
+                    .setButtonText('Fetch')
+                    .onClick(async () => {
+                        try {
+                            // Store existing videos before fetch to identify new ones
+                            const storedLikedVideosBefore = localStorageService.getLikedVideos();
+                            const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
 
-            textarea.addEventListener('change', async () => {
-                this.plugin.settings.customTemplate = textarea.value;
-                await this.plugin.saveSettings();
-            });
+                            /// get number of the videos in the liked videos
+                            // const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
+                            // new Notice(`${totalLikedVideos} videos in total`);
 
-            // Collapsible Variable Reference Section
-            const detailsEl = containerEl.createEl('details', {
-                cls: 'template-variables-reference'
-            });
-            detailsEl.style.marginTop = '16px';
-            detailsEl.style.padding = '12px';
-            detailsEl.style.backgroundColor = 'var(--background-secondary)';
-            detailsEl.style.borderRadius = '8px';
+                            // repeat fetching liked videos
+                            // this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
+                            // If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
+                            // Then, merge the fetched videos data and save to LocalStorage.
+                            let allLikedVideos: YouTubeVideo[] = [];
+                            let nextPageToken: string | undefined = undefined;
 
-            const summaryEl = detailsEl.createEl('summary', {
-                text: '📖 Available Variables (click to expand)'
-            });
-            summaryEl.style.cursor = 'pointer';
-            summaryEl.style.fontWeight = 'bold';
-            summaryEl.style.marginBottom = '8px';
+                            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fetchLimit, nextPageToken);
+                            allLikedVideos = allLikedVideos.concat(response.items);
 
-            const referenceContent = detailsEl.createDiv();
-            referenceContent.innerHTML = TEMPLATE_VARIABLES_REFERENCE;
+                            // Save the fetched videos to LocalStorage
+                            localStorageService.setLikedVideos(allLikedVideos);
+                            this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
+                                { videos: allLikedVideos },
+                                { history: true });
+                            this.display();
+                            this.updateListPaneView()
+
+                            new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(response.items?.length || 0));
+
+                            // Auto-create notes for new videos if enabled
+                            const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
+                            if (this.plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
+                                for (const video of newLikedVideos) {
+                                    await this.plugin.automateVideoProcessing(video);
+                                }
+                                new Notice(`Created ${newLikedVideos.length} new video notes`);
+                            }
+
+                        } catch (error) {
+                            console.error(error);
+                            new Modal(this.app).setTitle('error').setContent("error: " + error).open();
+                        }
+                    }));
         }
+
+        new Setting(containerEl)
+            .setName('Clear local storage')
+            .addButton(button => button
+                .setButtonText('Clear stored liked videos in local storage')
+                .onClick(async () => {
+                    localStorageService.setLikedVideos([]);
+                    this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
+                        { videos: [] },
+                        { history: true });
+
+                    this.display();
+                    this.updateListPaneView();
+
+                    new Notice('Liked videos have been cleared');
+                }));
 
         new Setting(containerEl)
             .setHeading()
@@ -227,9 +497,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setName('Login with Google')
             .setDesc('Login to your Google account')
             .addButton(button => button
-                .setButtonText(localStorageService.getRefreshToken() ? 'Logout' : 'Login')
+                .setButtonText(refreshToken ? 'Logout' : 'Login')
                 .onClick(async (): Promise<void> => {
-                    localStorageService.getRefreshToken() ?
+                    refreshToken ?
                         await handleGoogleLogout(this.plugin.settings,
                             () => {
                                 this.display();
@@ -244,251 +514,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                             this.updateListPaneView();
                         });
                 }));
-
-
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Automatic Fetch')
-            .setDesc('Configure automatic fetching of liked videos');
-
-        new Setting(containerEl)
-            .setName('Enable automatic fetch')
-            .setDesc('Automatically fetch liked videos at regular intervals')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.autoFetchEnabled)
-                .onChange(async (value) => {
-                    this.plugin.settings.autoFetchEnabled = value;
-                    await this.plugin.saveSettings();
-                    this.display();
-                    this.updateListPaneView();
-                }));
-
-        if (this.plugin.settings.autoCreateNoteEnabled) {
-            new Setting(containerEl)
-                .setName('Link to daily note')
-                .setDesc('If enabled, a link to the new video note will be added to your daily note.')
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.linkToDailyNote)
-                    .onChange(async (value) => {
-                        this.plugin.settings.linkToDailyNote = value;
-                        await this.plugin.saveSettings();
-                    }));
-        }
-
-        if (this.plugin.settings.autoFetchEnabled) {
-            new Setting(containerEl)
-                .setName('Fetch interval')
-                .setDesc('How often to automatically fetch videos (in minutes)')
-                .addDropdown(dropdown => {
-                    // Add debug option for 5 seconds if in debug mode
-                    const debugConfig = debugLogger.getConfig();
-                    if (debugConfig.enabled) {
-                        dropdown.addOption('0.083', '🔧 5 seconds (Debug)');
-                        dropdown.addOption('1', '🔧 1 minute (Debug)');
-                    }
-
-                    dropdown
-                        .addOption('10', '10 minutes')
-                        .addOption('30', '30 minutes')
-                        .addOption('60', '1 hour')
-                        .addOption('120', '2 hours')
-                        .addOption('360', '6 hours')
-                        .addOption('720', '12 hours')
-                        .addOption('1440', '24 hours')
-                        .setValue(String(this.plugin.settings.autoFetchInterval))
-                        .onChange(async (value) => {
-                            this.plugin.settings.autoFetchInterval = parseFloat(value);
-                            await this.plugin.saveSettings();
-
-                            if (parseFloat(value) < 1) {
-                                new Notice('⚠️ Debug mode: Using very short fetch interval!');
-                            }
-                            this.updateListPaneView();
-                            this.display();
-                        });
-
-                    return dropdown;
-                });
-
-            new Setting(containerEl)
-                .setName('Full fetch on every auto-fetch')
-                .setDesc(UI_TEXT.FULL_FETCH_WARNING_DESC)
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.fullFetchOnEveryAutoFetch)
-                    .onChange(async (value) => {
-                        // If user is ENABLING full fetch, show confirmation modal
-                        if (value && !this.plugin.settings.fullFetchOnEveryAutoFetch) {
-                            const result = await confirmAction(
-                                this.app,
-                                UI_TEXT.FULL_FETCH_CONFIRM_MESSAGE,
-                                {
-                                    title: UI_TEXT.FULL_FETCH_WARNING_TITLE,
-                                    confirmText: 'Yes, Enable Full Fetch',
-                                    cancelText: 'Cancel',
-                                    type: 'warning',
-                                    showRememberChoice: false
-                                }
-                            );
-
-                            if (!result.confirmed) {
-                                // User cancelled - don't change the setting
-                                // Reset the toggle to its previous state
-                                toggle.setValue(false);
-                                return;
-                            }
-                        }
-
-                        // Apply the setting change
-                        this.plugin.settings.fullFetchOnEveryAutoFetch = value;
-                        await this.plugin.saveSettings();
-
-                        // Show toast notice when enabled
-                        if (value) {
-                            new Notice(UI_TEXT.FULL_FETCH_ENABLED_NOTICE);
-                        }
-
-                        // Refresh display to show/hide conditional warnings
-                        this.display();
-                    }));
-
-            // Show warning info box when full fetch is enabled
-            if (this.plugin.settings.fullFetchOnEveryAutoFetch) {
-                new Setting(containerEl)
-                    .setName('⚠️ Full Fetch Mode Active')
-                    .setDesc(UI_TEXT.FULL_FETCH_ACTIVE_INFO)
-                    .setClass('setting-item-warning');
-            }
-
-            // Show aggressive interval warning if interval is less than 6 hours
-            if (this.plugin.settings.fullFetchOnEveryAutoFetch &&
-                this.plugin.settings.autoFetchInterval < 360) {
-                new Setting(containerEl)
-                    .setName('⚠️ Aggressive Fetch Interval')
-                    .setDesc(UI_TEXT.FULL_FETCH_AGGRESSIVE_INTERVAL_WARNING(this.plugin.settings.autoFetchInterval))
-                    .setClass('setting-item-danger');
-            }
-
-            // Show recommendations when full fetch is enabled
-            if (this.plugin.settings.fullFetchOnEveryAutoFetch) {
-                new Setting(containerEl)
-                    .setName('💡 Recommendations')
-                    .setDesc(UI_TEXT.FULL_FETCH_RECOMMENDATIONS)
-                    .setClass('setting-item-info');
-            }
-
-            new Setting(containerEl)
-                .setName('Fetch on startup')
-                .setDesc('Automatically fetch videos when Obsidian starts')
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.fetchOnStartup)
-                    .onChange(async (value) => {
-                        this.plugin.settings.fetchOnStartup = value;
-                        await this.plugin.saveSettings();
-                    }));
-
-            if (this.plugin.settings.lastAutoFetchTime > 0) {
-                const lastFetch = new Date(this.plugin.settings.lastAutoFetchTime);
-
-                // Format the interval display
-                const intervalDisplay = this.plugin.settings.autoFetchInterval < 1
-                    ? `${Math.round(this.plugin.settings.autoFetchInterval * 60)}s`
-                    : `${this.plugin.settings.autoFetchInterval}min`;
-
-                new Setting(containerEl)
-                    .setName('Last auto-fetch')
-                    .setDesc(`Last: ${lastFetch.toLocaleString()} (every ${intervalDisplay})`);
-            }
-        }
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Functions')
-            .setDesc('Functions to fetch and update liked videos');
-
-
-        new Setting(containerEl)
-            .setName('Fetch all liked videos so far and add to local storage. This will override all the liked videos in local storage.')
-            .addButton(button => button
-                .setButtonText('Full scan')
-                .onClick(async () => {
-                    try {
-                        // Store existing videos before fetch to identify new ones
-                        const storedLikedVideosBefore = localStorageService.getLikedVideos();
-                        const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
-
-                        /// get number of the videos in the liked videos
-                        const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
-                        new Notice(`${totalLikedVideos} videos in total`);
-
-                        // repeat fetching liked videos
-                        // this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
-                        // If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
-                        // Then, merge the fetched videos data and save to LocalStorage.
-                        let allLikedVideos: YouTubeVideo[] = [];
-                        let nextPageToken: string | undefined = undefined;
-
-                        do {
-                            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fullFetchLimit, nextPageToken);
-                            allLikedVideos = allLikedVideos.concat(response.items);
-                            if (response.nextPageToken === undefined || response.nextPageToken === '' || response.nextPageToken === null) {
-                                break;
-                            } else {
-                                nextPageToken = response.nextPageToken;
-                            }
-                        } while (nextPageToken !== undefined);
-
-                        // Save the fetched videos to LocalStorage
-                        localStorageService.setLikedVideos(allLikedVideos);
-                        this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
-                            { videos: allLikedVideos },
-                            { history: true });
-                        this.display();
-                        this.updateListPaneView()
-                        new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
-
-                        // Auto-create notes for new videos if enabled
-                        const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
-                        if (this.plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
-                            for (const video of newLikedVideos) {
-                                await this.plugin.automateVideoProcessing(video);
-                            }
-                            new Notice(`Created ${newLikedVideos.length} new video notes`);
-                        }
-
-                    } catch (error) {
-                        new Modal(this.app).setTitle('error').setContent("error: " + error).open();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName('Fetch all liked videos so far, compare to the stored videos and filter/add the new videos to local storage')
-            .addButton(button => button
-                .setButtonText('Fetch')
-                .onClick(async () => {
-                    try {
-                        await this.fetchAndUpdateLikedVideos(this.app, fetchLimit, false);
-                        this.display();
-                        this.updateListPaneView()
-                    } catch (error) {
-                        new Modal(this.app).setTitle('error').setContent("error: " + error).open();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName('Clear local storage')
-            .addButton(button => button
-                .setButtonText('Clear stored liked videos in local storage')
-                .onClick(async () => {
-                    localStorageService.setLikedVideos([]);
-                    this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
-                        { videos: [] },
-                        { history: true });
-
-                    this.display();
-                    this.updateListPaneView();
-
-                    new Notice('Liked videos have been cleared');
-                }));
-
         // Debug settings - only show in development mode
         const debugConfig = debugLogger.getConfig();
         if (debugConfig.enabled) {
