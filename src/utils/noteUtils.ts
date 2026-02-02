@@ -6,7 +6,7 @@ import { TemplateService } from "src/services/templateService";
 
 export const sanitizeFileName = (title: string): string => {
     return title
-        .replace(/[\\/:*?<>|]/g, '-')
+        .replace(/[\\/:*?<>|#]/g, '-')
         .replace(/\s+/g, ' ')
         .trim()
         .substring(0, 100);
