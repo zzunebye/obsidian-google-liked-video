@@ -108,7 +108,7 @@ export const buildTemplateVariables = (
         'description': videoInfo.snippet.description || '',
         'category': category.replace(/\s*\(\d+\)\s*/g, '').trim(),
         'category_id': videoInfo.snippet.categoryId,
-        'category_underscored': category.replace(/\s*\(\d+\)\s*/g, '').trim().replace(/\s+/g, '_'),
+        'category_underscored': category.replace(/\s*\(\d+\)\s*/g, '').trim().replace(/[\s&]+/g, '_'),
 
         // Time & duration
         'duration': formatDurationForYAML(videoInfo.contentDetails?.duration || ''),

@@ -11,7 +11,7 @@ url: {{video_url}}
 created_at: {{date}} {{time}}
 views: {{view_count}}
 likes: {{like_count}}
-tags: [youtube, video, {{category|uncategorized}}]
+tags: [youtube, video, {{category_underscored|uncategorized}}]
 video_tags: [{{tags_comma_separated}}]
 content-language: {{language|unknown}}
 ---

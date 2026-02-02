@@ -91,7 +91,6 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             const existingFile = appInstance.vault.getAbstractFileByPath(expectedPath);
 
             if (!existingFile) {
-
                 // Note doesn't exist, create it
                 const templateService = plugin?.settings
                     ? new TemplateService(appInstance, plugin.settings)
@@ -108,8 +107,8 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
                 await appInstance.workspace.openLinkText(file.path, '', true);
                 new Notice(`Created note: ${file.basename}`);
             } else {
-                new Notice(`Note already exists for this video. Opening existing note: ${existingFile.path}`);
-                await appInstance.workspace.openLinkText(existingFile.path, '', true);
+                new Notice(`Note already exists for this video. Opening existing note: ${expectedPath}`);
+                await appInstance.workspace.openLinkText(expectedPath, '', true);
             }
         } catch (error) {
             console.error('Error handling video note:', error);
