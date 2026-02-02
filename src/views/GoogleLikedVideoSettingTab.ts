@@ -11,7 +11,7 @@ import { LikedVideoListPane } from './LikedVideoListPane';
 import { debugLogger } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
 import { UI_TEXT } from '../constants/uiText';
-import { DEFAULT_TEMPLATE } from '../utils/exampleTemplates';
+import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templateConstants';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
