@@ -298,10 +298,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
                 // Show recommendations when full fetch is enabled
                 if (this.plugin.settings.fullFetchOnEveryAutoFetch) {
-                    new Setting(containerEl)
-                        .setName('💡 Recommendations')
-                        .setDesc(UI_TEXT.FULL_FETCH_RECOMMENDATIONS)
-                        .setClass('setting-item-info');
+                    if (this.plugin.settings.autoCreateNoteEnabled) {
+                        new Setting(containerEl)
+                            .setName('⚠️ Warning')
+                            .setDesc(UI_TEXT.FULL_FETCH_NOT_RECOMMEND_AUTO_VIDEO_NOTE_WARNING)
+                            .setClass('setting-item-info');
+                    }
                 }
 
                 new Setting(containerEl)

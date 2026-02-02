@@ -63,13 +63,15 @@ export const UI_TEXT = {
         '• API Quota: ~1 call per 50 videos (100+ calls for 5,000 videos)\n' +
         '• Fetch Time: 5-30+ minutes for thousands of videos\n' +
         '• Battery/Network: Continuous pagination drains resources',
+    FULL_FETCH_NOT_RECOMMEND_AUTO_VIDEO_NOTE_WARNING: 
+        `Not Recommended to turn this on when 'Automatically create notes' option is enabled. `,
     FULL_FETCH_AGGRESSIVE_INTERVAL_WARNING: (interval: number) =>
         `⚠️ Aggressive interval detected (${interval} min). ` +
         'Full fetch should run every 2+ hours (360 min) to avoid overwhelming API/device.',
     FULL_FETCH_RECOMMENDATIONS:
         'Recommended Configuration:\n' +
         '• Auto-fetch Interval: 360+ minutes (2+ hours)\n' +
-        '• Run during off-peak hours when device is charging\n' +
         '• Monitor Obsidian performance after enabling\n' +
+        '• Not recommend to auto\n' +
         '• Consider limiting to 1-2 full fetches per day',
 } as const;
