@@ -74,7 +74,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setName('Video note location')
                 .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path.')
                 .addText(text => text
-                    .setPlaceholder('e.g. Youtube, Inbox, Youtube/Videos')
+                    .setPlaceholder('e.g. Youtube, Youtube/Videos')
                     .setValue(this.plugin.settings.videoNotePath)
                     .onChange(async (value) => {
                         this.plugin.settings.videoNotePath = value.trim();
