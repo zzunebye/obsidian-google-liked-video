@@ -227,6 +227,14 @@ export const LikedVideoView: React.FC = () => {
                         setVideos(updatedLikedVideos);
 
                         new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
+
+                        // Auto-create notes for new videos if enabled
+                        if (plugin?.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
+                            for (const video of newLikedVideos) {
+                                await plugin.automateVideoProcessing(video);
+                            }
+                        }
+
                         setIsFetching(false);
                     }}
                 ><RefreshCcw size={16} /></button>
@@ -339,6 +347,10 @@ export const LikedVideoView: React.FC = () => {
                 className="no-videos-found__fetch-all-button"
                 onClick={async () => {
                     try {
+                        // Store existing videos before fetch to identify new ones
+                        const storedLikedVideosBefore = localStorageService.getLikedVideos();
+                        const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
+
                         /// get number of the videos in the liked videos
                         const totalLikedVideos = await plugin?.likedVideoApi.fetchTotalLikedVideoCount();
                         new Notice(UI_TEXT.NOTICE_TOTAL_VIDEOS(totalLikedVideos ?? 0));
@@ -365,6 +377,14 @@ export const LikedVideoView: React.FC = () => {
                         setVideos(allLikedVideos);
 
                         new Notice(UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(allLikedVideos.length));
+
+                        // Auto-create notes for new videos if enabled
+                        const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
+                        if (plugin?.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
+                            for (const video of newLikedVideos) {
+                                await plugin.automateVideoProcessing(video);
+                            }
+                        }
 
                     } catch (error) {
                         if (plugin?.app) {
