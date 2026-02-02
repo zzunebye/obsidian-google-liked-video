@@ -5,7 +5,7 @@ channel: "{{channel}}"
 channel_id: {{channel_id}}
 duration: {{duration}}
 published: {{published_date}}
-year: {{published_year}}
+year: "{{published_year}}"
 category: {{category}}
 url: {{video_url}}
 created_at: {{date}} {{time}}
