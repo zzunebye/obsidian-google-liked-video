@@ -6,6 +6,7 @@ import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
 import { sanitizeFileName, generateVideoNoteContent, generateUniqueFileName } from "src/utils/noteUtils";
+import { TemplateService } from "src/services/templateService";
 
 interface VideoCardProps {
     source: 'liked' | 'playlist';
@@ -87,10 +88,14 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             );
 
             // Note doesn't exist, create it
-            const noteContent = generateVideoNoteContent(
+            const templateService = plugin?.settings
+                ? new TemplateService(appInstance, plugin.settings)
+                : undefined;
+            const noteContent = await generateVideoNoteContent(
                 videoInfo,
                 url,
-                plugin?.getCategoryDisplay?.bind(plugin)
+                plugin?.getCategoryDisplay?.bind(plugin),
+                templateService
             );
 
             const file = await appInstance.vault.create(expectedPath, noteContent);

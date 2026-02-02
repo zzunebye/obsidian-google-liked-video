@@ -12,6 +12,8 @@ import { UI_TEXT } from './constants/uiText';
 import { categoriesService } from './categoriesService';
 import { FeatureIntroModal } from './components/FeatureIntroModal';
 import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
+import { DEFAULT_TEMPLATE } from './utils/exampleTemplates';
+import { TemplateService } from './services/templateService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
@@ -30,6 +32,8 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	autoCreateNoteEnabled: false,
 	linkToDailyNote: false,
 	fullFetchOnEveryAutoFetch: false,
+	enableTemplateSystem: false,
+	customTemplate: DEFAULT_TEMPLATE,
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';
@@ -353,10 +357,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			if (!existingFile) {
 				const videoUrl = getVideoUrl(video.id);
 				// Note doesn't exist, create it
-				const noteContent = generateVideoNoteContent(
+				const templateService = new TemplateService(this.app, this.settings);
+				const noteContent = await generateVideoNoteContent(
 					video,
 					videoUrl,
-					this.getCategoryDisplay.bind(this)
+					this.getCategoryDisplay.bind(this),
+					templateService
 				);
 
 				const newNote = await this.app.vault.create(expectedPath, noteContent);

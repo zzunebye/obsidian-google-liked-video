@@ -15,6 +15,8 @@ export interface ObsidianGoogleLikedVideoSettings {
     autoCreateNoteEnabled: boolean;
     linkToDailyNote: boolean;
     fullFetchOnEveryAutoFetch: boolean;
+    enableTemplateSystem: boolean;
+    customTemplate: string;
 }
 
 export interface YouTubeVideo {

@@ -11,6 +11,7 @@ import { LikedVideoListPane } from './LikedVideoListPane';
 import { debugLogger } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
 import { UI_TEXT } from '../constants/uiText';
+import { DEFAULT_TEMPLATE } from '../utils/exampleTemplates';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
@@ -90,6 +91,142 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     this.plugin.settings.organizeByChannel = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Template System')
+            .setDesc('Customize video note templates');
+
+        new Setting(containerEl)
+            .setName('Enable custom templates')
+            .setDesc('Use custom markdown templates for video notes instead of the default format')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableTemplateSystem)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableTemplateSystem = value;
+                    await this.plugin.saveSettings();
+                    this.display(); // Refresh to show/hide template settings
+                }));
+
+        if (this.plugin.settings.enableTemplateSystem) {
+            // Custom Template Textarea
+            new Setting(containerEl)
+                .setName('Custom template')
+                .setDesc('Edit your video note template directly. Use {{variable}} syntax for dynamic content.')
+                .addButton(button => button
+                    .setButtonText('Reset to Default')
+                    .onClick(async () => {
+                        const confirmed = await confirmAction(
+                            this.app,
+                            'This will reset your template to the default. Any customizations will be lost.',
+                            {
+                                title: 'Reset Template?',
+                                confirmText: 'Reset',
+                                cancelText: 'Cancel',
+                                type: 'warning'
+                            }
+                        );
+                        if (confirmed.confirmed) {
+                            this.plugin.settings.customTemplate = DEFAULT_TEMPLATE;
+                            await this.plugin.saveSettings();
+                            this.display();
+                            new Notice('Template reset to default');
+                        }
+                    }));
+
+            // Add textarea below the setting
+            const textareaContainer = containerEl.createDiv('template-textarea-container');
+            const textarea = textareaContainer.createEl('textarea', {
+                cls: 'template-textarea',
+                text: this.plugin.settings.customTemplate
+            });
+            textarea.rows = 20;
+            textarea.style.width = '100%';
+            textarea.style.fontFamily = 'monospace';
+            textarea.style.fontSize = '12px';
+            textarea.style.resize = 'vertical';
+            textarea.style.minHeight = '300px';
+            textarea.style.padding = '10px';
+            textarea.style.borderRadius = '4px';
+            textarea.style.border = '1px solid var(--background-modifier-border)';
+            textarea.style.backgroundColor = 'var(--background-primary)';
+
+            textarea.addEventListener('change', async () => {
+                this.plugin.settings.customTemplate = textarea.value;
+                await this.plugin.saveSettings();
+            });
+
+            // Collapsible Variable Reference Section
+            const detailsEl = containerEl.createEl('details', {
+                cls: 'template-variables-reference'
+            });
+            detailsEl.style.marginTop = '16px';
+            detailsEl.style.padding = '12px';
+            detailsEl.style.backgroundColor = 'var(--background-secondary)';
+            detailsEl.style.borderRadius = '8px';
+
+            const summaryEl = detailsEl.createEl('summary', {
+                text: '📖 Available Variables (click to expand)'
+            });
+            summaryEl.style.cursor = 'pointer';
+            summaryEl.style.fontWeight = 'bold';
+            summaryEl.style.marginBottom = '8px';
+
+            const referenceContent = detailsEl.createDiv();
+            referenceContent.innerHTML = `
+                <div style="margin-top: 12px; font-size: 12px; line-height: 1.6;">
+                    <h4 style="margin: 12px 0 8px 0; color: var(--text-accent);">📅 Date & Time (Obsidian Core)</h4>
+                    <code>{{date}}</code> → Current date (2024-01-31)<br>
+                    <code>{{date:YYYY-MM-DD}}</code> → Custom format<br>
+                    <code>{{time}}</code> → Current time (14:30)<br>
+                    <code>{{time:HH:mm:ss}}</code> → Custom format<br>
+
+                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">🎬 Video Info</h4>
+                    <code>{{title}}</code> → Video title<br>
+                    <code>{{video_id}}</code> → Video ID<br>
+                    <code>{{video_url}}</code> → YouTube URL<br>
+                    <code>{{channel}}</code> → Channel name<br>
+                    <code>{{channel_id}}</code> → Channel ID<br>
+                    <code>{{description}}</code> → Video description<br>
+                    <code>{{duration}}</code> → Duration (12:34)<br>
+                    <code>{{duration_seconds}}</code> → Duration in seconds<br>
+                    <code>{{category}}</code> → Category name<br>
+                    <code>{{category_id}}</code> → Category ID<br>
+                    <code>{{category_underscored}}</code> → Category with underscores<br>
+                    <code>{{published_at}}</code> → Full ISO timestamp<br>
+                    <code>{{published_date}}</code> → Publish date (YYYY-MM-DD)<br>
+                    <code>{{published_year}}</code> → Publish year<br>
+                    <code>{{created_at}}</code> → Note creation datetime<br>
+                    <code>{{created_date}}</code> → Note creation date<br>
+                    <code>{{pulled_at}}</code> → When video was fetched<br>
+
+                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">📹 Content Details</h4>
+                    <code>{{definition}}</code> → Video quality (hd/sd)<br>
+                    <code>{{caption}}</code> → Has captions (true/false)<br>
+                    <code>{{dimension}}</code> → Video dimension (2d/3d)<br>
+
+                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">📊 Statistics</h4>
+                    <code>{{view_count}}</code> → View count (raw number)<br>
+                    <code>{{view_count_formatted}}</code> → View count (e.g. 1.2M)<br>
+                    <code>{{like_count}}</code> / <code>{{like_count_formatted}}</code> → Like count<br>
+                    <code>{{comment_count}}</code> / <code>{{comment_count_formatted}}</code> → Comment count<br>
+
+                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">🏷️ Tags & Language</h4>
+                    <code>{{tags}}</code> → Tags for display<br>
+                    <code>{{tags_array}}</code> → Tags for display<br>
+                    <code>{{tags_comma_separated}}</code> → Tags for YAML array<br>
+                    <code>{{language}}</code> → Language code (en)<br>
+                    <code>{{language_name}}</code> → Language name (English)<br>
+
+                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">🖼️ Thumbnails</h4>
+                    <code>{{thumbnail_default}}</code>, <code>{{thumbnail_medium}}</code><br>
+                    <code>{{thumbnail_high}}</code>, <code>{{thumbnail_maxres}}</code><br>
+
+                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">💡 Fallback Syntax</h4>
+                    <code>{{variable|default}}</code> → Use default if value is empty
+                </div>
+            `;
+        }
 
         new Setting(containerEl)
             .setHeading()

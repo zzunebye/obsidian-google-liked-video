@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:help.obsidian.md)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
