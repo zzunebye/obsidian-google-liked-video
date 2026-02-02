@@ -92,6 +92,17 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName('Automatically create notes')
+            .setDesc('If enabled, a new note will be created for each new video fetched.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoCreateNoteEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.autoCreateNoteEnabled = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
+        new Setting(containerEl)
             .setHeading()
             .setName('Template System')
             .setDesc('Customize video note templates');
@@ -250,17 +261,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.display();
                     this.updateListPaneView();
-                }));
-
-        new Setting(containerEl)
-            .setName('Automatically create notes')
-            .setDesc('If enabled, a new note will be created for each new video fetched.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.autoCreateNoteEnabled)
-                .onChange(async (value) => {
-                    this.plugin.settings.autoCreateNoteEnabled = value;
-                    await this.plugin.saveSettings();
-                    this.display();
                 }));
 
         if (this.plugin.settings.autoCreateNoteEnabled) {
