@@ -210,6 +210,67 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 const referenceContent = detailsEl.createDiv();
                 referenceContent.innerHTML = TEMPLATE_VARIABLES_REFERENCE;
             }
+        // Debug settings - only show in development mode
+        if (debugLogger.getConfig().enabled) {
+            // AI Features section
+            new Setting(containerEl)
+                .setHeading()
+                .setName('AI Features')
+                .setDesc('Configure AI-powered features');
+
+            new Setting(containerEl)
+                .setName('Enable AI Summary')
+                .setDesc('Use Google Gemini to generate AI summaries of YouTube videos. Requires a Gemini API key.')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.enableAISummary)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableAISummary = value;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }));
+
+            if (this.plugin.settings.enableAISummary) {
+                new Setting(containerEl)
+                    .setName('Gemini API Key')
+                    .setDesc('Your Google Gemini API key. Get one from Google AI Studio (https://aistudio.google.com/app/apikey).')
+                    .addText(text => {
+                        text.inputEl.type = 'password';
+                        text.inputEl.style.width = '100%';
+                        text
+                            .setPlaceholder('Enter your Gemini API key')
+                            .setValue(this.plugin.settings.geminiApiKey)
+                            .onChange(async (value) => {
+                                this.plugin.settings.geminiApiKey = value;
+                                await this.plugin.saveSettings();
+                            });
+                    });
+
+                new Setting(containerEl)
+                    .setName('Summary Prompt')
+                    .setDesc('Customize the prompt sent to Gemini when generating video summaries.');
+
+                const promptContainer = containerEl.createDiv('summary-prompt-container');
+                const promptTextarea = promptContainer.createEl('textarea', {
+                    cls: 'summary-prompt-textarea',
+                    text: this.plugin.settings.summaryPrompt
+                });
+                promptTextarea.rows = 5;
+                promptTextarea.style.width = '100%';
+                promptTextarea.style.fontFamily = 'monospace';
+                promptTextarea.style.fontSize = '12px';
+                promptTextarea.style.resize = 'vertical';
+                promptTextarea.style.minHeight = '80px';
+                promptTextarea.style.padding = '10px';
+                promptTextarea.style.borderRadius = '4px';
+                promptTextarea.style.border = '1px solid var(--background-modifier-border)';
+                promptTextarea.style.backgroundColor = 'var(--background-primary)';
+
+                promptTextarea.addEventListener('change', async () => {
+                    this.plugin.settings.summaryPrompt = promptTextarea.value;
+                    await this.plugin.saveSettings();
+                });
+            }
+        }
 
 
             new Setting(containerEl)
