@@ -370,12 +370,13 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				const newNoteFile = await this.app.vault.create(expectedPath, noteContent);
 				new Notice(`Created note: ${newNoteFile.basename}`);
 
-				// // Get AI Summary
-				// const summary = await this.getAISummary(video.snippet.title, video.snippet.description);
+				// Get AI Summary
+				// TODO: Enable when auto-create summary flow is finalized and decided to be included
+				// const summary = await this.getAISummary(video.snippet.title, video.snippet.description, video.id);
 
-				// // Append summary to the newly created note
+				// Append summary to the newly created note
 				// if (summary) {
-				// 	await this.app.vault.append(newNote, `\n\n## AI Summary\n${summary}`);
+				// 	await this.app.vault.append(newNoteFile, `\n\n## AI Summary\n${summary}`);
 				// }
 
 				// Link to Daily Note
