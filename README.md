@@ -110,8 +110,6 @@ If you encounter any issues, consider the following steps:
 2. **Authorized URIs**: Verify that http://127.0.0.1:42813 is listed in the Authorized JavaScript origins and http://127.0.0.1:42813/callback in the Authorized redirect URIs.
 3. If granting permission to your google project fails, check if there are multiple window/tabs for login process opened. If so, close all of them and try again.
 
-<script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="junyoungbang" data-color="#FFDD00" data-emoji="" data-font="Bree" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script>
-
 ## Release Notes
 
 ### 2.3.0
