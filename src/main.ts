@@ -35,6 +35,9 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	enableTemplateSystem: false,
 	customTemplate: DEFAULT_TEMPLATE,
 	openInObsidianWebViewer: false,
+	enableAISummary: false,
+	geminiApiKey: '',
+	summaryPrompt: 'Summarize this YouTube video. Include the main topics discussed, key takeaways, and any notable quotes or insights. Format with markdown headers and bullet points.',
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';
