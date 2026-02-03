@@ -336,7 +336,7 @@ export const LikedVideoView: React.FC = () => {
                     className="video-view-sort__order"
                     aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
                 >
-                    {sortOrder === 'ASC' ? <ArrowDownWideNarrow size={16} /> : <ArrowUpNarrowWide size={16} />}
+                    {sortOrder === 'DESC' ? <ArrowDownWideNarrow size={16} /> : <ArrowUpNarrowWide size={16} />}
                 </button>
             </div>
         </div>
