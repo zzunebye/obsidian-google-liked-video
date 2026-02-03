@@ -221,12 +221,12 @@ export const LikedVideoView: React.FC = () => {
         className="liked-video-view">
         <div className="video-view-header">
             <div className="video-view-header__title"><Youtube className="video-view-header__icon" /> {UI_TEXT.HEADER_TITLE}
-                {plugin?.settings.autoFetchEnabled && (
+                {plugin.settings.autoFetchEnabled && (
                     <span className="auto-fetch-indicator" title={`Auto-fetch: Every ${plugin.settings.autoFetchInterval < 1
                         ? `${Math.round(plugin.settings.autoFetchInterval * 60)} seconds`
                         : `${plugin.settings.autoFetchInterval} minutes`
                         }`}>
-                        {plugin?.isFetching ? '🔄 Fetching...' : '⏰ Auto'}
+                        {plugin.isFetching ? '🔄 Fetching...' : '⏰ Auto'}
                     </span>
                 )}
             </div>
@@ -235,15 +235,15 @@ export const LikedVideoView: React.FC = () => {
                     title={UI_TEXT.BTN_REFRESH}
                     /// Refresh button to fetch recently liked videos
                     className="video-view-header__refresh-button"
-                    disabled={isFetching || plugin?.isFetching}
+                    disabled={isFetching || plugin.isFetching}
                     onClick={async () => {
                         setIsFetching(true);
                         let fetchedLikedVideos: YouTubeVideo[] = [];
                         let nextPageToken: string | undefined = undefined;
 
-                        const limit = plugin?.settings.fetchLimit;
+                        const limit = plugin.settings.fetchLimit;
 
-                        const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(limit, nextPageToken);
+                        const response: YouTubeVideosResponse | undefined = await plugin.likedVideoApi.fetchLikedVideos(limit, nextPageToken);
 
                         if (response) {
                             fetchedLikedVideos = fetchedLikedVideos.concat(response.items);
@@ -264,7 +264,7 @@ export const LikedVideoView: React.FC = () => {
                         new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
 
                         // Auto-create notes for new videos if enabled
-                        if (plugin?.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
+                        if (plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
                             for (const video of newLikedVideos) {
                                 await plugin.automateVideoProcessing(video);
                             }
@@ -277,7 +277,7 @@ export const LikedVideoView: React.FC = () => {
                     title={UI_TEXT.BTN_SETTINGS}
                     onClick={() => {
                         // Open Plugin Setting.
-                        const setting = (plugin?.app as any).setting;
+                        const setting = (plugin.app as any).setting;
                         setting.open();
                         setting.openTabById(APP_ID);
                     }}
@@ -381,7 +381,7 @@ export const LikedVideoView: React.FC = () => {
                         const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
 
                         /// get number of the videos in the liked videos
-                        const totalLikedVideos = await plugin?.likedVideoApi.fetchTotalLikedVideoCount();
+                        const totalLikedVideos = await plugin.likedVideoApi.fetchTotalLikedVideoCount();
                         new Notice(UI_TEXT.NOTICE_TOTAL_VIDEOS(totalLikedVideos ?? 0));
 
                         // repeat fetching liked videos
@@ -392,7 +392,7 @@ export const LikedVideoView: React.FC = () => {
                         let nextPageToken: string | undefined = undefined;
 
                         do {
-                            const response: YouTubeVideosResponse | undefined = await plugin?.likedVideoApi.fetchLikedVideos(plugin?.settings.fullFetchLimit, nextPageToken);
+                            const response: YouTubeVideosResponse | undefined = await plugin.likedVideoApi.fetchLikedVideos(plugin.settings.fullFetchLimit, nextPageToken);
                             allLikedVideos = allLikedVideos.concat(response?.items || []);
                             if (response?.nextPageToken === undefined || response?.nextPageToken === '' || response?.nextPageToken === null) {
                                 break;
@@ -409,16 +409,14 @@ export const LikedVideoView: React.FC = () => {
 
                         // Auto-create notes for new videos if enabled
                         const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
-                        if (plugin?.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
+                        if (plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
                             for (const video of newLikedVideos) {
                                 await plugin.automateVideoProcessing(video);
                             }
                         }
 
                     } catch (error) {
-                        if (plugin?.app) {
-                            new Modal(plugin?.app).setTitle(UI_TEXT.ERROR_TITLE).setContent(UI_TEXT.ERROR_MESSAGE(error)).open();
-                        }
+                        new Modal(plugin.app).setTitle(UI_TEXT.ERROR_TITLE).setContent(UI_TEXT.ERROR_MESSAGE(error)).open();
                     }
                 }}
             >
@@ -435,18 +433,18 @@ export const LikedVideoView: React.FC = () => {
                     url={`https://www.youtube.com/watch?v=${video.id}`}
                     videoInfo={video}
                     onUnlike={async () => {
-                        await plugin?.likedVideoApi.unlikeVideo(video.id);
+                        await plugin.likedVideoApi.unlikeVideo(video.id);
                         localStorageService.setLikedVideos(videos.filter(v => v.id !== video.id));
                         setVideos(videos.filter(v => v.id !== video.id));
                     }}
                     onAddToDailyNote={async (videoData, file) => {
                         const contentToAppend = `\n${videoData}`;
                         // Append content to the daily note
-                        await plugin?.app.vault.process(file, (data) => {
+                        await plugin.app.vault.process(file, (data) => {
                             return data + contentToAppend;
                         });
                         // Open the daily note in the main panel
-                        await plugin?.app.workspace.openLinkText(file.path, '', false);
+                        await plugin.app.workspace.openLinkText(file.path, '', false);
                         // Show success notification
                         new Notice(`Added video to ${file.basename} and opened the note`);
                     }}
@@ -454,9 +452,9 @@ export const LikedVideoView: React.FC = () => {
                         setSearchTerm(channelTitle);
                     }}
 						onLinkClick={async (videoUrl) => {
-							const leaf = plugin!.app.workspace.getLeaf("split");
+							const leaf = plugin.app.workspace.getLeaf("split");
 							const openInObsidianWebViewer =
-								plugin?.settings?.openInObsidianWebViewer;
+								plugin.settings?.openInObsidianWebViewer;
 
 								console.log("openInObsidianWebViewer:", openInObsidianWebViewer);
 							if (openInObsidianWebViewer) {

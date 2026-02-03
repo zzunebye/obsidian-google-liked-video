@@ -84,7 +84,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
     }, [playlistSourceKey, playlistInfo.id]);
 
     const loadAllVideos = async (forceRefresh = false) => {
-        if (!plugin?.playlistApi) {
+        if (!plugin.playlistApi) {
             setError('Playlist API not available');
             return;
         }
@@ -354,9 +354,9 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                                 source="playlist"
                                 videoInfo={video}
                                 onLinkClick={async (videoUrl) => {
-                                    const leaf = plugin!.app.workspace.getLeaf("split");
+                                    const leaf = plugin.app.workspace.getLeaf("split");
                                     const openInObsidianWebViewer =
-                                        plugin?.settings?.openInObsidianWebViewer;
+                                        plugin.settings?.openInObsidianWebViewer;
 
                                         console.log("openInObsidianWebViewer:", openInObsidianWebViewer);
                                     if (openInObsidianWebViewer) {
@@ -382,12 +382,12 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                                     const contentToAppend = `\n${videoData}`;
 
                                     // Append content to the daily note
-                                    plugin?.app.vault.process(file, (data) => {
+                                    plugin.app.vault.process(file, (data) => {
                                         return data + contentToAppend;
                                     });
 
                                     // Open the daily note in the main panel
-                                    await plugin?.app.workspace.openLinkText(file.path, '', false);
+                                    await plugin.app.workspace.openLinkText(file.path, '', false);
 
                                     // Show success notification
                                     new Notice(`Added video to ${file.basename} and opened the note`);

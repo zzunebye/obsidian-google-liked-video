@@ -19,7 +19,7 @@ interface VideoCardProps {
     onLinkClick: (url: string) => void;
 }
 
-export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick , onLinkClick}: VideoCardProps) => {
+export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick, onLinkClick }: VideoCardProps) => {
     const plugin = usePlugin();
 
     // Format duration from seconds to display format
@@ -54,7 +54,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.setData('text/plain', `\n[${videoInfo.snippet.channelTitle} - ${videoInfo.snippet.title}](${url})\n`);
-        e.currentTarget.classList.add('video-card__container--dragging'); // Add class
+        e.currentTarget.classList.add('video-card__container--dragging');
     };
 
     const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
@@ -75,10 +75,10 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
     const handleCreateVideoNote = async () => {
         try {
             const baseFileName = sanitizeFileName(videoInfo.snippet.title);
-            const customPath = plugin?.settings?.videoNotePath || 'Youtube';
-            const organizeByChannel = plugin?.settings?.organizeByChannel || false;
+            const customPath = plugin.settings?.videoNotePath || 'Youtube';
+            const organizeByChannel = plugin.settings?.organizeByChannel || false;
             const channelName = videoInfo.snippet.channelTitle;
-            const appInstance = plugin?.app || app;
+            const appInstance = plugin.app;
 
             const expectedPath = await getExpectedNotePath(
                 appInstance,
@@ -93,14 +93,14 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             
             if (!existingFile) {
                 // Note doesn't exist, create it
-                const templateService = plugin?.settings
+                const templateService = plugin.settings
                     ? new TemplateService(appInstance, plugin.settings)
                     : undefined;
 
                 const noteContent = await generateVideoNoteContent(
                     videoInfo,
                     url,
-                    plugin?.getCategoryDisplay?.bind(plugin),
+                    plugin.getCategoryDisplay?.bind(plugin),
                     templateService
                 );
 
@@ -117,6 +117,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             new Notice('Failed to create/open video note. Check console for details.');
         }
     }
+
     const handleContextMenu = (e: any): void => {
         e.preventDefault();
         e.stopPropagation();
@@ -135,7 +136,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
                 item.setIcon("heart-off")
                 item.onClick(async () => {
                     const confirmed = await confirmUnlikeAction(
-                        plugin?.app || app,
+                        plugin.app,
                         videoInfo.snippet.title
                     );
 
@@ -161,7 +162,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
                     }
 
                     const dataToAdd = `[${videoInfo.snippet.title} - ${videoInfo.snippet.channelTitle}](${url})`;
-                    onAddToDailyNote(dataToAdd, dailyNote);
+                    onAddToDailyNote(dataToAdd, dailyNote as TFile);
                 } catch (error) {
                     console.error('Error adding to daily note:', error);
                     new Notice('Failed to add video to daily note. Check console for details.');
@@ -172,8 +173,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
         menu.addItem(item => {
             item.setTitle("Add to current note");
             item.onClick(() => {
-                // Get the currently active file
-                const activeFile = app.workspace.getActiveFile();
+                const activeFile = plugin.app.workspace.getActiveFile();
                 if (!activeFile) {
                     new Notice("No active note found. Please open a note first.");
                     return;
@@ -181,8 +181,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
 
                 const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
 
-                // Append to the current note
-                app.vault.process(activeFile, (data) => {
+                plugin.app.vault.process(activeFile, (data) => {
                     return data + '\n' + videoData;
                 }).then(() => {
                     new Notice(`Added video to ${activeFile.basename}`);
@@ -194,9 +193,9 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             item.setTitle("Display video info");
             item.onClick(() => {
                 const modal = new VideoInfoModal(
-                    plugin?.app || app,
+                    plugin.app,
                     videoInfo,
-                    plugin?.getCategoryDisplay.bind(plugin)
+                    plugin.getCategoryDisplay.bind(plugin)
                 );
                 modal.open();
             });
