@@ -1,3 +1,9 @@
+export interface CachedLLMSummary {
+    summary: string;
+    generatedAt: string; // ISO string
+    model: string;
+}
+
 export interface ObsidianGoogleLikedVideoSettings {
     accessToken: string;
     googleClientId: string;
@@ -18,6 +24,9 @@ export interface ObsidianGoogleLikedVideoSettings {
     enableTemplateSystem: boolean;
     customTemplate: string;
     openInObsidianWebViewer: boolean;
+    enableAISummary: boolean;
+    geminiApiKey: string;
+    summaryPrompt: string;
 }
 
 export interface YouTubeVideo {
