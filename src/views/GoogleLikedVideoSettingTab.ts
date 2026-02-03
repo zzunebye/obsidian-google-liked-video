@@ -64,6 +64,16 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setValue(`${fetchLimit}`)
                 .setDisabled(true));
 
+        new Setting(containerEl)
+            .setName('Open Videos in Obsidian Web Viewer')
+            .setDesc('If enabled, videos will be opened in the Obsidian web viewer instead of the OS\'s default browser even when its \'Open external links\' option is turned off. You need to ENABLE THE "WEB VIEWER" CORE PLUGIN for this to work.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.openInObsidianWebViewer)
+                .onChange(async (value) => {
+                    this.plugin.settings.openInObsidianWebViewer = value;
+                    await this.plugin.saveSettings();
+                }));
+
         if (refreshToken !== null && refreshToken !== "") {
             new Setting(containerEl)
                 .setHeading()

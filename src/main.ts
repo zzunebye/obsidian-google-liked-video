@@ -34,6 +34,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	fullFetchOnEveryAutoFetch: false,
 	enableTemplateSystem: false,
 	customTemplate: DEFAULT_TEMPLATE,
+	openInObsidianWebViewer: false,
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';

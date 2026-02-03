@@ -17,6 +17,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     fullFetchOnEveryAutoFetch: boolean;
     enableTemplateSystem: boolean;
     customTemplate: string;
+    openInObsidianWebViewer: boolean;
 }
 
 export interface YouTubeVideo {
