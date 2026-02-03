@@ -89,7 +89,10 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
 
             // Check if a note already exists at the expected path
             const existingFile = appInstance.vault.getAbstractFileByPath(expectedPath);
-
+            console.log('by abstract path:', expectedPath, 
+                'by path:', appInstance.vault.getFileByPath(expectedPath),
+                'Existing file:', existingFile);
+            
             if (!existingFile) {
                 // Note doesn't exist, create it
                 const templateService = plugin?.settings
@@ -102,6 +105,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
                     plugin?.getCategoryDisplay?.bind(plugin),
                     templateService
                 );
+                console.log('Creating video note with content:', noteContent);
 
                 const file = await appInstance.vault.create(expectedPath, noteContent);
                 await appInstance.workspace.openLinkText(file.path, '', true);

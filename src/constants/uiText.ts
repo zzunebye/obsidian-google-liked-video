@@ -74,4 +74,15 @@ export const UI_TEXT = {
         '• Monitor Obsidian performance after enabling\n' +
         '• Not recommend to auto\n' +
         '• Consider limiting to 1-2 full fetches per day',
+
+    // Content Type Filter
+    CONTENT_TYPE_LABEL: 'Content Type:',
+    CONTENT_TYPE_VIDEOS: 'Videos',
+    CONTENT_TYPE_SHORTS: 'Shorts',
+    CONTENT_TYPE_MUSIC: 'Music',
+
+    // Tooltips
+    TOOLTIP_VIDEOS: 'Regular videos (longer than 60 seconds, excludes music)',
+    TOOLTIP_SHORTS: 'Videos shorter than 90 seconds (does not categorize YouTube Shorts)',
+    TOOLTIP_MUSIC: 'Music videos (YouTube category: Music)',
 } as const;

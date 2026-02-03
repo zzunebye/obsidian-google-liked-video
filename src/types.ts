@@ -120,3 +120,6 @@ export interface CategoriesCache {
 
 export type PlaylistType = 'liked' | 'playlist';
 
+export type ContentTypeOption = 'videos' | 'shorts' | 'music';
+export type ContentTypeSelection = ContentTypeOption[];
+

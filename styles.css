@@ -817,64 +817,78 @@ If your plugin does not need CSS, delete this file.
 	padding: 4px 8px;
 }
 
-.music-filter-checkbox {
+/* Content Type Filter Radio Group */
+.content-type-filter {
 	display: flex;
 	align-items: center;
+	gap: 2px;
 }
 
-.music-filter-label {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	cursor: pointer;
-	user-select: none;
-	font-size: 0.9em;
-	color: var(--text-normal);
+.content-type-filter__label {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-right: 4px;
 }
 
-.music-filter-input {
-	cursor: pointer;
-	width: 16px;
-	height: 16px;
-	margin: 0;
-}
-
-.music-filter-text {
-	white-space: nowrap;
-}
-
-.music-filter-label:hover .music-filter-text {
-	color: var(--text-normal);
-}
-
-.short-videos-filter-checkbox {
-	display: flex;
-	align-items: center;
-}
-
-.short-videos-filter-label {
+.content-type-filter__option {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: 4px;
+	padding: 4px 8px;
 	cursor: pointer;
 	user-select: none;
-	font-size: 0.9em;
+	font-size: 0.85em;
+	color: var(--text-muted);
+	border-radius: 4px;
+	transition: all 0.15s ease;
+}
+
+.content-type-filter__option:hover {
 	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
 }
 
-.short-videos-filter-input {
-	cursor: pointer;
-	width: 16px;
-	height: 16px;
+.content-type-filter__option--selected {
+	color: var(--text-normal);
+	background-color: var(--background-secondary);
+	font-weight: 500;
+}
+
+.content-type-filter__input {
 	margin: 0;
+	cursor: pointer;
 }
 
-.short-videos-filter-text {
+.content-type-filter__text {
 	white-space: nowrap;
 }
 
-.short-videos-filter-label:hover .short-videos-filter-text {
+/* Tooltip */
+.content-type-filter__tooltip {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 6px 10px;
+	background-color: var(--background-secondary-alt);
 	color: var(--text-normal);
+	font-size: 0.8em;
+	font-weight: normal;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	white-space: nowrap;
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.2s ease;
+	z-index: 100;
+	pointer-events: none;
+}
+
+.content-type-filter__option:hover .content-type-filter__tooltip {
+	opacity: 1;
+	visibility: visible;
 }
 
 /* Responsive filter layout for narrow screens */
@@ -889,9 +903,14 @@ If your plugin does not need CSS, delete this file.
 		width: 100%;
 	}
 
-	.music-filter-checkbox,
-	.short-videos-filter-checkbox {
-		align-self: flex-start;
+	.content-type-filter {
+		flex-wrap: wrap;
+	}
+
+	.content-type-filter__tooltip {
+		max-width: 200px;
+		white-space: normal;
+		text-align: center;
 	}
 }
 

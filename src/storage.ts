@@ -1,4 +1,4 @@
-import { YouTubeVideo } from "./types";
+import { YouTubeVideo, ContentTypeSelection, ContentTypeOption } from "./types";
 import { PlaylistInfo } from "./api";
 
 export interface SavedPlaylist extends PlaylistInfo {
@@ -54,14 +54,20 @@ class LocalStorageService {
         return window.localStorage.getItem("likedVideoViewSelectedCategory") ?? "all";
     }
 
-    getMusicFilterEnabled(): boolean {
-        const enabled = window.localStorage.getItem("likedVideoViewMusicFilterEnabled");
-        return enabled === "true";
-    }
-
-    getShortVideosFilterEnabled(): boolean {
-        const enabled = window.localStorage.getItem("likedVideoViewShortVideosFilterEnabled");
-        return enabled === "true";
+    getContentTypeSelection(): ContentTypeSelection {
+        const stored = window.localStorage.getItem("likedVideoViewContentTypeSelection");
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) {
+                    const validOptions: ContentTypeOption[] = ['videos', 'shorts', 'music'];
+                    return parsed.filter((item: string) => validOptions.includes(item as ContentTypeOption)) as ContentTypeSelection;
+                }
+            } catch {
+                // Invalid JSON, return default
+            }
+        }
+        return []; // Empty = show all
     }
 
     getPlaylistsSortOption(): string {
@@ -85,12 +91,8 @@ class LocalStorageService {
         window.localStorage.setItem("likedVideoViewSelectedCategory", categoryId);
     }
 
-    setMusicFilterEnabled(enabled: boolean): void {
-        window.localStorage.setItem("likedVideoViewMusicFilterEnabled", enabled.toString());
-    }
-
-    setShortVideosFilterEnabled(enabled: boolean): void {
-        window.localStorage.setItem("likedVideoViewShortVideosFilterEnabled", enabled.toString());
+    setContentTypeSelection(selection: ContentTypeSelection): void {
+        window.localStorage.setItem("likedVideoViewContentTypeSelection", JSON.stringify(selection));
     }
 
     setPlaylistsSortOption(sortOption: string): void {

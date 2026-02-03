@@ -1,7 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { usePlugin } from '../store/pluginContext';
 import { localStorageService } from 'src/storage';
-import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
+import { YouTubeVideo, YouTubeVideosResponse, ContentTypeOption, ContentTypeSelection } from 'src/types';
 import { Youtube, Settings, RefreshCcw, Filter, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowRight, ArrowRightToLine, ArrowLeftToLine, ArrowLeft } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
@@ -20,8 +20,9 @@ export const LikedVideoView: React.FC = () => {
     const [sortOption, setSortOption] = useState(localStorageService.getSortOption());
     const [sortOrder, setSortOrder] = useState(localStorageService.getSortOrder());
     const [selectedCategory, setSelectedCategory] = useState(localStorageService.getSelectedCategory());
-    const [musicFilterEnabled, setMusicFilterEnabled] = useState(localStorageService.getMusicFilterEnabled());
-    const [shortVideosFilterEnabled, setShortVideosFilterEnabled] = useState(localStorageService.getShortVideosFilterEnabled());
+    const [contentTypeSelection, setContentTypeSelection] = useState<ContentTypeSelection>(
+        localStorageService.getContentTypeSelection()
+    );
     const [videos, setVideos] = useContext(VideosContext);
     const [isFetching, setIsFetching] = useState(false);
     const plugin = usePlugin();
@@ -82,12 +83,8 @@ export const LikedVideoView: React.FC = () => {
     }, [selectedCategory]);
 
     useEffect(() => {
-        localStorageService.setMusicFilterEnabled(musicFilterEnabled);
-    }, [musicFilterEnabled]);
-
-    useEffect(() => {
-        localStorageService.setShortVideosFilterEnabled(shortVideosFilterEnabled);
-    }, [shortVideosFilterEnabled]);
+        localStorageService.setContentTypeSelection(contentTypeSelection);
+    }, [contentTypeSelection]);
 
     // Debounce search term
     useEffect(() => {
@@ -115,16 +112,30 @@ export const LikedVideoView: React.FC = () => {
             // Category filter
             const categoryMatch = selectedCategory === 'all' || video.snippet.categoryId === selectedCategory;
 
-            // Music filter (exclude music videos when filter is enabled)
-            const musicMatch = !musicFilterEnabled || video.snippet.categoryId !== '10';
-
-            // Short videos filter (exclude videos ≤ 90 seconds when filter is enabled)
+            // Content type filter (OR logic - show if matches ANY selected type)
             const durationInSeconds = videoDurations.get(video.id) || 0;
-            const shortVideoMatch = !shortVideosFilterEnabled || durationInSeconds > 90;
+            const isMusic = video.snippet.categoryId === '10';
+            const isShort = durationInSeconds > 0 && durationInSeconds <= 90;
+            const isRegularVideo = durationInSeconds > 60 && !isMusic;
 
-            return searchMatch && categoryMatch && musicMatch && shortVideoMatch;
+            let contentTypeMatch = true;
+            // If no selection or all selected, show everything
+            if (contentTypeSelection.length > 0 && contentTypeSelection.length < 3) {
+                contentTypeMatch = false;
+                if (contentTypeSelection.includes('videos') && isRegularVideo) {
+                    contentTypeMatch = true;
+                }
+                if (contentTypeSelection.includes('shorts') && isShort) {
+                    contentTypeMatch = true;
+                }
+                if (contentTypeSelection.includes('music') && isMusic) {
+                    contentTypeMatch = true;
+                }
+            }
+
+            return searchMatch && categoryMatch && contentTypeMatch;
         });
-    }, [videos, debouncedSearchTerm, selectedCategory, musicFilterEnabled, shortVideosFilterEnabled, videoDurations]);
+    }, [videos, debouncedSearchTerm, selectedCategory, contentTypeSelection, videoDurations]);
 
     const sortedVideos = useMemo(() => {
         const sorted = [...filteredVideos];
@@ -180,7 +191,31 @@ export const LikedVideoView: React.FC = () => {
     // Reset currentPage to 1 when debouncedSearchTerm, sortOption, or filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearchTerm, sortOption, selectedCategory, musicFilterEnabled, shortVideosFilterEnabled]);
+    }, [debouncedSearchTerm, sortOption, selectedCategory, contentTypeSelection]);
+
+    const getContentTypeLabel = (type: ContentTypeOption): string => {
+        switch (type) {
+            case 'videos': return UI_TEXT.CONTENT_TYPE_VIDEOS;
+            case 'shorts': return UI_TEXT.CONTENT_TYPE_SHORTS;
+            case 'music': return UI_TEXT.CONTENT_TYPE_MUSIC;
+        }
+    };
+
+    const getContentTypeTooltip = (type: ContentTypeOption): string => {
+        switch (type) {
+            case 'videos': return UI_TEXT.TOOLTIP_VIDEOS;
+            case 'shorts': return UI_TEXT.TOOLTIP_SHORTS;
+            case 'music': return UI_TEXT.TOOLTIP_MUSIC;
+        }
+    };
+
+    const toggleContentType = (type: ContentTypeOption) => {
+        setContentTypeSelection(prev =>
+            prev.includes(type)
+                ? prev.filter(t => t !== type)
+                : [...prev, type]
+        );
+    };
 
     return <div
         className="liked-video-view">
@@ -287,29 +322,23 @@ export const LikedVideoView: React.FC = () => {
                         )}
                     </select>
                 </div>
-                <div className="music-filter-checkbox">
-                    <label className="music-filter-label">
-                        <input
-                            type="checkbox"
-                            className="music-filter-input"
-                            checked={musicFilterEnabled}
-                            onChange={(e) => setMusicFilterEnabled(e.target.checked)}
-                            title={musicFilterEnabled ? "Exclude music" : "Exclude music"}
-                        />
-                        <span className="music-filter-text">Exclude Music</span>
-                    </label>
-                </div>
-                <div className="short-videos-filter-checkbox">
-                    <label className="short-videos-filter-label">
-                        <input
-                            type="checkbox"
-                            className="short-videos-filter-input"
-                            checked={shortVideosFilterEnabled}
-                            onChange={(e) => setShortVideosFilterEnabled(e.target.checked)}
-                            title={shortVideosFilterEnabled ? "Exclude short videos" : "Exclude short videos (≤1.5 min)"}
-                        />
-                        <span className="short-videos-filter-text">Exclude Short videos (≤1.5 min)</span>
-                    </label>
+                <div className="content-type-filter" role="group" aria-label="Filter by content type">
+                    <span className="content-type-filter__label">{UI_TEXT.CONTENT_TYPE_LABEL}</span>
+                    {(['videos', 'shorts', 'music'] as ContentTypeOption[]).map((option) => (
+                        <label
+                            key={option}
+                            className={`content-type-filter__option ${contentTypeSelection.includes(option) ? 'content-type-filter__option--selected' : ''}`}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={contentTypeSelection.includes(option)}
+                                onChange={() => toggleContentType(option)}
+                                className="content-type-filter__input"
+                            />
+                            <span className="content-type-filter__text">{getContentTypeLabel(option)}</span>
+                            <span className="content-type-filter__tooltip">{getContentTypeTooltip(option)}</span>
+                        </label>
+                    ))}
                 </div>
             </div>
             <div className="sort-controls">
