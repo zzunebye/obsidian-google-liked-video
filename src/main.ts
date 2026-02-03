@@ -356,9 +356,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			const existingFile = this.app.vault.getAbstractFileByPath(expectedPath);
 
 			if (!existingFile) {
-				const videoUrl = getVideoUrl(video.id);
 				// Note doesn't exist, create it
 				const templateService = new TemplateService(this.app, this.settings);
+
+				const videoUrl = getVideoUrl(video.id);
 				const noteContent = await generateVideoNoteContent(
 					video,
 					videoUrl,
@@ -366,20 +367,20 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					templateService
 				);
 
-				const newNote = await this.app.vault.create(expectedPath, noteContent);
-				new Notice(`Created note: ${newNote.basename}`);
+				const newNoteFile = await this.app.vault.create(expectedPath, noteContent);
+				new Notice(`Created note: ${newNoteFile.basename}`);
 
-				// Get AI Summary
-				const summary = await this.getAISummary(video.snippet.title, video.snippet.description);
+				// // Get AI Summary
+				// const summary = await this.getAISummary(video.snippet.title, video.snippet.description);
 
-				// Append summary to the newly created note
-				if (summary) {
-					await this.app.vault.append(newNote, `\n\n## AI Summary\n${summary}`);
-				}
+				// // Append summary to the newly created note
+				// if (summary) {
+				// 	await this.app.vault.append(newNote, `\n\n## AI Summary\n${summary}`);
+				// }
 
 				// Link to Daily Note
 				if (this.settings.linkToDailyNote) {
-					await linkToDailyNote(this.app, newNote);
+					await linkToDailyNote(this.app, newNoteFile);
 				}
 			}
 		} catch (error) {

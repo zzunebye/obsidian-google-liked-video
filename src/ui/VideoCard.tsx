@@ -75,7 +75,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
     const handleCreateVideoNote = async () => {
         try {
             const baseFileName = sanitizeFileName(videoInfo.snippet.title);
-            const customPath = plugin?.settings?.videoNotePath || '';
+            const customPath = plugin?.settings?.videoNotePath || 'Youtube';
             const organizeByChannel = plugin?.settings?.organizeByChannel || false;
             const channelName = videoInfo.snippet.channelTitle;
             const appInstance = plugin?.app || app;
@@ -90,9 +90,6 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
 
             // Check if a note already exists at the expected path
             const existingFile = appInstance.vault.getAbstractFileByPath(expectedPath);
-            console.log('by abstract path:', expectedPath, 
-                'by path:', appInstance.vault.getFileByPath(expectedPath),
-                'Existing file:', existingFile);
             
             if (!existingFile) {
                 // Note doesn't exist, create it
@@ -106,11 +103,11 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
                     plugin?.getCategoryDisplay?.bind(plugin),
                     templateService
                 );
-                console.log('Creating video note with content:', noteContent);
 
-                const file = await appInstance.vault.create(expectedPath, noteContent);
-                await appInstance.workspace.openLinkText(file.path, '', true);
-                new Notice(`Created note: ${file.basename}`);
+                const newNoteFile = await appInstance.vault.create(expectedPath, noteContent);
+
+                await appInstance.workspace.openLinkText(newNoteFile.path, '', true);
+                new Notice(`Created note: ${newNoteFile.basename}`);
             } else {
                 new Notice(`Note already exists for this video. Opening existing note: ${expectedPath}`);
                 await appInstance.workspace.openLinkText(expectedPath, '', true);
