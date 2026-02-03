@@ -12,17 +12,17 @@ interface ILikedVideoListViewPersistedState {
 
 export const VIEW_TYPE_LIKED_VIDEO_LIST = "liked-video-list";
 
-export class LikedVideoListPane extends ItemView implements ILikedVideoListViewPersistedState {
+export class LikedVideoListPane
+	extends ItemView
+	implements ILikedVideoListViewPersistedState
+{
     root: Root | null = null;
 
     /// Persisted State
     videos: YouTubeVideo[] = [];
     plugin: GoogleLikedVideoPlugin | null = null;
 
-    constructor(
-        leaf: WorkspaceLeaf,
-        plugin: GoogleLikedVideoPlugin,
-    ) {
+	constructor(leaf: WorkspaceLeaf, plugin: GoogleLikedVideoPlugin) {
         super(leaf);
 
         // Initialize the state
@@ -31,7 +31,7 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
     }
 
     onPaneMenu(menu: Menu, source: string): void {
-        super.onPaneMenu(menu, source)
+		super.onPaneMenu(menu, source);
         menu.addItem((item: MenuItem) => {
             item.setTitle("Refresh");
             item.setIcon("sync");
@@ -39,9 +39,8 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
                 this.onClose();
                 this.onOpen();
             });
-        })
+		});
     }
-
 
     getViewType(): string {
         return VIEW_TYPE_LIKED_VIDEO_LIST;
@@ -57,7 +56,6 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
 
     async onOpen() {
         this.videos = localStorageService.getLikedVideos();
-
         this.root = createRoot(this.containerEl.children[1]);
         this.root.render(
             <StrictMode>
@@ -66,14 +64,16 @@ export class LikedVideoListPane extends ItemView implements ILikedVideoListViewP
                 </PluginContext.Provider>
             </StrictMode>
         );
-
     }
 
     async onClose() {
         this.root?.unmount();
     }
 
-    async setState(state: ILikedVideoListViewPersistedState, result: ViewStateResult): Promise<void> {
+	async setState(
+		state: ILikedVideoListViewPersistedState,
+		result: ViewStateResult,
+	): Promise<void> {
         if (state.videos) {
             this.videos = state.videos;
         }
