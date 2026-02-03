@@ -342,7 +342,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			const customPath = this.settings?.videoNotePath || '';
 			const organizeByChannel = this.settings?.organizeByChannel || false;
 			const channelName = video.snippet.channelTitle;
-
+			
 			// Get the expected path for this video note
 			const expectedPath = await getExpectedNotePath(
 				this.app,
