@@ -453,6 +453,25 @@ export const LikedVideoView: React.FC = () => {
                     onChannelClick={(channelTitle) => {
                         setSearchTerm(channelTitle);
                     }}
+						onLinkClick={async (videoUrl) => {
+							const leaf = plugin!.app.workspace.getLeaf("split");
+							const openInObsidianWebViewer =
+								plugin?.settings?.openInObsidianWebViewer;
+
+								console.log("openInObsidianWebViewer:", openInObsidianWebViewer);
+							if (openInObsidianWebViewer) {
+								await leaf.setViewState({
+									type: "webviewer",
+									state: {
+										url: videoUrl,
+										navigate: true,
+									},
+									active: true,
+								});
+							} else {
+								window.open(videoUrl, "_blank");
+							}
+						}}
                 />
             ))}
         </div>

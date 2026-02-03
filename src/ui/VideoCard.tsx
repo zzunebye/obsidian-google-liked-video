@@ -16,9 +16,10 @@ interface VideoCardProps {
     onUnlike: () => void;
     onAddToDailyNote: (videoData: string, file: TFile) => void;
     onChannelClick: (channelTitle: string) => void;
+    onLinkClick: (url: string) => void;
 }
 
-export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick }: VideoCardProps) => {
+export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick , onLinkClick}: VideoCardProps) => {
     const plugin = usePlugin();
 
     // Format duration from seconds to display format
@@ -63,7 +64,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
     const handleExternalOpen = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        window.open(url, '_blank');
+        onLinkClick(url);
     };
 
     const handleChannelClick = (e: React.MouseEvent) => {
@@ -127,7 +128,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             item.setTitle("Open in external browser");
             item.setIcon("create-new")
             item.onClick(() => {
-                window.open(url, '_blank');
+                onLinkClick(url);
             });
         });
 
@@ -217,7 +218,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
         <div
             className="video-card__container"
             onClick={() => {
-                window.open(url, '_blank');
+                onLinkClick(url);
             }}
             onContextMenu={handleContextMenu}
             draggable
