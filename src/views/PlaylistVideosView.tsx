@@ -353,6 +353,25 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                                 key={video.id}
                                 source="playlist"
                                 videoInfo={video}
+                                onLinkClick={async (videoUrl) => {
+                                    const leaf = plugin!.app.workspace.getLeaf("split");
+                                    const openInObsidianWebViewer =
+                                        plugin?.settings?.openInObsidianWebViewer;
+
+                                        console.log("openInObsidianWebViewer:", openInObsidianWebViewer);
+                                    if (openInObsidianWebViewer) {
+                                        await leaf.setViewState({
+                                            type: "webviewer",
+                                            state: {
+                                                url: videoUrl,
+                                                navigate: true,
+                                            },
+                                            active: true,
+                                        });
+                                    } else {
+                                        window.open(videoUrl, "_blank");
+                                    }
+                                }}
                                 id={video.id}
                                 url={`https://www.youtube.com/watch?v=${video.id}`}
                                 onUnlike={() => {
