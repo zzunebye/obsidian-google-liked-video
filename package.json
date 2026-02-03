@@ -1,6 +1,6 @@
 {
 	"name": "geulo-youtube-liked-video",
-	"version": "2.3.2",
+	"version": "2.3.3",
 	"description": "Fetch all the YouTube videos you have liked, search and sort them with multiple sort options, and add them to your daily note.",
 	"main": "main.js",
 	"scripts": {
