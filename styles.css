@@ -539,6 +539,78 @@ If your plugin does not need CSS, delete this file.
 	gap: 0.5em;
 }
 
+/* Loading skeleton cards */
+
+.videos-loading-skeleton {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px 0;
+}
+
+.skeleton-card {
+	background-color: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 8px;
+}
+
+.skeleton-card__inner {
+	display: flex;
+	gap: 16px;
+}
+
+.skeleton-card__thumbnail {
+	width: 180px;
+	min-width: 180px;
+	height: 100px;
+	border-radius: 4px;
+	background: linear-gradient(
+		90deg,
+		var(--background-secondary) 25%,
+		var(--background-modifier-hover) 50%,
+		var(--background-secondary) 75%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+}
+
+.skeleton-card__info {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	flex: 1;
+	padding: 4px 0;
+	min-width: 0;
+}
+
+.skeleton-card__line {
+	border-radius: 4px;
+	background: linear-gradient(
+		90deg,
+		var(--background-secondary) 25%,
+		var(--background-modifier-hover) 50%,
+		var(--background-secondary) 75%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+}
+
+.skeleton-card__line--title {
+	height: 14px;
+	width: 80%;
+}
+
+.skeleton-card__line--channel {
+	height: 12px;
+	width: 45%;
+}
+
+.skeleton-card__line--meta {
+	height: 12px;
+	width: 30%;
+}
+
 /* Video Card */
 
 .video-card__container p,
@@ -1523,67 +1595,6 @@ If your plugin does not need CSS, delete this file.
 	max-height: 300px;
 	overflow-y: auto;
 }
-
-/* .summary-section__content > *:first-child {
-	margin-top: 0;
-}
-
-.summary-section__content > *:last-child {
-	margin-bottom: 0;
-}
-
-.summary-section__content h1,
-.summary-section__content h2 {
-	font-size: 1.1em;
-	margin: 12px 0 4px;
-}
-
-.summary-section__content h3,
-.summary-section__content h4 {
-	font-size: 1em;
-	margin: 10px 0 4px;
-}
-
-.summary-section__content p {
-	margin: 6px 0;
-}
-
-.summary-section__content ul,
-.summary-section__content ol {
-	margin: 6px 0;
-	padding-left: 20px;
-}
-
-.summary-section__content li {
-	margin: 2px 0;
-}
-
-.summary-section__content blockquote {
-	margin: 6px 0;
-	padding: 4px 12px;
-	border-left: 3px solid var(--text-accent);
-	color: var(--text-muted);
-}
-
-.summary-section__content code {
-	font-size: 0.9em;
-	padding: 1px 4px;
-	border-radius: 3px;
-	background: var(--background-secondary);
-}
-
-.summary-section__content pre {
-	margin: 6px 0;
-	padding: 8px;
-	border-radius: 4px;
-	background: var(--background-secondary);
-	overflow-x: auto;
-}
-
-.summary-section__content pre code {
-	padding: 0;
-	background: none;
-} */
 
 .summary-section__actions {
 	display: flex;

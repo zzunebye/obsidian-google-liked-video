@@ -222,7 +222,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
         loadAllVideos(true);
     };
 
-    // Loading State
+    // Loading State - skeleton cards
     if (isLoading && allVideos.length === 0) {
         return (
             <div className="playlist-videos-view">
@@ -233,13 +233,19 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                     </div>
                 </div>
 
-                <div className="videos-loading">
-                    <div className="videos-loading__spinner">
-                        <Loader2 size={32} className="animate-spin" />
-                    </div>
-                    <div className="videos-loading__text">
-                        Loading videos...
-                    </div>
+                <div className="videos-loading-skeleton">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="skeleton-card">
+                            <div className="skeleton-card__inner">
+                                <div className="skeleton-card__thumbnail" />
+                                <div className="skeleton-card__info">
+                                    <div className="skeleton-card__line skeleton-card__line--title" />
+                                    <div className="skeleton-card__line skeleton-card__line--channel" />
+                                    <div className="skeleton-card__line skeleton-card__line--meta" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         );
@@ -284,11 +290,6 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                 <div className="video-view-header__title">
                     <Play className="video-view-header__icon" />
                     {playlistInfo.title}
-                    {playlistInfo.itemCount > 0 && (
-                        <span className="video-count-badge">
-                            {playlistInfo.itemCount} videos
-                        </span>
-                    )}
                 </div>
                 <div className="video-view-header__actions">
                     <button
@@ -315,21 +316,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                         onSearchTermChange={setSearchTerm}
                     />
                 </div>
-                <div className="content-type-filter" role="group" aria-label="Filter options">
-                    <label
-                        className={`content-type-filter__option ${showAINoteOnly ? 'content-type-filter__option--selected' : ''}`}
-                        title={UI_TEXT.AI_NOTE_FILTER_TOOLTIP}
-                    >
-                        <input
-                            type="checkbox"
-                            checked={showAINoteOnly}
-                            onChange={() => setShowAINoteOnly(prev => !prev)}
-                            className="content-type-filter__input"
-                        />
-                        <Bot size={14} />
-                        <span className="content-type-filter__text">{UI_TEXT.AI_NOTE_FILTER_LABEL}</span>
-                    </label>
-                </div>
+       
                 <div className="video-count">
                     <p style={{ margin: '0' }}>
                         {allVideos.length > maxVideosToShow
@@ -347,6 +334,21 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                             Limited to {maxVideosToShow} videos for performance
                         </p>
                     )}
+                </div>
+                <div className="content-type-filter" role="group" aria-label="Filter options">
+                    <label
+                        className={`content-type-filter__option ${showAINoteOnly ? 'content-type-filter__option--selected' : ''}`}
+                        title={UI_TEXT.AI_NOTE_FILTER_TOOLTIP}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={showAINoteOnly}
+                            onChange={() => setShowAINoteOnly(prev => !prev)}
+                            className="content-type-filter__input"
+                        />
+                        <Bot size={14} />
+                        <span className="content-type-filter__text">{UI_TEXT.AI_NOTE_FILTER_LABEL}</span>
+                    </label>
                 </div>
             </div>
 
