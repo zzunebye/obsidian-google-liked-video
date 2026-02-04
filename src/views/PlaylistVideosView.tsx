@@ -327,6 +327,10 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 			<ViewHeader
 				icon={<Play className="video-view-header__icon" />}
 				title={playlistInfo.title}
+				badge={UI_TEXT.VIDEO_COUNT_WITH_TOTAL(
+					filteredVideos.length,
+					allVideos.length,
+				)}
 				actions={
 					<button
 						className="refresh-button"
@@ -357,14 +361,6 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				</div>
 
 				<div className="video-count">
-					<p style={{ margin: "0" }}>
-						{allVideos.length > maxVideosToShow
-							? `Showing ${filteredVideos.length} of first ${maxVideosToShow} videos (${allVideos.length} total)`
-							: UI_TEXT.VIDEO_COUNT_WITH_TOTAL(
-									filteredVideos.length,
-									allVideos.length,
-								)}
-					</p>
 					{displayedVideos.length < filteredVideos.length && (
 						<p
 							style={{

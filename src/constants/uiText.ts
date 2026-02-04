@@ -10,7 +10,6 @@ export const UI_TEXT = {
     BTN_FETCH_ALL: 'Fetch all liked videos',
 
     // Sort options
-    SORT_LABEL: 'Sort by:',
     SORT_BY_LIKED_ORDER: 'Liked Order',
     SORT_BY_VIEW_COUNT: 'View Count',
     SORT_BY_LIKE_COUNT: 'Like Count',
@@ -76,10 +75,13 @@ export const UI_TEXT = {
         '• Consider limiting to 1-2 full fetches per day',
 
     // Content Type Filter
-    CONTENT_TYPE_LABEL: 'Type:',
     CONTENT_TYPE_VIDEOS: 'Videos',
     CONTENT_TYPE_SHORTS: 'Shorts',
     CONTENT_TYPE_MUSIC: 'Music',
+
+    // Filters
+    FILTERS_SHOW: 'Show filters',
+    FILTERS_HIDE: 'Hide filters',
 
     // AI Note Filter
     AI_NOTE_FILTER_LABEL: 'AI Note',

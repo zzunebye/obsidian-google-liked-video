@@ -19,6 +19,7 @@ import {
 	ArrowLeftToLine,
 	ArrowLeft,
 	Bot,
+	SlidersHorizontal,
 } from "lucide-react";
 import { VideoCard } from "src/ui/VideoCard";
 import { SearchBar } from "src/ui/SearchBar";
@@ -50,6 +51,9 @@ export const LikedVideoView: React.FC = () => {
 		);
 	const [showAINoteOnly, setShowAINoteOnly] = useState(
 		localStorageService.getAINoteFilter(),
+	);
+	const [filtersExpanded, setFiltersExpanded] = useState(
+		localStorageService.getFiltersExpanded(),
 	);
 	const [videos, setVideos] = useContext(VideosContext);
 	const [isFetching, setIsFetching] = useState(false);
@@ -123,6 +127,10 @@ export const LikedVideoView: React.FC = () => {
 	useEffect(() => {
 		localStorageService.setAINoteFilter(showAINoteOnly);
 	}, [showAINoteOnly]);
+
+	useEffect(() => {
+		localStorageService.setFiltersExpanded(filtersExpanded);
+	}, [filtersExpanded]);
 
 	// Debounce search term
 	useEffect(() => {
@@ -327,11 +335,17 @@ export const LikedVideoView: React.FC = () => {
 										: `${plugin.settings.autoFetchInterval} minutes`
 								}`}
 							>
-								{plugin.isFetching ? "🔄 Fetching..." : "⏰ Auto"}
+								{plugin.isFetching
+									? "🔄 Fetching..."
+									: "⏰ Auto"}
 							</span>
 						)}
 					</>
 				}
+				badge={UI_TEXT.VIDEO_COUNT_WITH_TOTAL(
+					filteredVideos.length,
+					videos.length,
+				)}
 				actions={
 					<>
 						<button
@@ -342,20 +356,24 @@ export const LikedVideoView: React.FC = () => {
 							onClick={async () => {
 								setIsFetching(true);
 								let fetchedLikedVideos: YouTubeVideo[] = [];
-								let nextPageToken: string | undefined = undefined;
+								let nextPageToken: string | undefined =
+									undefined;
 
 								const limit = plugin.settings.fetchLimit;
 
-								const response: YouTubeVideosResponse | undefined =
+								const response:
+									| YouTubeVideosResponse
+									| undefined =
 									await plugin.likedVideoApi.fetchLikedVideos(
 										limit,
 										nextPageToken,
 									);
 
 								if (response) {
-									fetchedLikedVideos = fetchedLikedVideos.concat(
-										response.items,
-									);
+									fetchedLikedVideos =
+										fetchedLikedVideos.concat(
+											response.items,
+										);
 									nextPageToken = response.nextPageToken;
 								}
 
@@ -365,10 +383,13 @@ export const LikedVideoView: React.FC = () => {
 									storedLikedVideos.map((video) => video.id),
 								);
 
-								const newLikedVideos = fetchedLikedVideos.filter(
-									(video) =>
-										!storedLikedVideoIdsSet.has(video.id),
-								);
+								const newLikedVideos =
+									fetchedLikedVideos.filter(
+										(video) =>
+											!storedLikedVideoIdsSet.has(
+												video.id,
+											),
+									);
 
 								const updatedLikedVideos = [
 									...newLikedVideos,
@@ -393,7 +414,9 @@ export const LikedVideoView: React.FC = () => {
 									newLikedVideos.length > 0
 								) {
 									for (const video of newLikedVideos) {
-										await plugin.automateVideoProcessing(video);
+										await plugin.automateVideoProcessing(
+											video,
+										);
 									}
 								}
 
@@ -424,143 +447,164 @@ export const LikedVideoView: React.FC = () => {
 						onSearchTermChange={setSearchTerm}
 					/>
 				</div>
-				<div className="video-count">
-					<p style={{ margin: "0" }}>
-						{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(
-							filteredVideos.length,
-							videos.length,
-						)}
-					</p>
-				</div>
+				<button
+					className={`filter-toggle-button ${filtersExpanded ? "filter-toggle-button--active" : ""}`}
+					title={
+						filtersExpanded
+							? UI_TEXT.FILTERS_HIDE
+							: UI_TEXT.FILTERS_SHOW
+					}
+					onClick={() => setFiltersExpanded((prev) => !prev)}
+				>
+					<SlidersHorizontal size={16} />
+				</button>
 			</div>
 
-			<div className="video-view-sort">
-				<div className="video-view-sort-left-group">
-					<div className="category-filter">
-						<Filter size={14} className="category-filter-icon" />
-						<select
-							className="category-filter-select"
-							value={selectedCategory}
-							onChange={(e) =>
-								setSelectedCategory(e.target.value)
-							}
-							disabled={
-								!isCategoriesReady ||
-								availableCategories.length === 0
-							}
-						>
-							<option value="all">
-								All Categories ({videos.length})
-							</option>
-							{availableCategories.map((category) => (
-								<option key={category.id} value={category.id}>
-									{category.title} (
-									{categoryCounts[category.id] || 0})
-								</option>
-							))}
-							{!isCategoriesReady && (
-								<option value="loading" disabled>
-									Loading categories...
-								</option>
-							)}
-						</select>
-					</div>
-					<div
-						className="content-type-filter"
-						role="group"
-						aria-label="Filter by content type"
-					>
-						<span className="content-type-filter__label">
-							{UI_TEXT.CONTENT_TYPE_LABEL}
-						</span>
-						{(
-							["videos", "shorts", "music"] as ContentTypeOption[]
-						).map((option) => (
-							<label
-								key={option}
-								className={`content-type-filter__option ${contentTypeSelection.includes(option) ? "content-type-filter__option--selected" : ""}`}
+			<div
+				className={`filters-container ${filtersExpanded ? "filters-container--expanded" : "filters-container--collapsed"}`}
+			>
+				<div className="video-view-sort">
+					<div className="video-view-sort-left-group">
+						<div className="category-filter">
+							<Filter
+								size={14}
+								className="category-filter-icon"
+							/>
+							<select
+								className="category-filter-select"
+								value={selectedCategory}
+								onChange={(e) =>
+									setSelectedCategory(e.target.value)
+								}
+								disabled={
+									!isCategoriesReady ||
+									availableCategories.length === 0
+								}
 							>
-								<input
-									type="checkbox"
-									checked={contentTypeSelection.includes(
-										option,
-									)}
-									onChange={() => toggleContentType(option)}
-									className="content-type-filter__input"
-								/>
-								<span className="content-type-filter__text">
-									{getContentTypeLabel(option)}
-								</span>
-								<span className="content-type-filter__tooltip">
-									{getContentTypeTooltip(option)}
-								</span>
-							</label>
-						))}
+								<option value="all">
+									All Categories ({videos.length})
+								</option>
+								{availableCategories.map((category) => (
+									<option
+										key={category.id}
+										value={category.id}
+									>
+										{category.title} (
+										{categoryCounts[category.id] || 0})
+									</option>
+								))}
+								{!isCategoriesReady && (
+									<option value="loading" disabled>
+										Loading categories...
+									</option>
+								)}
+							</select>
+						</div>
+						<div
+							className="content-type-filter"
+							role="group"
+							aria-label="Filter by content type"
+						>
+							{(
+								[
+									"videos",
+									"shorts",
+									"music",
+								] as ContentTypeOption[]
+							).map((option) => (
+								<label
+									key={option}
+									className={`content-type-filter__option ${contentTypeSelection.includes(option) ? "content-type-filter__option--selected" : ""}`}
+								>
+									<input
+										type="checkbox"
+										checked={contentTypeSelection.includes(
+											option,
+										)}
+										onChange={() =>
+											toggleContentType(option)
+										}
+										className="content-type-filter__input"
+									/>
+									<span className="content-type-filter__text">
+										{getContentTypeLabel(option)}
+									</span>
+									<span className="content-type-filter__tooltip">
+										{getContentTypeTooltip(option)}
+									</span>
+								</label>
+							))}
+						</div>
+						<div className="filters-divider" />
+						<label
+							className={`content-type-filter__option ${showAINoteOnly ? "content-type-filter__option--selected" : ""}`}
+							title={UI_TEXT.AI_NOTE_FILTER_TOOLTIP}
+						>
+							<input
+								type="checkbox"
+								checked={showAINoteOnly}
+								onChange={() =>
+									setShowAINoteOnly((prev) => !prev)
+								}
+								className="content-type-filter__input"
+							/>
+							<Bot size={14} />
+							<span className="content-type-filter__text">
+								{UI_TEXT.AI_NOTE_FILTER_LABEL}
+							</span>
+						</label>
+						<div className="filters-divider" />
+						<div className="sort-controls-inline">
+							<select
+								id="sort-video-select"
+								className="video-view-sort__select"
+								aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
+								value={sortOption}
+								onChange={(e) => setSortOption(e.target.value)}
+							>
+								<option value="addedDate">
+									{UI_TEXT.SORT_BY_LIKED_ORDER}
+								</option>
+								<option value="viewCount">
+									{UI_TEXT.SORT_BY_VIEW_COUNT}
+								</option>
+								<option value="likeCount">
+									{UI_TEXT.SORT_BY_LIKE_COUNT}
+								</option>
+								<option value="commentCount">
+									{UI_TEXT.SORT_BY_COMMENT_COUNT}
+								</option>
+								<option value="likeViewRatio">
+									{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}
+								</option>
+								<option value="date">
+									{UI_TEXT.SORT_BY_PUBLISHED_DATE}
+								</option>
+								<option value="title">
+									{UI_TEXT.SORT_BY_TITLE}
+								</option>
+								<option value="duration">
+									{UI_TEXT.SORT_BY_DURATION}
+								</option>
+							</select>
+							<button
+								title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
+								onClick={() =>
+									setSortOrder(
+										sortOrder === "ASC" ? "DESC" : "ASC",
+									)
+								}
+								className="video-view-sort__order"
+								aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
+							>
+								{sortOrder === "DESC" ? (
+									<ArrowDownWideNarrow size={16} />
+								) : (
+									<ArrowUpNarrowWide size={16} />
+								)}
+							</button>
+						</div>
 					</div>
-					<label
-						className={`content-type-filter__option ${showAINoteOnly ? "content-type-filter__option--selected" : ""}`}
-						title={UI_TEXT.AI_NOTE_FILTER_TOOLTIP}
-					>
-						<input
-							type="checkbox"
-							checked={showAINoteOnly}
-							onChange={() => setShowAINoteOnly((prev) => !prev)}
-							className="content-type-filter__input"
-						/>
-						<Bot size={14} />
-						<span className="content-type-filter__text">
-							{UI_TEXT.AI_NOTE_FILTER_LABEL}
-						</span>
-					</label>
-				</div>
-				<div className="sort-controls">
-					<label htmlFor="sort-video-select">
-						{UI_TEXT.SORT_LABEL}
-					</label>
-					<select
-						id="sort-video-select"
-						className="video-view-sort__select"
-						aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
-						value={sortOption}
-						onChange={(e) => setSortOption(e.target.value)}
-					>
-						<option value="addedDate">
-							{UI_TEXT.SORT_BY_LIKED_ORDER}
-						</option>
-						<option value="viewCount">
-							{UI_TEXT.SORT_BY_VIEW_COUNT}
-						</option>
-						<option value="likeCount">
-							{UI_TEXT.SORT_BY_LIKE_COUNT}
-						</option>
-						<option value="commentCount">
-							{UI_TEXT.SORT_BY_COMMENT_COUNT}
-						</option>
-						<option value="likeViewRatio">
-							{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}
-						</option>
-						<option value="date">
-							{UI_TEXT.SORT_BY_PUBLISHED_DATE}
-						</option>
-						<option value="title">{UI_TEXT.SORT_BY_TITLE}</option>
-						<option value="duration">
-							{UI_TEXT.SORT_BY_DURATION}
-						</option>
-					</select>
-					<button
-						title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
-						onClick={() =>
-							setSortOrder(sortOrder === "ASC" ? "DESC" : "ASC")
-						}
-						className="video-view-sort__order"
-						aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
-					>
-						{sortOrder === "DESC" ? (
-							<ArrowDownWideNarrow size={16} />
-						) : (
-							<ArrowUpNarrowWide size={16} />
-						)}
-					</button>
 				</div>
 			</div>
 			{currentVideos.length === 0 && (

@@ -452,8 +452,9 @@ If your plugin does not need CSS, delete this file.
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	flex-wrap: nowrap;
 	margin-bottom: 8px;
-	height: 40px;
+	min-height: 40px;
 	background-color: var(--background-secondary);
 	padding-top: 0.5em;
 	padding-bottom: 0.5em;
@@ -474,11 +475,10 @@ If your plugin does not need CSS, delete this file.
 	font-size: 1.25em; /* Slightly larger font size */
 	color: var(--text-normal); /* Elegant dark blue-gray color */
 	font-family: "Georgia", serif; /* Use elegant serif font */
-}
-
-.video-view-header__title > * {
-	/* Targets direct children of the container */
-	margin: 0 5px; /* Adds margin to the left and right of children */
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
 }
 
 .auto-fetch-indicator {
@@ -497,6 +497,7 @@ If your plugin does not need CSS, delete this file.
 	gap: 0.25em;
 	align-items: center;
 	justify-content: flex-end;
+	flex-shrink: 0;
 }
 
 .video-view-header__refresh-button {
@@ -524,19 +525,111 @@ If your plugin does not need CSS, delete this file.
 }
 
 .video-view-sort__select {
-	border-radius: 8px;
+	border-radius: 4px;
 	-webkit-appearance: menulist !important;
 	appearance: menulist !important;
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	padding: 4px 8px;
+	font-size: 0.9em;
+	color: var(--text-normal);
 }
 
 .video-view-sort__order {
-	border-radius: 8px;
+	border-radius: 4px;
 }
 
 .sort-controls {
 	display: flex;
 	align-items: center;
 	gap: 0.5em;
+}
+
+/* Video count badge in header */
+.video-count-badge {
+	font-size: 0.65em;
+	font-weight: normal;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	padding: 2px 10px;
+	margin-left: 8px;
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	color: var(--text-muted);
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+/* Filter toggle button */
+.filter-toggle-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-secondary);
+	color: var(--text-muted);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: all 0.15s ease;
+}
+
+.filter-toggle-button:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.filter-toggle-button--active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.filter-toggle-button--active:hover {
+	background-color: var(--interactive-accent-hover);
+	border-color: var(--interactive-accent-hover);
+}
+
+/* Collapsible filters container */
+.filters-container {
+	overflow: hidden;
+	transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+
+.filters-container--expanded {
+	max-height: 200px;
+	opacity: 1;
+}
+
+.filters-container--collapsed {
+	max-height: 0;
+	opacity: 0;
+}
+
+/* Vertical divider between filter sections */
+.filters-divider {
+	width: 1px;
+	height: 24px;
+	background-color: var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+/* Inline sort controls within the filter bar */
+.sort-controls-inline {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+/* Responsive: divider becomes horizontal at narrow width */
+@media (max-width: 768px) {
+	.filters-divider {
+		width: 100%;
+		height: 1px;
+	}
 }
 
 /* Loading skeleton cards */
@@ -887,7 +980,7 @@ If your plugin does not need CSS, delete this file.
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
-	margin-bottom: 16px;
+	margin-bottom: 12px;
 	margin-top: 16px;
 }
 
