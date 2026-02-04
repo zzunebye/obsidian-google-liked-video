@@ -26,3 +26,5 @@ docs
 .claude/settings.local.json
 .claude
 .claude/settings.local.json
+summaries
+summaries.json
