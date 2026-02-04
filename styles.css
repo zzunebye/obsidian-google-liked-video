@@ -611,6 +611,47 @@ If your plugin does not need CSS, delete this file.
 	width: 30%;
 }
 
+/* Loading skeleton for playlist cards */
+
+.playlists-loading-skeleton {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px 0;
+}
+
+.skeleton-playlist-card {
+	display: flex;
+	align-items: stretch;
+	background-color: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	overflow: hidden;
+}
+
+.skeleton-playlist-card__thumbnail {
+	width: 120px;
+	min-width: 120px;
+	height: 90px;
+	background: linear-gradient(
+		90deg,
+		var(--background-secondary) 25%,
+		var(--background-modifier-hover) 50%,
+		var(--background-secondary) 75%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+}
+
+.skeleton-playlist-card__content {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	flex: 1;
+	padding: 12px 14px;
+	min-width: 0;
+}
+
 /* Video Card */
 
 .video-card__container p,

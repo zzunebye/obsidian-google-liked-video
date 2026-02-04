@@ -1,21 +1,20 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { PlaylistInfo } from "src/api";
 import {
-	List,
 	Search,
-	Play,
-	Loader2,
 	AlertCircle,
 	RefreshCw,
 	Video,
 	Plus,
 	Youtube,
-	Pin,
 } from "lucide-react";
 import { UI_TEXT } from "src/constants/uiText";
 import { SearchBar } from "src/ui/SearchBar";
 import { localStorageService } from "src/storage";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
+import { PlaylistCard } from "src/ui/PlaylistCard";
+import { AddPlaylistForm } from "src/ui/AddPlaylistForm";
+import { ViewHeader } from "src/ui/ViewHeader";
 
 interface UserPlaylistsViewProps {
 	playlists: PlaylistInfo[];
@@ -173,24 +172,26 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 		setIsAdding(false);
 	};
 
-	// Loading State
+	// Loading State - skeleton cards
 	if (isLoading) {
 		return (
 			<div className="user-playlists-view">
-				<div className="video-view-header">
-					<div className="video-view-header__title">
-						<List className="video-view-header__icon" />
-						My Playlists
-					</div>
-				</div>
+				<ViewHeader
+					icon={<Youtube className="video-view-header__icon" />}
+					title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
+				/>
 
-				<div className="playlists-loading">
-					<div className="playlists-loading__spinner">
-						<Loader2 size={32} className="animate-spin" />
-					</div>
-					<div className="playlists-loading__text">
-						Loading your playlists...
-					</div>
+				<div className="playlists-loading-skeleton">
+					{Array.from({ length: 5 }).map((_, i) => (
+						<div key={i} className="skeleton-playlist-card">
+							<div className="skeleton-playlist-card__thumbnail" />
+							<div className="skeleton-playlist-card__content">
+								<div className="skeleton-card__line skeleton-card__line--title" />
+								<div className="skeleton-card__line skeleton-card__line--channel" />
+								<div className="skeleton-card__line skeleton-card__line--meta" />
+							</div>
+						</div>
+					))}
 				</div>
 			</div>
 		);
@@ -200,12 +201,10 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 	if (error) {
 		return (
 			<div className="user-playlists-view">
-				<div className="video-view-header">
-					<div className="video-view-header__title">
-						<List className="video-view-header__icon" />
-						My Playlists
-					</div>
-				</div>
+				<ViewHeader
+					icon={<Youtube className="video-view-header__icon" />}
+					title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
+				/>
 
 				<div className="playlists-error">
 					<div className="playlists-error__icon">
@@ -229,12 +228,10 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 
 	return (
 		<div className="user-playlists-view">
-			<div className="video-view-header">
-				<div className="video-view-header__title">
-					<Youtube className="video-view-header__icon" />{" "}
-					{UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
-				</div>
-				<div className="video-view-header__actions">
+			<ViewHeader
+				icon={<Youtube className="video-view-header__icon" />}
+				title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
+				actions={
 					<button
 						className="add-playlist-button"
 						onClick={() => setShowAddForm(true)}
@@ -243,8 +240,8 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 					>
 						<Plus size={16} />
 					</button>
-				</div>
-			</div>
+				}
+			/>
 
 			{/* Add Playlist Form */}
 			{showAddForm && (
@@ -357,197 +354,6 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 					)}
 				</div>
 			)}
-		</div>
-	);
-};
-
-interface PlaylistCardProps {
-	playlist: PlaylistInfo;
-	onPlaylistSelect: (playlist: PlaylistInfo) => void;
-	onTogglePin: (playlistId: string) => void;
-	isPinned: boolean;
-}
-
-const PlaylistCard = ({
-	playlist,
-	onPlaylistSelect,
-	onTogglePin,
-	isPinned,
-}: PlaylistCardProps) => {
-	const formatItemCount = (count: number): string => {
-		if (count === 0) return "Empty";
-		if (count === 1) return "1 video";
-		return `${count} videos`;
-	};
-
-	const handlePinClick = (e: React.MouseEvent) => {
-		e.preventDefault();
-		e.stopPropagation(); // Prevent triggering playlist selection
-		onTogglePin(playlist.id);
-	};
-
-	return (
-		<div
-			key={playlist.id}
-			className={`playlist-card ${isPinned ? "playlist-card--pinned" : ""}`}
-			onClick={() => onPlaylistSelect(playlist)}
-			role="button"
-			tabIndex={0}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					onPlaylistSelect(playlist);
-				}
-			}}
-		>
-			{/* Pin button */}
-			<button
-				className={`playlist-card__pin-button ${isPinned ? "playlist-card__pin-button--pinned" : "playlist-card__pin-button--hover"}`}
-				onClick={handlePinClick}
-				title={isPinned ? "Unpin playlist" : "Pin playlist"}
-				aria-label={isPinned ? "Unpin playlist" : "Pin playlist"}
-			>
-				<Pin
-					size={24}
-					className={
-						isPinned ? "playlist-card__pin-icon--pinned" : ""
-					}
-				/>
-			</button>
-
-			<div className="playlist-card__thumbnail">
-				{playlist.thumbnailUrl ? (
-					<img
-						src={playlist.thumbnailUrl}
-						alt={`${playlist.title} thumbnail`}
-						className="playlist-card__thumbnail-img playlist-card__thumbnail-img--fixed"
-						loading="lazy"
-					/>
-				) : (
-					<div className="playlist-card__thumbnail-placeholder playlist-card__thumbnail-placeholder--fixed">
-						<Play size={32} />
-					</div>
-				)}
-				<div className="playlist-card__video-count">
-					<Video size={12} />
-					{playlist.itemCount}
-				</div>
-			</div>
-
-			<div className="playlist-card__content">
-				<h3 className="playlist-card__title" title={playlist.title}>
-					{playlist.title}
-				</h3>
-
-				{playlist.description && (
-					<p
-						className="playlist-card__description"
-						title={playlist.description}
-					>
-						{playlist.description}
-					</p>
-				)}
-
-				<div className="playlist-card__meta">
-					<span className="playlist-card__item-count">
-						{formatItemCount(playlist.itemCount)}
-					</span>
-				</div>
-			</div>
-
-			<div className="playlist-card__hover-overlay">
-				<div className="playlist-card__hover-text">
-					Click to view videos
-				</div>
-			</div>
-		</div>
-	);
-};
-
-interface AddPlaylistFormProps {
-	resetAddForm: () => void;
-	isAdding: boolean;
-	playlistIdInput: string;
-	setPlaylistIdInput: (value: string) => void;
-	handleAddPlaylist: () => void;
-	addError: string | null;
-}
-
-const AddPlaylistForm = ({
-	resetAddForm,
-	isAdding,
-	playlistIdInput,
-	setPlaylistIdInput,
-	handleAddPlaylist,
-	addError,
-}: AddPlaylistFormProps) => {
-	return (
-		<div className="add-playlist-form">
-			<div className="add-playlist-form__header">
-				<label>Add Playlist by ID</label>
-			</div>
-
-			<div className="add-playlist-form__content">
-				<div className="add-playlist-form__input-group">
-					<label htmlFor="playlist-id-input">
-						Playlist ID or URL:
-					</label>
-					<div className="add-playlist-form__input-wrapper">
-						<input
-							id="playlist-id-input"
-							type="text"
-							className="add-playlist-form__input"
-							placeholder="PLDDTZzm0d6OE3op3... or full YouTube URL"
-							value={playlistIdInput}
-							onChange={(e) => setPlaylistIdInput(e.target.value)}
-							disabled={isAdding}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									handleAddPlaylist();
-								}
-								if (e.key === "Escape") {
-									resetAddForm();
-								}
-							}}
-						/>
-					</div>
-				</div>
-
-				{addError && (
-					<div className="add-playlist-form__error">
-						<AlertCircle size={16} />
-						{addError}
-					</div>
-				)}
-
-				<div className="add-playlist-form__actions">
-					<button
-						className="add-playlist-form__submit"
-						onClick={handleAddPlaylist}
-						disabled={isAdding || !playlistIdInput.trim()}
-					>
-						{isAdding ? (
-							<>
-								<Loader2 size={16} className="animate-spin" />
-								Adding...
-							</>
-						) : (
-							<>
-								<Plus size={16} />
-								Add Playlist
-							</>
-						)}
-					</button>
-					<button
-						className="add-playlist-form__cancel"
-						onClick={resetAddForm}
-						disabled={isAdding}
-					>
-						Cancel
-					</button>
-				</div>
-			</div>
 		</div>
 	);
 };

@@ -16,6 +16,7 @@ import { Notice } from "obsidian";
 import { UI_TEXT } from "src/constants/uiText";
 import { localStorageService } from "src/storage";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
+import { ViewHeader } from "src/ui/ViewHeader";
 
 interface PlaylistVideosViewProps {
 	playlistSource: PlaylistSource;
@@ -269,12 +270,10 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 	if (isLoading && allVideos.length === 0) {
 		return (
 			<div className="playlist-videos-view">
-				<div className="video-view-header">
-					<div className="video-view-header__title">
-						<Play className="video-view-header__icon" />
-						{playlistInfo.title}
-					</div>
-				</div>
+				<ViewHeader
+					icon={<Play className="video-view-header__icon" />}
+					title={playlistInfo.title}
+				/>
 
 				<div className="videos-loading-skeleton">
 					{Array.from({ length: 6 }).map((_, i) => (
@@ -298,12 +297,10 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 	if (error && allVideos.length === 0) {
 		return (
 			<div className="playlist-videos-view">
-				<div className="video-view-header">
-					<div className="video-view-header__title">
-						<Play className="video-view-header__icon" />
-						{playlistInfo.title}
-					</div>
-				</div>
+				<ViewHeader
+					icon={<Play className="video-view-header__icon" />}
+					title={playlistInfo.title}
+				/>
 
 				<div className="videos-error">
 					<div className="videos-error__icon">
@@ -327,12 +324,10 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 
 	return (
 		<div className="playlist-videos-view">
-			<div className="video-view-header">
-				<div className="video-view-header__title">
-					<Play className="video-view-header__icon" />
-					{playlistInfo.title}
-				</div>
-				<div className="video-view-header__actions">
+			<ViewHeader
+				icon={<Play className="video-view-header__icon" />}
+				title={playlistInfo.title}
+				actions={
 					<button
 						className="refresh-button"
 						onClick={handleRefresh}
@@ -344,8 +339,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 							className={isLoading ? "animate-spin" : ""}
 						/>
 					</button>
-				</div>
-			</div>
+				}
+			/>
 
 			{playlistInfo.description && (
 				<div className="playlist-description">

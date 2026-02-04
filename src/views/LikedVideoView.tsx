@@ -29,6 +29,7 @@ import { UI_TEXT } from "src/constants/uiText";
 import { categoriesService } from "src/categoriesService";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
+import { ViewHeader } from "src/ui/ViewHeader";
 
 export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -311,105 +312,110 @@ export const LikedVideoView: React.FC = () => {
 
 	return (
 		<div className="liked-video-view">
-			<div className="video-view-header">
-				<div className="video-view-header__title">
-					<Youtube className="video-view-header__icon" />{" "}
-					{UI_TEXT.HEADER_TITLE}
-					{plugin.settings.autoFetchEnabled && (
-						<span
-							className="auto-fetch-indicator"
-							title={`Auto-fetch: Every ${
-								plugin.settings.autoFetchInterval < 1
-									? `${Math.round(plugin.settings.autoFetchInterval * 60)} seconds`
-									: `${plugin.settings.autoFetchInterval} minutes`
-							}`}
-						>
-							{plugin.isFetching ? "🔄 Fetching..." : "⏰ Auto"}
-						</span>
-					)}
-				</div>
-				<div className="video-view-header__actions">
-					<button
-						title={UI_TEXT.BTN_REFRESH}
-						/// Refresh button to fetch recently liked videos
-						className="video-view-header__refresh-button"
-						disabled={isFetching || plugin.isFetching}
-						onClick={async () => {
-							setIsFetching(true);
-							let fetchedLikedVideos: YouTubeVideo[] = [];
-							let nextPageToken: string | undefined = undefined;
+			<ViewHeader
+				icon={<Youtube className="video-view-header__icon" />}
+				title={
+					<>
+						{" "}
+						{UI_TEXT.HEADER_TITLE}
+						{plugin.settings.autoFetchEnabled && (
+							<span
+								className="auto-fetch-indicator"
+								title={`Auto-fetch: Every ${
+									plugin.settings.autoFetchInterval < 1
+										? `${Math.round(plugin.settings.autoFetchInterval * 60)} seconds`
+										: `${plugin.settings.autoFetchInterval} minutes`
+								}`}
+							>
+								{plugin.isFetching ? "🔄 Fetching..." : "⏰ Auto"}
+							</span>
+						)}
+					</>
+				}
+				actions={
+					<>
+						<button
+							title={UI_TEXT.BTN_REFRESH}
+							/// Refresh button to fetch recently liked videos
+							className="video-view-header__refresh-button"
+							disabled={isFetching || plugin.isFetching}
+							onClick={async () => {
+								setIsFetching(true);
+								let fetchedLikedVideos: YouTubeVideo[] = [];
+								let nextPageToken: string | undefined = undefined;
 
-							const limit = plugin.settings.fetchLimit;
+								const limit = plugin.settings.fetchLimit;
 
-							const response: YouTubeVideosResponse | undefined =
-								await plugin.likedVideoApi.fetchLikedVideos(
-									limit,
-									nextPageToken,
-								);
+								const response: YouTubeVideosResponse | undefined =
+									await plugin.likedVideoApi.fetchLikedVideos(
+										limit,
+										nextPageToken,
+									);
 
-							if (response) {
-								fetchedLikedVideos = fetchedLikedVideos.concat(
-									response.items,
-								);
-								nextPageToken = response.nextPageToken;
-							}
-
-							const storedLikedVideos =
-								localStorageService.getLikedVideos();
-							const storedLikedVideoIdsSet = new Set(
-								storedLikedVideos.map((video) => video.id),
-							);
-
-							const newLikedVideos = fetchedLikedVideos.filter(
-								(video) =>
-									!storedLikedVideoIdsSet.has(video.id),
-							);
-
-							const updatedLikedVideos = [
-								...newLikedVideos,
-								...storedLikedVideos,
-							];
-
-							// Batch state updates to avoid unnecessary re-renders
-							localStorageService.setLikedVideos(
-								updatedLikedVideos,
-							);
-							setVideos(updatedLikedVideos);
-
-							new Notice(
-								UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(
-									newLikedVideos.length,
-								),
-							);
-
-							// Auto-create notes for new videos if enabled
-							if (
-								plugin.settings.autoCreateNoteEnabled &&
-								newLikedVideos.length > 0
-							) {
-								for (const video of newLikedVideos) {
-									await plugin.automateVideoProcessing(video);
+								if (response) {
+									fetchedLikedVideos = fetchedLikedVideos.concat(
+										response.items,
+									);
+									nextPageToken = response.nextPageToken;
 								}
-							}
 
-							setIsFetching(false);
-						}}
-					>
-						<RefreshCcw size={16} />
-					</button>
-					<button
-						title={UI_TEXT.BTN_SETTINGS}
-						onClick={() => {
-							// Open Plugin Setting.
-							const setting = (plugin.app as any).setting;
-							setting.open();
-							setting.openTabById(APP_ID);
-						}}
-					>
-						<Settings size={16} />
-					</button>
-				</div>
-			</div>
+								const storedLikedVideos =
+									localStorageService.getLikedVideos();
+								const storedLikedVideoIdsSet = new Set(
+									storedLikedVideos.map((video) => video.id),
+								);
+
+								const newLikedVideos = fetchedLikedVideos.filter(
+									(video) =>
+										!storedLikedVideoIdsSet.has(video.id),
+								);
+
+								const updatedLikedVideos = [
+									...newLikedVideos,
+									...storedLikedVideos,
+								];
+
+								// Batch state updates to avoid unnecessary re-renders
+								localStorageService.setLikedVideos(
+									updatedLikedVideos,
+								);
+								setVideos(updatedLikedVideos);
+
+								new Notice(
+									UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(
+										newLikedVideos.length,
+									),
+								);
+
+								// Auto-create notes for new videos if enabled
+								if (
+									plugin.settings.autoCreateNoteEnabled &&
+									newLikedVideos.length > 0
+								) {
+									for (const video of newLikedVideos) {
+										await plugin.automateVideoProcessing(video);
+									}
+								}
+
+								setIsFetching(false);
+							}}
+						>
+							<RefreshCcw size={16} />
+						</button>
+						<button
+							title={UI_TEXT.BTN_SETTINGS}
+							onClick={() => {
+								// Open Plugin Setting.
+								const setting = (plugin.app as any).setting;
+								setting.open();
+								setting.openTabById(APP_ID);
+							}}
+						>
+							<Settings size={16} />
+						</button>
+					</>
+				}
+			/>
 
 			<div className="search-bar-container">
 				<div className="search-bar-wrapper">
