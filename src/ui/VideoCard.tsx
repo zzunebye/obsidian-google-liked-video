@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { Menu, TFile, moment, Notice } from "obsidian";
 import { getDailyNote, getAllDailyNotes, createDailyNote } from "obsidian-daily-notes-interface";
-import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, ExternalLink, FilePlus } from "lucide-react";
+import { MoreHorizontal, Eye, ThumbsUp, MessageCircle, ExternalLink, FilePlus, FileCheck, Bot } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
 import { sanitizeFileName, generateVideoNoteContent, getExpectedNotePath } from "src/utils/noteUtils";
 import { TemplateService } from "src/services/templateService";
+import { useNoteExistence } from "src/hooks/useNoteExistence";
+import { SummarySection } from "./SummarySection";
+import { localStorageService } from "../storage";
 
 interface VideoCardProps {
     source: 'liked' | 'playlist';
@@ -21,6 +25,10 @@ interface VideoCardProps {
 
 export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick, onLinkClick }: VideoCardProps) => {
     const plugin = usePlugin();
+    const isAIEnabled = plugin.settings?.enableAISummary ?? false;
+    const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+    const [hasSummary, setHasSummary] = useState(() => localStorageService.hasVideoSummary(videoInfo.id));
+    const noteExists = useNoteExistence(plugin, videoInfo.snippet.title, videoInfo.snippet.channelTitle);
 
     // Format duration from seconds to display format
     const formatDuration = (duration: string | undefined): string => {
@@ -67,12 +75,21 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
         onLinkClick(url);
     };
 
+    const handleSummaryToggle = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSummaryExpanded(prev => !prev);
+    };
+
     const handleChannelClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         onChannelClick(videoInfo.snippet.channelTitle);
     };
-    const handleCreateVideoNote = async () => {
+    const handleCreateVideoNote = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
         try {
             const baseFileName = sanitizeFileName(videoInfo.snippet.title);
             const customPath = plugin.settings?.videoNotePath || 'Youtube';
@@ -90,7 +107,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
 
             // Check if a note already exists at the expected path
             const existingFile = appInstance.vault.getAbstractFileByPath(expectedPath);
-            
+
             if (!existingFile) {
                 // Note doesn't exist, create it
                 const templateService = plugin.settings
@@ -151,12 +168,9 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             item.setTitle("Add to daily note");
             item.onClick(async () => {
                 try {
-                    // find a daily note and add the video to the daily note
-                    // create a new daily note if it doesn't exist
                     const today = moment().startOf('day');
                     const dailyNotes = getAllDailyNotes();
                     let dailyNote = getDailyNote(today, dailyNotes);
-                    // Create daily note if it doesn't exist
                     if (!dailyNote) {
                         dailyNote = await createDailyNote(today);
                     }
@@ -202,87 +216,143 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
         });
 
         menu.addItem(item => {
-            item.setTitle("Create note");
-            item.setIcon("file-plus");
-            item.onClick(async () => handleCreateVideoNote());
+            item.setTitle(noteExists ? "Open video note" : "Create note");
+            item.setIcon(noteExists ? "file-check" : "file-plus");
+            item.onClick(async () => handleCreateVideoNote(e));
         });
 
         menu.showAtPosition({ x: e.clientX, y: e.clientY });
     }
 
-    return (
-        <div
-            className="video-card__container"
-            onClick={() => {
-                onLinkClick(url);
-            }}
-            onContextMenu={handleContextMenu}
-            draggable
-            onDragStart={(e) => handleDragStart(e)}
-            onDragEnd={(e) => handleDragEnd(e)}
-
-        >
-            <div
-                className="video-card-inner"
-
-            >
-                <div className="video-thumbnail-wrapper">
-                    <img className="video-thumbnail" loading="lazy" decoding="async" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" />
-                    {videoInfo.contentDetails?.duration && (
-                        <span className="video-duration-badge">
-                            {formatDuration(videoInfo.contentDetails.duration)}
-                        </span>
-                    )}
+    const thumbnailAndDetails = (
+        <>
+            <div className="video-thumbnail-wrapper">
+                <img className="video-thumbnail" loading="lazy" decoding="async" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" />
+                {videoInfo.contentDetails?.duration && (
+                    <span className="video-duration-badge">
+                        {formatDuration(videoInfo.contentDetails.duration)}
+                    </span>
+                )}
+            </div>
+            <div className="video-details">
+                <div className="video-details-inner">
+                    <h2 className="video-title">{videoInfo.snippet.title}</h2>
+                    <p className="video-channel">Channel: <span className="video-channel-link" onClick={handleChannelClick}>{videoInfo.snippet.channelTitle}</span></p>
+                    <p className="video-date">Published: {moment(videoInfo.snippet.publishedAt).format('MMM D, YYYY')}</p>
                 </div>
-                <div className="video-details" >
-                    <div className="video-details-inner">
-                        <h2 className="video-title">{videoInfo.snippet.title}</h2>
-                        <p className="video-channel">Channel: <span className="video-channel-link" onClick={handleChannelClick}>{videoInfo.snippet.channelTitle}</span></p>
-                        <p className="video-date">Published: {moment(videoInfo.snippet.publishedAt).format('MMM D, YYYY')}</p>
-                    </div>
-                    <div className="video-bottom-row">
-                        <p className="video-pulled-at">Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
-                        <div className="video-statistics">
-                            <div className="video-stat">
-                                <Eye size={14} className="video-stat-icon" />
-                                <span className="video-stat-count">{formatCount(videoInfo.statistics.viewCount)}</span>
-                            </div>
-                            <div className="video-stat">
-                                <ThumbsUp size={14} className="video-stat-icon" />
-                                <span className="video-stat-count">{formatCount(videoInfo.statistics.likeCount)}</span>
-                            </div>
-                            <div className="video-stat">
-                                <MessageCircle size={14} className="video-stat-icon" />
-                                <span className="video-stat-count">{formatCount(videoInfo.statistics.commentCount)}</span>
-                            </div>
+                <div className="video-bottom-row">
+                    <p className="video-pulled-at">Pulled At {new Date(videoInfo.pulled_at).toLocaleDateString()}</p>
+                    <div className="video-statistics">
+                        <div className="video-stat">
+                            <Eye size={14} className="video-stat-icon" />
+                            <span className="video-stat-count">{formatCount(videoInfo.statistics.viewCount)}</span>
+                        </div>
+                        <div className="video-stat">
+                            <ThumbsUp size={14} className="video-stat-icon" />
+                            <span className="video-stat-count">{formatCount(videoInfo.statistics.likeCount)}</span>
+                        </div>
+                        <div className="video-stat">
+                            <MessageCircle size={14} className="video-stat-icon" />
+                            <span className="video-stat-count">{formatCount(videoInfo.statistics.commentCount)}</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <div className="video-card-options">
-                <button
-                    className="video-card-btn"
-                    aria-label="Open in Browser"
-                    onClick={handleExternalOpen}
-                    title="Open in External Browser"
-                >
-                    <ExternalLink size={16} />
-                </button>
-                <button
-                    className="video-card-btn"
-                    aria-label="Create Video Note"
-                    onClick={(e) => handleCreateVideoNote()}
-                >
-                    <FilePlus size={16} />
-                </button>
+        </>
+    );
 
-                <button
-                    className="video-card-btn"
-                    aria-label="More options"
-                    onClick={handleContextMenu}
-                >
-                    <MoreHorizontal size={16} />
-                </button>
+    const actionButtons = (
+        <>
+            <button
+                className="video-card-btn"
+                aria-label="Open in Browser"
+                onClick={handleExternalOpen}
+                title="Open in External Browser"
+            >
+                <ExternalLink size={16} />
+            </button>
+            <button
+                className={`video-card-btn ${noteExists ? 'video-card-btn--has-note' : ''}`}
+                aria-label={noteExists ? "Open Video Note" : "Create Video Note"}
+                onClick={(e) => handleCreateVideoNote(e)}
+                title={noteExists ? "Open existing video note" : "Create video note"}
+            >
+                {noteExists ? <FileCheck size={16} /> : <FilePlus size={16} />}
+            </button>
+            <button
+                className="video-card-btn"
+                aria-label="More options"
+                onClick={handleContextMenu}
+            >
+                <MoreHorizontal size={16} />
+            </button>
+        </>
+    );
+
+    const handleCardClick = () => {
+        if (!isSummaryExpanded) {
+            onLinkClick(url);
+        }
+    };
+
+    if (isAIEnabled) {
+        return (
+            <div
+                className={`video-card__container video-card__container--ai ${isSummaryExpanded ? 'video-card__container--expanded' : ''}`}
+                onClick={handleCardClick}
+                onContextMenu={handleContextMenu}
+                draggable
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+            >
+                <div className="video-card__main">
+                    <div className="video-card-inner">
+                        {thumbnailAndDetails}
+                    </div>
+                    <div className="video-card-options">
+                        <button
+                            className={`video-card-btn ${hasSummary ? 'video-card-btn--accent' : ''}`}
+                            aria-label="AI Summary"
+                            onClick={handleSummaryToggle}
+                            title={hasSummary ? 'Show/hide AI summary' : 'Generate AI summary'}
+                        >
+                            <Bot size={16} />
+                        </button>
+                        {actionButtons}
+                    </div>
+                </div>
+                {hasSummary && !isSummaryExpanded && (
+                    <div className="summary-preview" onClick={handleSummaryToggle}>
+                        <Bot size={12} className="summary-preview__icon" />
+                        <span className="summary-preview__text">
+                            {localStorageService.getVideoSummary(videoInfo.id)?.summary?.slice(0, 100)}...
+                        </span>
+                    </div>
+                )}
+                <SummarySection
+                    videoId={videoInfo.id}
+                    isExpanded={isSummaryExpanded}
+                    setIsExpanded={setIsSummaryExpanded}
+                    onSummaryGenerated={() => setHasSummary(true)}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className="video-card__container"
+            onClick={() => onLinkClick(url)}
+            onContextMenu={handleContextMenu}
+            draggable
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+        >
+            <div className="video-card-inner">
+                {thumbnailAndDetails}
+            </div>
+            <div className="video-card-options">
+                {actionButtons}
             </div>
         </div>
     );

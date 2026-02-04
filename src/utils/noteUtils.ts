@@ -291,6 +291,49 @@ export const linkToDailyNote = async (app: any, file: TFile) => {
 };
 
 
+/**
+ * Synchronous version of getExpectedNotePath that computes the expected note path
+ * without creating folders. Used for checking if a note already exists.
+ */
+export const computeExpectedNotePath = (
+    app: any,
+    baseFileName: string,
+    customPath?: string,
+    organizeByChannel?: boolean,
+    channelName?: string,
+    extension = 'md'
+): string => {
+    let targetPath = '';
+
+    if (customPath && customPath.trim()) {
+        const cleanPath = customPath.trim();
+        let fullPath = cleanPath;
+        if (organizeByChannel && channelName) {
+            const sanitizedChannelName = sanitizeChannelName(channelName);
+            if (sanitizedChannelName) {
+                fullPath = `${cleanPath}/${sanitizedChannelName}`;
+            }
+        }
+        targetPath = fullPath;
+    } else {
+        const defaultLocation = app.fileManager.getNewFileParent('');
+        const basePath = defaultLocation?.path || '';
+        if (organizeByChannel && channelName && basePath) {
+            const sanitizedChannelName = sanitizeChannelName(channelName);
+            if (sanitizedChannelName) {
+                targetPath = `${basePath}/${sanitizedChannelName}`;
+            } else {
+                targetPath = basePath;
+            }
+        } else {
+            targetPath = basePath;
+        }
+    }
+
+    const fileName = `${baseFileName}.${extension}`;
+    return targetPath ? `${targetPath}/${fileName}` : fileName;
+};
+
 export const getExpectedNotePath = async (
     app: any,
     baseFileName: string,

@@ -14,6 +14,7 @@ import { FeatureIntroModal } from './components/FeatureIntroModal';
 import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
 import { DEFAULT_TEMPLATE } from './utils/templateConstants';
 import { TemplateService } from './services/templateService';
+import { GeminiService } from './services/geminiService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
@@ -393,10 +394,31 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 	}
 
-	async getAISummary(title: string, description: string): Promise<string> {
-		// This is a placeholder for AI summary generation.
-		// You can implement this using an AI service like OpenAI, etc.
-		console.log("AI summary generation for video:", title);
+	async getAISummary(title: string, description: string, videoId?: string): Promise<string> {
+		debugLogger.info(`[AI Summary] getAISummary called - title: "${title}", videoId: ${videoId || 'none'}`);
+		debugLogger.debug(`[AI Summary] Settings check - enabled: ${this.settings.enableAISummary}, hasApiKey: ${!!this.settings.geminiApiKey}`);
+
+		if (!this.settings.enableAISummary || !this.settings.geminiApiKey) {
+			debugLogger.debug('[AI Summary] Feature disabled or no API key - skipping');
+			return "";
+		}
+
+		if (videoId) {
+			try {
+				debugLogger.info(`[AI Summary] Generating summary via auto-create flow for video: ${videoId}`);
+				const gemini = new GeminiService(this.settings.geminiApiKey);
+				const result = await gemini.generateVideoSummary(videoId, this.settings.summaryPrompt);
+				debugLogger.info(`[AI Summary] Auto-create summary generated for video: ${videoId} - caching to localStorage`);
+				localStorageService.setVideoSummary(videoId, result);
+				debugLogger.debug(`[AI Summary] Summary cached successfully for video: ${videoId}`);
+				return result.summary;
+			} catch (error) {
+				debugLogger.error(`[AI Summary] Auto-create summary generation failed for video ${videoId}:`, error);
+				return "";
+			}
+		}
+
+		debugLogger.debug('[AI Summary] No videoId provided - returning empty');
 		return "";
 	}
 
