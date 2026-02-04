@@ -7,6 +7,7 @@ import { PlaylistSource, PlaylistInfo } from 'src/api';
 import { YouTubeVideo } from 'src/types';
 import { Notice } from 'obsidian';
 import { UI_TEXT } from 'src/constants/uiText';
+import { useNoteExistenceMap } from 'src/hooks/useNoteExistence';
 
 interface PlaylistVideosViewProps {
     playlistSource: PlaylistSource;
@@ -24,6 +25,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
     const [hasMoreToShow, setHasMoreToShow] = useState(false);
     const plugin = usePlugin();
     const loadingRef = useRef(false);
+    const noteExistenceMap = useNoteExistenceMap(plugin, displayedVideos);
 
     const videosPerBatch = 20; // Number of videos to show in each batch
     const maxVideosToShow = 999; // Maximum number of videos to show in infinite scroll
@@ -353,6 +355,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                                 key={video.id}
                                 source="playlist"
                                 videoInfo={video}
+                                noteExists={noteExistenceMap.get(video.id) ?? false}
                                 onLinkClick={async (videoUrl) => {
                                     const leaf = plugin.app.workspace.getLeaf("split");
                                     const openInObsidianWebViewer =

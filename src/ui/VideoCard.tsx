@@ -8,7 +8,6 @@ import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
 import { sanitizeFileName, generateVideoNoteContent, getExpectedNotePath, computeExpectedNotePath } from "src/utils/noteUtils";
 import { TemplateService } from "src/services/templateService";
-import { useNoteExistence } from "src/hooks/useNoteExistence";
 import { SummarySection } from "./SummarySection";
 
 interface VideoCardProps {
@@ -16,18 +15,18 @@ interface VideoCardProps {
     videoInfo: YouTubeVideo;
     id: string;
     url: string;
+    noteExists: boolean;
     onUnlike: () => void;
     onAddToDailyNote: (videoData: string, file: TFile) => void;
     onChannelClick: (channelTitle: string) => void;
     onLinkClick: (url: string) => void;
 }
 
-export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, onChannelClick, onLinkClick }: VideoCardProps) => {
+export const VideoCard = ({ source, videoInfo, url, noteExists, onUnlike, onAddToDailyNote, onChannelClick, onLinkClick }: VideoCardProps) => {
     const plugin = usePlugin();
     const isAIEnabled = plugin.settings?.enableAISummary ?? false;
     const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
     const [hasSummary, setHasSummary] = useState(() => plugin.summaryStorage.hasVideoSummary(videoInfo.id));
-    const noteExists = useNoteExistence(plugin, videoInfo.snippet.title, videoInfo.snippet.channelTitle);
 
     // Format duration from seconds to display format
     const formatDuration = (duration: string | undefined): string => {

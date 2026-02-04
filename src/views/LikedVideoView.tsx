@@ -11,6 +11,7 @@ import { VideosContext } from 'src/store/videoContext';
 import { UI_TEXT } from 'src/constants/uiText';
 import { categoriesService } from 'src/categoriesService';
 import { parseDurationToSeconds } from 'src/ui/VideoInfoModal';
+import { useNoteExistenceMap } from 'src/hooks/useNoteExistence';
 
 
 export const LikedVideoView: React.FC = () => {
@@ -187,6 +188,8 @@ export const LikedVideoView: React.FC = () => {
     const currentVideos = useMemo(() => {
         return sortedVideos.slice(startIndex, endIndex);
     }, [sortedVideos, startIndex, endIndex]);
+
+    const noteExistenceMap = useNoteExistenceMap(plugin, currentVideos);
 
     // Reset currentPage to 1 when debouncedSearchTerm, sortOption, or filters change
     useEffect(() => {
@@ -432,6 +435,7 @@ export const LikedVideoView: React.FC = () => {
                     id={video.id}
                     url={`https://www.youtube.com/watch?v=${video.id}`}
                     videoInfo={video}
+                    noteExists={noteExistenceMap.get(video.id) ?? false}
                     onUnlike={async () => {
                         await plugin.likedVideoApi.unlikeVideo(video.id);
                         localStorageService.setLikedVideos(videos.filter(v => v.id !== video.id));

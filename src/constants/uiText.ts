@@ -76,7 +76,7 @@ export const UI_TEXT = {
         '• Consider limiting to 1-2 full fetches per day',
 
     // Content Type Filter
-    CONTENT_TYPE_LABEL: 'Content Type:',
+    CONTENT_TYPE_LABEL: 'Type:',
     CONTENT_TYPE_VIDEOS: 'Videos',
     CONTENT_TYPE_SHORTS: 'Shorts',
     CONTENT_TYPE_MUSIC: 'Music',
