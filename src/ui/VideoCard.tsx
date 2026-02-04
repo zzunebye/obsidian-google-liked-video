@@ -287,6 +287,14 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             item.onClick(async () => handleCreateVideoNote(e));
         });
 
+        if (isAIEnabled) {
+            menu.addItem(item => {
+                item.setTitle(hasSummary ? "View AI summary" : "Generate AI summary");
+                item.setIcon("bot");
+                item.onClick(() => setIsSummaryExpanded(true));
+            });
+        }
+
         menu.showAtPosition({ x: e.clientX, y: e.clientY });
     }
 
