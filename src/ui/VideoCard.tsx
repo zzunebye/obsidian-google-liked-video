@@ -179,11 +179,13 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
         const cache = appInstance.metadataCache.getFileCache(file);
         if (cache?.frontmatter?.ai_summary) {
             new Notice("AI Summary already exists in this note");
+            await appInstance.workspace.openLinkText(file.path, '', true);
             return;
         }
         const content = await appInstance.vault.read(file);
         if (content.includes('## AI Summary')) {
             new Notice("AI Summary already exists in this note");
+            await appInstance.workspace.openLinkText(file.path, '', true);
             return;
         }
 
@@ -196,6 +198,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
         await appInstance.vault.append(file, '\n\n## AI Summary\n' + summaryText);
 
         new Notice("Summary added to video note");
+        await appInstance.workspace.openLinkText(file.path, '', true);
     };
 
     const handleContextMenu = (e: any): void => {
