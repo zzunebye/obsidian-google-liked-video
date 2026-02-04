@@ -1,487 +1,702 @@
-import { useContext, useEffect, useMemo, useState } from 'react';
-import { usePlugin } from '../store/pluginContext';
-import { localStorageService } from 'src/storage';
-import { YouTubeVideo, YouTubeVideosResponse, ContentTypeOption, ContentTypeSelection } from 'src/types';
-import { Youtube, Settings, RefreshCcw, Filter, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowRight, ArrowRightToLine, ArrowLeftToLine, ArrowLeft, Bot } from 'lucide-react';
-import { VideoCard } from 'src/ui/VideoCard';
-import { SearchBar } from 'src/ui/SearchBar';
-import { APP_ID } from 'src/main';
-import { Modal, Notice } from 'obsidian';
-import { VideosContext } from 'src/store/videoContext';
-import { UI_TEXT } from 'src/constants/uiText';
-import { categoriesService } from 'src/categoriesService';
-import { parseDurationToSeconds } from 'src/ui/VideoInfoModal';
-import { useNoteExistenceMap } from 'src/hooks/useNoteExistence';
-
+import { useContext, useEffect, useMemo, useState } from "react";
+import { usePlugin } from "../store/pluginContext";
+import { localStorageService } from "src/storage";
+import {
+	YouTubeVideo,
+	YouTubeVideosResponse,
+	ContentTypeOption,
+	ContentTypeSelection,
+} from "src/types";
+import {
+	Youtube,
+	Settings,
+	RefreshCcw,
+	Filter,
+	ArrowDownWideNarrow,
+	ArrowUpNarrowWide,
+	ArrowRight,
+	ArrowRightToLine,
+	ArrowLeftToLine,
+	ArrowLeft,
+	Bot,
+} from "lucide-react";
+import { VideoCard } from "src/ui/VideoCard";
+import { SearchBar } from "src/ui/SearchBar";
+import { APP_ID } from "src/main";
+import { Modal, Notice } from "obsidian";
+import { VideosContext } from "src/store/videoContext";
+import { UI_TEXT } from "src/constants/uiText";
+import { categoriesService } from "src/categoriesService";
+import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
+import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 
 export const LikedVideoView: React.FC = () => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const [sortOption, setSortOption] = useState(localStorageService.getSortOption());
-    const [sortOrder, setSortOrder] = useState(localStorageService.getSortOrder());
-    const [selectedCategory, setSelectedCategory] = useState(localStorageService.getSelectedCategory());
-    const [contentTypeSelection, setContentTypeSelection] = useState<ContentTypeSelection>(
-        localStorageService.getContentTypeSelection()
-    );
-    const [showAINoteOnly, setShowAINoteOnly] = useState(localStorageService.getAINoteFilter());
-    const [videos, setVideos] = useContext(VideosContext);
-    const [isFetching, setIsFetching] = useState(false);
-    const plugin = usePlugin();
-    const videosPerPage = 10;
+	const [searchTerm, setSearchTerm] = useState("");
+	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+	const [currentPage, setCurrentPage] = useState(1);
+	const [sortOption, setSortOption] = useState(
+		localStorageService.getSortOption(),
+	);
+	const [sortOrder, setSortOrder] = useState(
+		localStorageService.getSortOrder(),
+	);
+	const [selectedCategory, setSelectedCategory] = useState(
+		localStorageService.getSelectedCategory(),
+	);
+	const [contentTypeSelection, setContentTypeSelection] =
+		useState<ContentTypeSelection>(
+			localStorageService.getContentTypeSelection(),
+		);
+	const [showAINoteOnly, setShowAINoteOnly] = useState(
+		localStorageService.getAINoteFilter(),
+	);
+	const [videos, setVideos] = useContext(VideosContext);
+	const [isFetching, setIsFetching] = useState(false);
+	const plugin = usePlugin();
+	const videosPerPage = 10;
 
-    // Get categories ready state
-    const isCategoriesReady = categoriesService.isReady();
+	// Get categories ready state
+	const isCategoriesReady = categoriesService.isReady();
 
-    // Get available categories for filtering
-    const availableCategories = useMemo(() => {
-        if (!isCategoriesReady) {
-            return [];
-        }
+	// Get available categories for filtering
+	const availableCategories = useMemo(() => {
+		if (!isCategoriesReady) {
+			return [];
+		}
 
-        // Get unique categories from current videos
-        const videoCategories = new Set(videos.map(video => video.snippet.categoryId));
-        const allCategories = categoriesService.getAllCategories();
+		// Get unique categories from current videos
+		const videoCategories = new Set(
+			videos.map((video) => video.snippet.categoryId),
+		);
+		const allCategories = categoriesService.getAllCategories();
 
-        // Only show categories that exist in the current video collection
-        return allCategories.filter(category => videoCategories.has(category.id));
-    }, [videos, isCategoriesReady]);
+		// Only show categories that exist in the current video collection
+		return allCategories.filter((category) =>
+			videoCategories.has(category.id),
+		);
+	}, [videos, isCategoriesReady]);
 
-    // Calculate category counts
-    const categoryCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        videos.forEach(video => {
-            const categoryId = video.snippet.categoryId;
-            if (categoryId) {
-                counts[categoryId] = (counts[categoryId] || 0) + 1;
-            }
-        });
-        return counts;
-    }, [videos]);
+	// Calculate category counts
+	const categoryCounts = useMemo(() => {
+		const counts: Record<string, number> = {};
+		videos.forEach((video) => {
+			const categoryId = video.snippet.categoryId;
+			if (categoryId) {
+				counts[categoryId] = (counts[categoryId] || 0) + 1;
+			}
+		});
+		return counts;
+	}, [videos]);
 
-    // Pre-process video durations once
-    const videoDurations = useMemo(() => {
-        const durations = new Map<string, number>();
-        videos.forEach(video => {
-            if (video.contentDetails?.duration) {
-                const seconds = parseDurationToSeconds(video.contentDetails.duration);
-                // Use 0 as fallback if parsing fails
-                durations.set(video.id, seconds ?? 0);
-            } else {
-                // Set 0 for videos without duration info
-                durations.set(video.id, 0);
-            }
-        });
-        return durations;
-    }, [videos]);
+	// Pre-process video durations once
+	const videoDurations = useMemo(() => {
+		const durations = new Map<string, number>();
+		videos.forEach((video) => {
+			if (video.contentDetails?.duration) {
+				const seconds = parseDurationToSeconds(
+					video.contentDetails.duration,
+				);
+				// Use 0 as fallback if parsing fails
+				durations.set(video.id, seconds ?? 0);
+			} else {
+				// Set 0 for videos without duration info
+				durations.set(video.id, 0);
+			}
+		});
+		return durations;
+	}, [videos]);
 
-    useEffect(() => {
-        localStorageService.setSortOption(sortOption);
-        localStorageService.setSortOrder(sortOrder);
-    }, [sortOption, sortOrder]);
+	useEffect(() => {
+		localStorageService.setSortOption(sortOption);
+		localStorageService.setSortOrder(sortOrder);
+	}, [sortOption, sortOrder]);
 
-    useEffect(() => {
-        localStorageService.setSelectedCategory(selectedCategory);
-    }, [selectedCategory]);
+	useEffect(() => {
+		localStorageService.setSelectedCategory(selectedCategory);
+	}, [selectedCategory]);
 
-    useEffect(() => {
-        localStorageService.setContentTypeSelection(contentTypeSelection);
-    }, [contentTypeSelection]);
+	useEffect(() => {
+		localStorageService.setContentTypeSelection(contentTypeSelection);
+	}, [contentTypeSelection]);
 
-    useEffect(() => {
-        localStorageService.setAINoteFilter(showAINoteOnly);
-    }, [showAINoteOnly]);
+	useEffect(() => {
+		localStorageService.setAINoteFilter(showAINoteOnly);
+	}, [showAINoteOnly]);
 
-    // Debounce search term
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearchTerm(searchTerm);
-        }, 300);
+	// Debounce search term
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearchTerm(searchTerm);
+		}, 300);
 
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
+		return () => clearTimeout(timer);
+	}, [searchTerm]);
 
-    const filteredVideos = useMemo(() => {
-        // Pre-calculate lowercase search term once
-        const lowerSearchTerm = debouncedSearchTerm.toLowerCase();
+	const filteredVideos = useMemo(() => {
+		// Pre-calculate lowercase search term once
+		const lowerSearchTerm = debouncedSearchTerm.toLowerCase();
 
-        return videos.filter(video => {
-            // Search filter - only calculate if search term exists
-            let searchMatch = true;
-            if (lowerSearchTerm) {
-                const titleMatch = video.snippet.title.toLowerCase().includes(lowerSearchTerm);
-                const tagsMatch = (video.snippet.tags ?? []).some(tag => tag.toLowerCase().includes(lowerSearchTerm));
-                const channelMatch = video.snippet.channelTitle.toLowerCase().includes(lowerSearchTerm);
-                searchMatch = titleMatch || tagsMatch || channelMatch;
-            }
+		return videos.filter((video) => {
+			// Search filter - only calculate if search term exists
+			let searchMatch = true;
+			if (lowerSearchTerm) {
+				const titleMatch = video.snippet.title
+					.toLowerCase()
+					.includes(lowerSearchTerm);
+				const tagsMatch = (video.snippet.tags ?? []).some((tag) =>
+					tag.toLowerCase().includes(lowerSearchTerm),
+				);
+				const channelMatch = video.snippet.channelTitle
+					.toLowerCase()
+					.includes(lowerSearchTerm);
+				searchMatch = titleMatch || tagsMatch || channelMatch;
+			}
 
-            // Category filter
-            const categoryMatch = selectedCategory === 'all' || video.snippet.categoryId === selectedCategory;
+			// Category filter
+			const categoryMatch =
+				selectedCategory === "all" ||
+				video.snippet.categoryId === selectedCategory;
 
-            // Content type filter (OR logic - show if matches ANY selected type)
-            const durationInSeconds = videoDurations.get(video.id) || 0;
-            const isMusic = video.snippet.categoryId === '10';
-            const isShort = durationInSeconds > 0 && durationInSeconds <= 90;
-            const isRegularVideo = durationInSeconds > 60 && !isMusic;
+			// Content type filter (OR logic - show if matches ANY selected type)
+			const durationInSeconds = videoDurations.get(video.id) || 0;
+			const isMusic = video.snippet.categoryId === "10";
+			const isShort = durationInSeconds > 0 && durationInSeconds <= 90;
+			const isRegularVideo = durationInSeconds > 60 && !isMusic;
 
-            let contentTypeMatch = true;
-            // If no selection or all selected, show everything
-            if (contentTypeSelection.length > 0 && contentTypeSelection.length < 3) {
-                contentTypeMatch = false;
-                if (contentTypeSelection.includes('videos') && isRegularVideo) {
-                    contentTypeMatch = true;
-                }
-                if (contentTypeSelection.includes('shorts') && isShort) {
-                    contentTypeMatch = true;
-                }
-                if (contentTypeSelection.includes('music') && isMusic) {
-                    contentTypeMatch = true;
-                }
-            }
+			let contentTypeMatch = true;
+			// If no selection or all selected, show everything
+			if (
+				contentTypeSelection.length > 0 &&
+				contentTypeSelection.length < 3
+			) {
+				contentTypeMatch = false;
+				if (contentTypeSelection.includes("videos") && isRegularVideo) {
+					contentTypeMatch = true;
+				}
+				if (contentTypeSelection.includes("shorts") && isShort) {
+					contentTypeMatch = true;
+				}
+				if (contentTypeSelection.includes("music") && isMusic) {
+					contentTypeMatch = true;
+				}
+			}
 
-            // AI Note filter
-            const aiNoteMatch = !showAINoteOnly || plugin.summaryStorage.hasVideoSummary(video.id);
+			// AI Note filter
+			const aiNoteMatch =
+				!showAINoteOnly ||
+				plugin.summaryStorage.hasVideoSummary(video.id);
 
-            return searchMatch && categoryMatch && contentTypeMatch && aiNoteMatch;
-        });
-    }, [videos, debouncedSearchTerm, selectedCategory, contentTypeSelection, videoDurations, showAINoteOnly]);
+			return (
+				searchMatch && categoryMatch && contentTypeMatch && aiNoteMatch
+			);
+		});
+	}, [
+		videos,
+		debouncedSearchTerm,
+		selectedCategory,
+		contentTypeSelection,
+		videoDurations,
+		showAINoteOnly,
+	]);
 
-    const sortedVideos = useMemo(() => {
-        const sorted = [...filteredVideos];
-        switch (sortOption) {
-            case 'title':
-                sorted.sort((a, b) => a.snippet.title.localeCompare(b.snippet.title));
-                break;
-            case 'viewCount':
-                sorted.sort((a, b) => b.statistics.viewCount - a.statistics.viewCount);
-                break;
-            case 'likeCount':
-                sorted.sort((a, b) => b.statistics.likeCount - a.statistics.likeCount);
-                break;
-            case 'commentCount':
-                sorted.sort((a, b) => {
-                    const aCommentCount = parseInt(a.statistics.commentCount) || 0;
-                    const bCommentCount = parseInt(b.statistics.commentCount) || 0;
-                    return bCommentCount - aCommentCount;
-                });
-                break;
-            case 'likeViewRatio':
-                sorted.sort((a, b) => b.statistics.likeCount / b.statistics.viewCount - a.statistics.likeCount / a.statistics.viewCount);
-                break;
+	const sortedVideos = useMemo(() => {
+		const sorted = [...filteredVideos];
+		switch (sortOption) {
+			case "title":
+				sorted.sort((a, b) =>
+					a.snippet.title.localeCompare(b.snippet.title),
+				);
+				break;
+			case "viewCount":
+				sorted.sort(
+					(a, b) => b.statistics.viewCount - a.statistics.viewCount,
+				);
+				break;
+			case "likeCount":
+				sorted.sort(
+					(a, b) => b.statistics.likeCount - a.statistics.likeCount,
+				);
+				break;
+			case "commentCount":
+				sorted.sort((a, b) => {
+					const aCommentCount =
+						parseInt(a.statistics.commentCount) || 0;
+					const bCommentCount =
+						parseInt(b.statistics.commentCount) || 0;
+					return bCommentCount - aCommentCount;
+				});
+				break;
+			case "likeViewRatio":
+				sorted.sort(
+					(a, b) =>
+						b.statistics.likeCount / b.statistics.viewCount -
+						a.statistics.likeCount / a.statistics.viewCount,
+				);
+				break;
 
-            case 'date':
-                sorted.sort((a, b) => new Date(b.snippet.publishedAt).getTime() - new Date(a.snippet.publishedAt).getTime());
-                break;
-            case 'addedDate':
-                sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
-                break;
-            case 'duration':
-                sorted.sort((a, b) => {
-                    const aDuration = videoDurations.get(a.id) || 0;
-                    const bDuration = videoDurations.get(b.id) || 0;
-                    return bDuration - aDuration;
-                });
-                break;
-        }
-        if (sortOrder === 'ASC') {
-            sorted.reverse();
-        }
-        return sorted;
-    }, [filteredVideos, sortOption, videos, sortOrder, videoDurations]);
+			case "date":
+				sorted.sort(
+					(a, b) =>
+						new Date(b.snippet.publishedAt).getTime() -
+						new Date(a.snippet.publishedAt).getTime(),
+				);
+				break;
+			case "addedDate":
+				sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
+				break;
+			case "duration":
+				sorted.sort((a, b) => {
+					const aDuration = videoDurations.get(a.id) || 0;
+					const bDuration = videoDurations.get(b.id) || 0;
+					return bDuration - aDuration;
+				});
+				break;
+		}
+		if (sortOrder === "ASC") {
+			sorted.reverse();
+		}
+		return sorted;
+	}, [filteredVideos, sortOption, videos, sortOrder, videoDurations]);
 
-    const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
-    const startIndex = (currentPage - 1) * videosPerPage;
-    const endIndex = startIndex + videosPerPage;
+	const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
+	const startIndex = (currentPage - 1) * videosPerPage;
+	const endIndex = startIndex + videosPerPage;
 
-    const currentVideos = useMemo(() => {
-        return sortedVideos.slice(startIndex, endIndex);
-    }, [sortedVideos, startIndex, endIndex]);
+	const currentVideos = useMemo(() => {
+		return sortedVideos.slice(startIndex, endIndex);
+	}, [sortedVideos, startIndex, endIndex]);
 
-    const noteExistenceMap = useNoteExistenceMap(plugin, currentVideos);
+	const noteExistenceMap = useNoteExistenceMap(plugin, currentVideos);
 
-    // Reset currentPage to 1 when debouncedSearchTerm, sortOption, or filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [debouncedSearchTerm, sortOption, selectedCategory, contentTypeSelection, showAINoteOnly]);
+	// Reset currentPage to 1 when debouncedSearchTerm, sortOption, or filters change
+	useEffect(() => {
+		setCurrentPage(1);
+	}, [
+		debouncedSearchTerm,
+		sortOption,
+		selectedCategory,
+		contentTypeSelection,
+		showAINoteOnly,
+	]);
 
-    const getContentTypeLabel = (type: ContentTypeOption): string => {
-        switch (type) {
-            case 'videos': return UI_TEXT.CONTENT_TYPE_VIDEOS;
-            case 'shorts': return UI_TEXT.CONTENT_TYPE_SHORTS;
-            case 'music': return UI_TEXT.CONTENT_TYPE_MUSIC;
-        }
-    };
+	const getContentTypeLabel = (type: ContentTypeOption): string => {
+		switch (type) {
+			case "videos":
+				return UI_TEXT.CONTENT_TYPE_VIDEOS;
+			case "shorts":
+				return UI_TEXT.CONTENT_TYPE_SHORTS;
+			case "music":
+				return UI_TEXT.CONTENT_TYPE_MUSIC;
+		}
+	};
 
-    const getContentTypeTooltip = (type: ContentTypeOption): string => {
-        switch (type) {
-            case 'videos': return UI_TEXT.TOOLTIP_VIDEOS;
-            case 'shorts': return UI_TEXT.TOOLTIP_SHORTS;
-            case 'music': return UI_TEXT.TOOLTIP_MUSIC;
-        }
-    };
+	const getContentTypeTooltip = (type: ContentTypeOption): string => {
+		switch (type) {
+			case "videos":
+				return UI_TEXT.TOOLTIP_VIDEOS;
+			case "shorts":
+				return UI_TEXT.TOOLTIP_SHORTS;
+			case "music":
+				return UI_TEXT.TOOLTIP_MUSIC;
+		}
+	};
 
-    const toggleContentType = (type: ContentTypeOption) => {
-        setContentTypeSelection(prev =>
-            prev.includes(type)
-                ? prev.filter(t => t !== type)
-                : [...prev, type]
-        );
-    };
+	const toggleContentType = (type: ContentTypeOption) => {
+		setContentTypeSelection((prev) =>
+			prev.includes(type)
+				? prev.filter((t) => t !== type)
+				: [...prev, type],
+		);
+	};
 
-    return <div
-        className="liked-video-view">
-        <div className="video-view-header">
-            <div className="video-view-header__title"><Youtube className="video-view-header__icon" /> {UI_TEXT.HEADER_TITLE}
-                {plugin.settings.autoFetchEnabled && (
-                    <span className="auto-fetch-indicator" title={`Auto-fetch: Every ${plugin.settings.autoFetchInterval < 1
-                        ? `${Math.round(plugin.settings.autoFetchInterval * 60)} seconds`
-                        : `${plugin.settings.autoFetchInterval} minutes`
-                        }`}>
-                        {plugin.isFetching ? '🔄 Fetching...' : '⏰ Auto'}
-                    </span>
-                )}
-            </div>
-            <div className="video-view-header__actions">
-                <button
-                    title={UI_TEXT.BTN_REFRESH}
-                    /// Refresh button to fetch recently liked videos
-                    className="video-view-header__refresh-button"
-                    disabled={isFetching || plugin.isFetching}
-                    onClick={async () => {
-                        setIsFetching(true);
-                        let fetchedLikedVideos: YouTubeVideo[] = [];
-                        let nextPageToken: string | undefined = undefined;
+	return (
+		<div className="liked-video-view">
+			<div className="video-view-header">
+				<div className="video-view-header__title">
+					<Youtube className="video-view-header__icon" />{" "}
+					{UI_TEXT.HEADER_TITLE}
+					{plugin.settings.autoFetchEnabled && (
+						<span
+							className="auto-fetch-indicator"
+							title={`Auto-fetch: Every ${
+								plugin.settings.autoFetchInterval < 1
+									? `${Math.round(plugin.settings.autoFetchInterval * 60)} seconds`
+									: `${plugin.settings.autoFetchInterval} minutes`
+							}`}
+						>
+							{plugin.isFetching ? "🔄 Fetching..." : "⏰ Auto"}
+						</span>
+					)}
+				</div>
+				<div className="video-view-header__actions">
+					<button
+						title={UI_TEXT.BTN_REFRESH}
+						/// Refresh button to fetch recently liked videos
+						className="video-view-header__refresh-button"
+						disabled={isFetching || plugin.isFetching}
+						onClick={async () => {
+							setIsFetching(true);
+							let fetchedLikedVideos: YouTubeVideo[] = [];
+							let nextPageToken: string | undefined = undefined;
 
-                        const limit = plugin.settings.fetchLimit;
+							const limit = plugin.settings.fetchLimit;
 
-                        const response: YouTubeVideosResponse | undefined = await plugin.likedVideoApi.fetchLikedVideos(limit, nextPageToken);
+							const response: YouTubeVideosResponse | undefined =
+								await plugin.likedVideoApi.fetchLikedVideos(
+									limit,
+									nextPageToken,
+								);
 
-                        if (response) {
-                            fetchedLikedVideos = fetchedLikedVideos.concat(response.items);
-                            nextPageToken = response.nextPageToken;
-                        }
+							if (response) {
+								fetchedLikedVideos = fetchedLikedVideos.concat(
+									response.items,
+								);
+								nextPageToken = response.nextPageToken;
+							}
 
-                        const storedLikedVideos = localStorageService.getLikedVideos();
-                        const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
+							const storedLikedVideos =
+								localStorageService.getLikedVideos();
+							const storedLikedVideoIdsSet = new Set(
+								storedLikedVideos.map((video) => video.id),
+							);
 
-                        const newLikedVideos = fetchedLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
+							const newLikedVideos = fetchedLikedVideos.filter(
+								(video) =>
+									!storedLikedVideoIdsSet.has(video.id),
+							);
 
-                        const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
+							const updatedLikedVideos = [
+								...newLikedVideos,
+								...storedLikedVideos,
+							];
 
-                        // Batch state updates to avoid unnecessary re-renders
-                        localStorageService.setLikedVideos(updatedLikedVideos);
-                        setVideos(updatedLikedVideos);
+							// Batch state updates to avoid unnecessary re-renders
+							localStorageService.setLikedVideos(
+								updatedLikedVideos,
+							);
+							setVideos(updatedLikedVideos);
 
-                        new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
+							new Notice(
+								UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(
+									newLikedVideos.length,
+								),
+							);
 
-                        // Auto-create notes for new videos if enabled
-                        if (plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
-                            for (const video of newLikedVideos) {
-                                await plugin.automateVideoProcessing(video);
-                            }
-                        }
+							// Auto-create notes for new videos if enabled
+							if (
+								plugin.settings.autoCreateNoteEnabled &&
+								newLikedVideos.length > 0
+							) {
+								for (const video of newLikedVideos) {
+									await plugin.automateVideoProcessing(video);
+								}
+							}
 
-                        setIsFetching(false);
-                    }}
-                ><RefreshCcw size={16} /></button>
-                <button
-                    title={UI_TEXT.BTN_SETTINGS}
-                    onClick={() => {
-                        // Open Plugin Setting.
-                        const setting = (plugin.app as any).setting;
-                        setting.open();
-                        setting.openTabById(APP_ID);
-                    }}
-                ><Settings size={16} /></button>
-            </div>
-        </div>
+							setIsFetching(false);
+						}}
+					>
+						<RefreshCcw size={16} />
+					</button>
+					<button
+						title={UI_TEXT.BTN_SETTINGS}
+						onClick={() => {
+							// Open Plugin Setting.
+							const setting = (plugin.app as any).setting;
+							setting.open();
+							setting.openTabById(APP_ID);
+						}}
+					>
+						<Settings size={16} />
+					</button>
+				</div>
+			</div>
 
-        <div className="search-bar-container">
-            <div className="search-bar-wrapper">
-                <SearchBar
-                    searchTerm={searchTerm}
-                    onSearchTermChange={setSearchTerm}
-                />
-            </div>
-            <div className="video-count">
-                <p style={{ margin: '0' }}>{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(filteredVideos.length, videos.length)}</p>
-            </div>
-        </div>
+			<div className="search-bar-container">
+				<div className="search-bar-wrapper">
+					<SearchBar
+						searchTerm={searchTerm}
+						onSearchTermChange={setSearchTerm}
+					/>
+				</div>
+				<div className="video-count">
+					<p style={{ margin: "0" }}>
+						{UI_TEXT.VIDEO_COUNT_WITH_TOTAL(
+							filteredVideos.length,
+							videos.length,
+						)}
+					</p>
+				</div>
+			</div>
 
-        <div className="video-view-sort">
-            <div className="video-view-sort-left-group">
-                <div className="category-filter">
-                    <Filter size={14} className="category-filter-icon" />
-                    <select
-                        className="category-filter-select"
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        disabled={!isCategoriesReady || availableCategories.length === 0}
-                    >
-                        <option value="all">
-                            All Categories ({videos.length})
-                        </option>
-                        {availableCategories.map(category => (
-                            <option key={category.id} value={category.id}>
-                                {category.title} ({categoryCounts[category.id] || 0})
-                            </option>
-                        ))}
-                        {!isCategoriesReady && (
-                            <option value="loading" disabled>
-                                Loading categories...
-                            </option>
-                        )}
-                    </select>
-                </div>
-                <div className="content-type-filter" role="group" aria-label="Filter by content type">
-                    <span className="content-type-filter__label">{UI_TEXT.CONTENT_TYPE_LABEL}</span>
-                    {(['videos', 'shorts', 'music'] as ContentTypeOption[]).map((option) => (
-                        <label
-                            key={option}
-                            className={`content-type-filter__option ${contentTypeSelection.includes(option) ? 'content-type-filter__option--selected' : ''}`}
-                        >
-                            <input
-                                type="checkbox"
-                                checked={contentTypeSelection.includes(option)}
-                                onChange={() => toggleContentType(option)}
-                                className="content-type-filter__input"
-                            />
-                            <span className="content-type-filter__text">{getContentTypeLabel(option)}</span>
-                            <span className="content-type-filter__tooltip">{getContentTypeTooltip(option)}</span>
-                        </label>
-                    ))}
-                </div>
-                <label
-                    className={`content-type-filter__option ${showAINoteOnly ? 'content-type-filter__option--selected' : ''}`}
-                    title={UI_TEXT.AI_NOTE_FILTER_TOOLTIP}
-                >
-                    <input
-                        type="checkbox"
-                        checked={showAINoteOnly}
-                        onChange={() => setShowAINoteOnly(prev => !prev)}
-                        className="content-type-filter__input"
-                    />
-                    <Bot size={14} />
-                    <span className="content-type-filter__text">{UI_TEXT.AI_NOTE_FILTER_LABEL}</span>
-                </label>
-            </div>
-            <div className="sort-controls">
-                <label htmlFor="sort-video-select">{UI_TEXT.SORT_LABEL}</label>
-                <select
-                    id="sort-video-select"
-                    className="video-view-sort__select"
-                    aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
-                    value={sortOption}
-                    onChange={(e) => setSortOption(e.target.value)}
-                >
-                    <option value="addedDate">{UI_TEXT.SORT_BY_LIKED_ORDER}</option>
-                    <option value="viewCount">{UI_TEXT.SORT_BY_VIEW_COUNT}</option>
-                    <option value="likeCount">{UI_TEXT.SORT_BY_LIKE_COUNT}</option>
-                    <option value="commentCount">{UI_TEXT.SORT_BY_COMMENT_COUNT}</option>
-                    <option value="likeViewRatio">{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}</option>
-                    <option value="date">{UI_TEXT.SORT_BY_PUBLISHED_DATE}</option>
-                    <option value="title">{UI_TEXT.SORT_BY_TITLE}</option>
-                    <option value="duration">{UI_TEXT.SORT_BY_DURATION}</option>
-                </select>
-                <button
-                    title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
-                    onClick={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
-                    className="video-view-sort__order"
-                    aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
-                >
-                    {sortOrder === 'DESC' ? <ArrowDownWideNarrow size={16} /> : <ArrowUpNarrowWide size={16} />}
-                </button>
-            </div>
-        </div>
-        {currentVideos.length === 0 && <div className="no-videos-found">
-            <div className="no-videos-found__text">{UI_TEXT.NO_VIDEOS_FOUND}</div>
+			<div className="video-view-sort">
+				<div className="video-view-sort-left-group">
+					<div className="category-filter">
+						<Filter size={14} className="category-filter-icon" />
+						<select
+							className="category-filter-select"
+							value={selectedCategory}
+							onChange={(e) =>
+								setSelectedCategory(e.target.value)
+							}
+							disabled={
+								!isCategoriesReady ||
+								availableCategories.length === 0
+							}
+						>
+							<option value="all">
+								All Categories ({videos.length})
+							</option>
+							{availableCategories.map((category) => (
+								<option key={category.id} value={category.id}>
+									{category.title} (
+									{categoryCounts[category.id] || 0})
+								</option>
+							))}
+							{!isCategoriesReady && (
+								<option value="loading" disabled>
+									Loading categories...
+								</option>
+							)}
+						</select>
+					</div>
+					<div
+						className="content-type-filter"
+						role="group"
+						aria-label="Filter by content type"
+					>
+						<span className="content-type-filter__label">
+							{UI_TEXT.CONTENT_TYPE_LABEL}
+						</span>
+						{(
+							["videos", "shorts", "music"] as ContentTypeOption[]
+						).map((option) => (
+							<label
+								key={option}
+								className={`content-type-filter__option ${contentTypeSelection.includes(option) ? "content-type-filter__option--selected" : ""}`}
+							>
+								<input
+									type="checkbox"
+									checked={contentTypeSelection.includes(
+										option,
+									)}
+									onChange={() => toggleContentType(option)}
+									className="content-type-filter__input"
+								/>
+								<span className="content-type-filter__text">
+									{getContentTypeLabel(option)}
+								</span>
+								<span className="content-type-filter__tooltip">
+									{getContentTypeTooltip(option)}
+								</span>
+							</label>
+						))}
+					</div>
+					<label
+						className={`content-type-filter__option ${showAINoteOnly ? "content-type-filter__option--selected" : ""}`}
+						title={UI_TEXT.AI_NOTE_FILTER_TOOLTIP}
+					>
+						<input
+							type="checkbox"
+							checked={showAINoteOnly}
+							onChange={() => setShowAINoteOnly((prev) => !prev)}
+							className="content-type-filter__input"
+						/>
+						<Bot size={14} />
+						<span className="content-type-filter__text">
+							{UI_TEXT.AI_NOTE_FILTER_LABEL}
+						</span>
+					</label>
+				</div>
+				<div className="sort-controls">
+					<label htmlFor="sort-video-select">
+						{UI_TEXT.SORT_LABEL}
+					</label>
+					<select
+						id="sort-video-select"
+						className="video-view-sort__select"
+						aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
+						value={sortOption}
+						onChange={(e) => setSortOption(e.target.value)}
+					>
+						<option value="addedDate">
+							{UI_TEXT.SORT_BY_LIKED_ORDER}
+						</option>
+						<option value="viewCount">
+							{UI_TEXT.SORT_BY_VIEW_COUNT}
+						</option>
+						<option value="likeCount">
+							{UI_TEXT.SORT_BY_LIKE_COUNT}
+						</option>
+						<option value="commentCount">
+							{UI_TEXT.SORT_BY_COMMENT_COUNT}
+						</option>
+						<option value="likeViewRatio">
+							{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}
+						</option>
+						<option value="date">
+							{UI_TEXT.SORT_BY_PUBLISHED_DATE}
+						</option>
+						<option value="title">{UI_TEXT.SORT_BY_TITLE}</option>
+						<option value="duration">
+							{UI_TEXT.SORT_BY_DURATION}
+						</option>
+					</select>
+					<button
+						title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
+						onClick={() =>
+							setSortOrder(sortOrder === "ASC" ? "DESC" : "ASC")
+						}
+						className="video-view-sort__order"
+						aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
+					>
+						{sortOrder === "DESC" ? (
+							<ArrowDownWideNarrow size={16} />
+						) : (
+							<ArrowUpNarrowWide size={16} />
+						)}
+					</button>
+				</div>
+			</div>
+			{currentVideos.length === 0 && (
+				<div className="no-videos-found">
+					<div className="no-videos-found__text">
+						{UI_TEXT.NO_VIDEOS_FOUND}
+					</div>
 
-            <button
-                className="no-videos-found__fetch-all-button"
-                onClick={async () => {
-                    try {
-                        // Store existing videos before fetch to identify new ones
-                        const storedLikedVideosBefore = localStorageService.getLikedVideos();
-                        const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
+					<button
+						className="no-videos-found__fetch-all-button"
+						onClick={async () => {
+							try {
+								// Store existing videos before fetch to identify new ones
+								const storedLikedVideosBefore =
+									localStorageService.getLikedVideos();
+								const storedVideoIdsSet = new Set(
+									storedLikedVideosBefore.map((v) => v.id),
+								);
 
-                        /// get number of the videos in the liked videos
-                        const totalLikedVideos = await plugin.likedVideoApi.fetchTotalLikedVideoCount();
-                        new Notice(UI_TEXT.NOTICE_TOTAL_VIDEOS(totalLikedVideos ?? 0));
+								/// get number of the videos in the liked videos
+								const totalLikedVideos =
+									await plugin.likedVideoApi.fetchTotalLikedVideoCount();
+								new Notice(
+									UI_TEXT.NOTICE_TOTAL_VIDEOS(
+										totalLikedVideos ?? 0,
+									),
+								);
 
-                        // repeat fetching liked videos
-                        // this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
-                        // If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
-                        // Then, merge the fetched videos data and save to LocalStorage.
-                        let allLikedVideos: YouTubeVideo[] = [];
-                        let nextPageToken: string | undefined = undefined;
+								// repeat fetching liked videos
+								// this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
+								// If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
+								// Then, merge the fetched videos data and save to LocalStorage.
+								let allLikedVideos: YouTubeVideo[] = [];
+								let nextPageToken: string | undefined =
+									undefined;
 
-                        do {
-                            const response: YouTubeVideosResponse | undefined = await plugin.likedVideoApi.fetchLikedVideos(plugin.settings.fullFetchLimit, nextPageToken);
-                            allLikedVideos = allLikedVideos.concat(response?.items || []);
-                            if (response?.nextPageToken === undefined || response?.nextPageToken === '' || response?.nextPageToken === null) {
-                                break;
-                            } else {
-                                nextPageToken = response?.nextPageToken;
-                            }
-                        } while (nextPageToken !== undefined);
+								do {
+									const response:
+										| YouTubeVideosResponse
+										| undefined =
+										await plugin.likedVideoApi.fetchLikedVideos(
+											plugin.settings.fullFetchLimit,
+											nextPageToken,
+										);
+									allLikedVideos = allLikedVideos.concat(
+										response?.items || [],
+									);
+									if (
+										response?.nextPageToken === undefined ||
+										response?.nextPageToken === "" ||
+										response?.nextPageToken === null
+									) {
+										break;
+									} else {
+										nextPageToken = response?.nextPageToken;
+									}
+								} while (nextPageToken !== undefined);
 
-                        // Save the fetched videos to LocalStorage
-                        localStorageService.setLikedVideos(allLikedVideos);
-                        setVideos(allLikedVideos);
+								// Save the fetched videos to LocalStorage
+								localStorageService.setLikedVideos(
+									allLikedVideos,
+								);
+								setVideos(allLikedVideos);
 
-                        new Notice(UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(allLikedVideos.length));
+								new Notice(
+									UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(
+										allLikedVideos.length,
+									),
+								);
 
-                        // Auto-create notes for new videos if enabled
-                        const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
-                        if (plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
-                            for (const video of newLikedVideos) {
-                                await plugin.automateVideoProcessing(video);
-                            }
-                        }
-
-                    } catch (error) {
-                        new Modal(plugin.app).setTitle(UI_TEXT.ERROR_TITLE).setContent(UI_TEXT.ERROR_MESSAGE(error)).open();
-                    }
-                }}
-            >
-                {UI_TEXT.BTN_FETCH_ALL}
-            </button>
-        </div>}
-        {/* Videos */}
-        <div className="video-view__video-grid">
-            {currentVideos.map((video) => (
-                <VideoCard
-                    key={video.id}
-                    source="liked"
-                    id={video.id}
-                    url={`https://www.youtube.com/watch?v=${video.id}`}
-                    videoInfo={video}
-                    noteExists={noteExistenceMap.get(video.id) ?? false}
-                    onUnlike={async () => {
-                        await plugin.likedVideoApi.unlikeVideo(video.id);
-                        localStorageService.setLikedVideos(videos.filter(v => v.id !== video.id));
-                        setVideos(videos.filter(v => v.id !== video.id));
-                    }}
-                    onAddToDailyNote={async (videoData, file) => {
-                        const contentToAppend = `\n${videoData}`;
-                        // Append content to the daily note
-                        await plugin.app.vault.process(file, (data) => {
-                            return data + contentToAppend;
-                        });
-                        // Open the daily note in the main panel
-                        await plugin.app.workspace.openLinkText(file.path, '', false);
-                        // Show success notification
-                        new Notice(`Added video to ${file.basename} and opened the note`);
-                    }}
-                    onChannelClick={(channelTitle) => {
-                        setSearchTerm(channelTitle);
-                    }}
+								// Auto-create notes for new videos if enabled
+								const newLikedVideos = allLikedVideos.filter(
+									(v) => !storedVideoIdsSet.has(v.id),
+								);
+								if (
+									plugin.settings.autoCreateNoteEnabled &&
+									newLikedVideos.length > 0
+								) {
+									for (const video of newLikedVideos) {
+										await plugin.automateVideoProcessing(
+											video,
+										);
+									}
+								}
+							} catch (error) {
+								new Modal(plugin.app)
+									.setTitle(UI_TEXT.ERROR_TITLE)
+									.setContent(UI_TEXT.ERROR_MESSAGE(error))
+									.open();
+							}
+						}}
+					>
+						{UI_TEXT.BTN_FETCH_ALL}
+					</button>
+				</div>
+			)}
+			{/* Videos */}
+			<div className="video-view__video-grid">
+				{currentVideos.map((video) => (
+					<VideoCard
+						key={video.id}
+						source="liked"
+						id={video.id}
+						url={`https://www.youtube.com/watch?v=${video.id}`}
+						videoInfo={video}
+						noteExists={noteExistenceMap.get(video.id) ?? false}
+						onUnlike={async () => {
+							await plugin.likedVideoApi.unlikeVideo(video.id);
+							localStorageService.setLikedVideos(
+								videos.filter((v) => v.id !== video.id),
+							);
+							setVideos(videos.filter((v) => v.id !== video.id));
+						}}
+						onAddToDailyNote={async (videoData, file) => {
+							const contentToAppend = `\n${videoData}`;
+							// Append content to the daily note
+							await plugin.app.vault.process(file, (data) => {
+								return data + contentToAppend;
+							});
+							// Open the daily note in the main panel
+							await plugin.app.workspace.openLinkText(
+								file.path,
+								"",
+								false,
+							);
+							// Show success notification
+							new Notice(
+								`Added video to ${file.basename} and opened the note`,
+							);
+						}}
+						onChannelClick={(channelTitle) => {
+							setSearchTerm(channelTitle);
+						}}
 						onLinkClick={async (videoUrl) => {
 							const leaf = plugin.app.workspace.getLeaf("split");
 							const openInObsidianWebViewer =
 								plugin.settings?.openInObsidianWebViewer;
 
-								console.log("openInObsidianWebViewer:", openInObsidianWebViewer);
+							console.log(
+								"openInObsidianWebViewer:",
+								openInObsidianWebViewer,
+							);
 							if (openInObsidianWebViewer) {
 								await leaf.setViewState({
 									type: "webviewer",
@@ -495,39 +710,48 @@ export const LikedVideoView: React.FC = () => {
 								window.open(videoUrl, "_blank");
 							}
 						}}
-                />
-            ))}
-        </div>
+					/>
+				))}
+			</div>
 
-        {/* Pagination */}
-        <div className="video-view__pagination">
-            <div className="video-view__pagination__controls">
-                {currentPage > 1 && (
-                    <>
-                        <button onClick={() => setCurrentPage(1)}>
-                            <ArrowLeft size={16} />
-                        </button>
-                        <button onClick={() => setCurrentPage(currentPage - 1)}>
-                            <ArrowLeftToLine size={16} />
-                        </button>
-                    </>
-                )}
-            </div>
-            <button disabled style={{ width: '48px' }}>
-                {currentPage}
-            </button>
-            <div className="video-view__pagination__controls">
-                {currentPage < totalPages && (
-                    <>
-                        <button type="button" onClick={() => setCurrentPage(currentPage + 1)}>
-                            <ArrowRight size={16} />
-                        </button>
-                        <button type="button" onClick={() => setCurrentPage(totalPages)}>
-                            <ArrowRightToLine size={16} />
-                        </button>
-                    </>
-                )}
-            </div>
-        </div>
-    </div >;
+			{/* Pagination */}
+			<div className="video-view__pagination">
+				<div className="video-view__pagination__controls">
+					{currentPage > 1 && (
+						<>
+							<button onClick={() => setCurrentPage(1)}>
+								<ArrowLeft size={16} />
+							</button>
+							<button
+								onClick={() => setCurrentPage(currentPage - 1)}
+							>
+								<ArrowLeftToLine size={16} />
+							</button>
+						</>
+					)}
+				</div>
+				<button disabled style={{ width: "48px" }}>
+					{currentPage}
+				</button>
+				<div className="video-view__pagination__controls">
+					{currentPage < totalPages && (
+						<>
+							<button
+								type="button"
+								onClick={() => setCurrentPage(currentPage + 1)}
+							>
+								<ArrowRight size={16} />
+							</button>
+							<button
+								type="button"
+								onClick={() => setCurrentPage(totalPages)}
+							>
+								<ArrowRightToLine size={16} />
+							</button>
+						</>
+					)}
+				</div>
+			</div>
+		</div>
+	);
 };
