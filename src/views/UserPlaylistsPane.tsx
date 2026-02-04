@@ -242,7 +242,7 @@ export class UserPlaylistsPane extends ItemView implements IUserPlaylistsPaneSta
         return super.setState(state, result);
     }
 
-    getState(): IUserPlaylistsPaneState {
+    getState(): Record<string, unknown> {
         return {
             playlists: this.playlists,
             isLoading: this.isLoading,

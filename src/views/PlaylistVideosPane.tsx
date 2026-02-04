@@ -116,7 +116,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         return super.setState(state, result);
     }
 
-    getState(): IPlaylistVideosViewPersistedState {
+    getState(): Record<string, unknown> {
         return {
             playlistSource: this.playlistSource,
             playlistInfo: this.playlistInfo,

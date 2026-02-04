@@ -81,7 +81,7 @@ export class LikedVideoListPane
         return super.setState(state, result);
     }
 
-    getState(): ILikedVideoListViewPersistedState {
+    getState(): Record<string, unknown> {
         return {
             videos: this.videos,
         };
