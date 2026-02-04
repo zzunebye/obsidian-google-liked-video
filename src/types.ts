@@ -133,3 +133,27 @@ export type PlaylistType = 'liked' | 'playlist';
 export type ContentTypeOption = 'videos' | 'shorts' | 'music';
 export type ContentTypeSelection = ContentTypeOption[];
 
+export interface SummaryFileData {
+    schemaVersion: 1;
+    videoId: string;
+    title: string;
+    channelTitle: string;
+    channelId: string;
+    videoUrl: string;
+    summary: string;
+    generatedAt: string; // ISO string
+    model: string;
+}
+
+export interface SummaryStorageFile {
+    schemaVersion: 1;
+    summaries: Record<string, SummaryFileData>;
+}
+
+export interface VideoMetadata {
+    title: string;
+    channelTitle: string;
+    channelId: string;
+    videoUrl: string;
+}
+

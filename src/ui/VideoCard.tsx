@@ -10,7 +10,6 @@ import { sanitizeFileName, generateVideoNoteContent, getExpectedNotePath } from 
 import { TemplateService } from "src/services/templateService";
 import { useNoteExistence } from "src/hooks/useNoteExistence";
 import { SummarySection } from "./SummarySection";
-import { localStorageService } from "../storage";
 
 interface VideoCardProps {
     source: 'liked' | 'playlist';
@@ -27,7 +26,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
     const plugin = usePlugin();
     const isAIEnabled = plugin.settings?.enableAISummary ?? false;
     const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
-    const [hasSummary, setHasSummary] = useState(() => localStorageService.hasVideoSummary(videoInfo.id));
+    const [hasSummary, setHasSummary] = useState(() => plugin.summaryStorage.hasVideoSummary(videoInfo.id));
     const noteExists = useNoteExistence(plugin, videoInfo.snippet.title, videoInfo.snippet.channelTitle);
 
     // Format duration from seconds to display format
@@ -325,12 +324,15 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
                     <div className="summary-preview" onClick={handleSummaryToggle}>
                         <Bot size={12} className="summary-preview__icon" />
                         <span className="summary-preview__text">
-                            {localStorageService.getVideoSummary(videoInfo.id)?.summary?.slice(0, 100)}...
+                            {plugin.summaryStorage.getVideoSummaryPreview(videoInfo.id)?.slice(0, 100)}...
                         </span>
                     </div>
                 )}
                 <SummarySection
                     videoId={videoInfo.id}
+                    videoTitle={videoInfo.snippet.title}
+                    channelTitle={videoInfo.snippet.channelTitle}
+                    channelId={videoInfo.snippet.channelId}
                     isExpanded={isSummaryExpanded}
                     setIsExpanded={setIsSummaryExpanded}
                     onSummaryGenerated={() => setHasSummary(true)}

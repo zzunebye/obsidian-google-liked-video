@@ -15,6 +15,7 @@ import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVid
 import { DEFAULT_TEMPLATE } from './utils/templateConstants';
 import { TemplateService } from './services/templateService';
 import { GeminiService } from './services/geminiService';
+import { SummaryStorageService } from './services/summaryStorageService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
@@ -48,6 +49,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	vault: Vault;
 	likedVideoApi: LikedVideoApi;
 	playlistApi: PlaylistApi;
+	summaryStorage: SummaryStorageService;
 	autoFetchInterval: NodeJS.Timeout | null = null;
 	isFetching = false;
 	paneRef: LikedVideoListPane | null = null;
@@ -67,6 +69,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 
 		this.vault = this.app.vault;
+
+		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, this.manifest.dir!, 500);
+		await this.summaryStorage.initialize();
+		await this.summaryStorage.migrateFromLocalStorage();
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,
@@ -408,8 +414,13 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				debugLogger.info(`[AI Summary] Generating summary via auto-create flow for video: ${videoId}`);
 				const gemini = new GeminiService(this.settings.geminiApiKey);
 				const result = await gemini.generateVideoSummary(videoId, this.settings.summaryPrompt);
-				debugLogger.info(`[AI Summary] Auto-create summary generated for video: ${videoId} - caching to localStorage`);
-				localStorageService.setVideoSummary(videoId, result);
+				debugLogger.info(`[AI Summary] Auto-create summary generated for video: ${videoId} - caching to file`);
+				await this.summaryStorage.setVideoSummary(videoId, result, {
+					title,
+					channelTitle: '',
+					channelId: '',
+					videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+				});
 				debugLogger.debug(`[AI Summary] Summary cached successfully for video: ${videoId}`);
 				return result.summary;
 			} catch (error) {

@@ -7,12 +7,14 @@ import {
 	ChevronUp,
 } from "lucide-react";
 import { GeminiService, GeminiError } from "../services/geminiService";
-import { localStorageService } from "../storage";
 import { usePlugin } from "../store/pluginContext";
 import { debugLogger } from "../debug";
 
 interface SummarySectionProps {
 	videoId: string;
+	videoTitle: string;
+	channelTitle: string;
+	channelId: string;
 	isExpanded: boolean;
 	setIsExpanded: (expanded: boolean) => void;
 	onSummaryGenerated: () => void;
@@ -20,6 +22,9 @@ interface SummarySectionProps {
 
 export const SummarySection = ({
 	videoId,
+	videoTitle,
+	channelTitle,
+	channelId,
 	isExpanded,
 	setIsExpanded,
 	onSummaryGenerated,
@@ -60,7 +65,7 @@ export const SummarySection = ({
 			}
 
 			if (!forceRegenerate) {
-				const cached = localStorageService.getVideoSummary(videoId);
+				const cached = await plugin.summaryStorage.getVideoSummary(videoId);
 				if (cached) {
 					debugLogger.debug(
 						`[AI Summary] Cache hit for video: ${videoId} (generated: ${cached.generatedAt})`,
@@ -92,7 +97,12 @@ export const SummarySection = ({
 				debugLogger.info(
 					`[AI Summary] Generation complete for video: ${videoId} - caching result`,
 				);
-				localStorageService.setVideoSummary(videoId, result);
+				await plugin.summaryStorage.setVideoSummary(videoId, result, {
+					title: videoTitle,
+					channelTitle,
+					channelId,
+					videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+				});
 				setSummary(result.summary);
 				onSummaryGenerated();
 				debugLogger.debug(
