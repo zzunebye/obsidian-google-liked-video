@@ -300,7 +300,7 @@ export const VideoCard = ({ source, videoInfo, url, noteExists, onUnlike, onAddT
     const thumbnailAndDetails = (
         <>
             <div className="video-thumbnail-wrapper">
-                <img className="video-thumbnail" loading="lazy" decoding="async" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" />
+                <img className="video-thumbnail" loading="lazy" decoding="async" src={videoInfo.snippet.thumbnails.medium.url} alt="Video Thumbnail" width={320} height={180} />
                 {videoInfo.contentDetails?.duration && (
                     <span className="video-duration-badge">
                         {formatDuration(videoInfo.contentDetails.duration)}

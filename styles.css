@@ -744,7 +744,7 @@ If your plugin does not need CSS, delete this file.
 .video-thumbnail-wrapper {
 	position: relative;
 	display: block;
-	width: fit-content;
+	aspect-ratio: 16 / 9;
 	max-width: 40%;
 	min-width: 180px;
 	height: 120px;
