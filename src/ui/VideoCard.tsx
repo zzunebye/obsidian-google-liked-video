@@ -6,7 +6,7 @@ import { YouTubeVideo } from "src/types";
 import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
-import { sanitizeFileName, generateVideoNoteContent, getExpectedNotePath } from "src/utils/noteUtils";
+import { sanitizeFileName, generateVideoNoteContent, getExpectedNotePath, computeExpectedNotePath } from "src/utils/noteUtils";
 import { TemplateService } from "src/services/templateService";
 import { useNoteExistence } from "src/hooks/useNoteExistence";
 import { SummarySection } from "./SummarySection";
@@ -133,6 +133,70 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
             new Notice('Failed to create/open video note. Check console for details.');
         }
     }
+
+    const handleAddSummaryToNote = async (summaryText: string) => {
+        const appInstance = plugin.app;
+        const baseFileName = sanitizeFileName(videoInfo.snippet.title);
+        const customPath = plugin.settings?.videoNotePath || 'Youtube';
+        const organizeByChannel = plugin.settings?.organizeByChannel || false;
+        const channelName = videoInfo.snippet.channelTitle;
+
+        const expectedPath = computeExpectedNotePath(
+            appInstance,
+            baseFileName,
+            customPath,
+            organizeByChannel,
+            channelName
+        );
+
+        let file = appInstance.vault.getAbstractFileByPath(expectedPath) as TFile | null;
+
+        if (!file) {
+            // Create the note first
+            const fullPath = await getExpectedNotePath(
+                appInstance,
+                baseFileName,
+                customPath,
+                organizeByChannel,
+                channelName
+            );
+
+            const templateService = plugin.settings
+                ? new TemplateService(appInstance, plugin.settings)
+                : undefined;
+
+            const noteContent = await generateVideoNoteContent(
+                videoInfo,
+                url,
+                plugin.getCategoryDisplay?.bind(plugin),
+                templateService
+            );
+
+            file = await appInstance.vault.create(fullPath, noteContent);
+        }
+
+        // Check frontmatter for existing AI summary (with content fallback for cache staleness)
+        const cache = appInstance.metadataCache.getFileCache(file);
+        if (cache?.frontmatter?.ai_summary) {
+            new Notice("AI Summary already exists in this note");
+            return;
+        }
+        const content = await appInstance.vault.read(file);
+        if (content.includes('## AI Summary')) {
+            new Notice("AI Summary already exists in this note");
+            return;
+        }
+
+        // Set frontmatter first so duplicate detection works even if append fails
+        await appInstance.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+            fm.ai_summary = true;
+        });
+
+        // Append the summary
+        await appInstance.vault.append(file, '\n\n## AI Summary\n' + summaryText);
+
+        new Notice("Summary added to video note");
+    };
 
     const handleContextMenu = (e: any): void => {
         e.preventDefault();
@@ -336,6 +400,7 @@ export const VideoCard = ({ source, videoInfo, url, onUnlike, onAddToDailyNote, 
                     isExpanded={isSummaryExpanded}
                     setIsExpanded={setIsSummaryExpanded}
                     onSummaryGenerated={() => setHasSummary(true)}
+                    onAddToNote={handleAddSummaryToNote}
                 />
             </div>
         );

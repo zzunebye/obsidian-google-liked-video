@@ -5,6 +5,7 @@ import {
 	RefreshCw,
 	AlertCircle,
 	ChevronUp,
+	FileText,
 } from "lucide-react";
 import { GeminiService, GeminiError } from "../services/geminiService";
 import { usePlugin } from "../store/pluginContext";
@@ -18,6 +19,7 @@ interface SummarySectionProps {
 	isExpanded: boolean;
 	setIsExpanded: (expanded: boolean) => void;
 	onSummaryGenerated: () => void;
+	onAddToNote: (summary: string) => Promise<void>;
 }
 
 export const SummarySection = ({
@@ -28,6 +30,7 @@ export const SummarySection = ({
 	isExpanded,
 	setIsExpanded,
 	onSummaryGenerated,
+	onAddToNote,
 }: SummarySectionProps) => {
 	const plugin = usePlugin();
 	const [summary, setSummary] = useState<string | null>(null);
@@ -65,7 +68,8 @@ export const SummarySection = ({
 			}
 
 			if (!forceRegenerate) {
-				const cached = await plugin.summaryStorage.getVideoSummary(videoId);
+				const cached =
+					await plugin.summaryStorage.getVideoSummary(videoId);
 				if (cached) {
 					debugLogger.debug(
 						`[AI Summary] Cache hit for video: ${videoId} (generated: ${cached.generatedAt})`,
@@ -153,6 +157,17 @@ export const SummarySection = ({
 		generateSummary(true);
 	};
 
+	const handleAddToNote = async (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (!summary) return;
+		try {
+			await onAddToNote(summary);
+		} catch (err) {
+			console.error("Failed to add summary to note:", err);
+			new Notice("Failed to add summary to note");
+		}
+	};
+
 	if (!isExpanded) return null;
 
 	return (
@@ -199,14 +214,20 @@ export const SummarySection = ({
 							</button>
 							<button
 								className="summary-section__action-btn"
-								onClick={handleRegenerate}
-								title="Regenerate summary"
+								onClick={handleAddToNote}
+								title="Add summary to video note"
 							>
-								<RefreshCw size={14} />
-								<span>Regenerate</span>
+								<FileText size={14} />
+								<span>Add to Note</span>
 							</button>
 						</div>
-
+						<button
+							className="summary-section__action-btn"
+							onClick={handleRegenerate}
+							title="Regenerate summary"
+						>
+							<RefreshCw size={14} />
+						</button>
 						<button
 							className="summary-section__action-btn"
 							onClick={() => {
