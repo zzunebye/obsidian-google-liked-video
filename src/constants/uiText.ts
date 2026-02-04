@@ -81,6 +81,10 @@ export const UI_TEXT = {
     CONTENT_TYPE_SHORTS: 'Shorts',
     CONTENT_TYPE_MUSIC: 'Music',
 
+    // AI Note Filter
+    AI_NOTE_FILTER_LABEL: 'AI Note',
+    AI_NOTE_FILTER_TOOLTIP: 'Show only videos with AI-generated summaries',
+
     // Tooltips
     TOOLTIP_VIDEOS: 'Regular videos (longer than 60 seconds, excludes music)',
     TOOLTIP_SHORTS: 'Videos shorter than 90 seconds (does not categorize YouTube Shorts)',

@@ -54,6 +54,10 @@ class LocalStorageService {
         return window.localStorage.getItem("likedVideoViewSelectedCategory") ?? "all";
     }
 
+    getAINoteFilter(): boolean {
+        return window.localStorage.getItem("likedVideoViewAINoteFilter") === "true";
+    }
+
     getContentTypeSelection(): ContentTypeSelection {
         const stored = window.localStorage.getItem("likedVideoViewContentTypeSelection");
         if (stored) {
@@ -89,6 +93,10 @@ class LocalStorageService {
 
     setSelectedCategory(categoryId: string): void {
         window.localStorage.setItem("likedVideoViewSelectedCategory", categoryId);
+    }
+
+    setAINoteFilter(enabled: boolean): void {
+        window.localStorage.setItem("likedVideoViewAINoteFilter", String(enabled));
     }
 
     setContentTypeSelection(selection: ContentTypeSelection): void {

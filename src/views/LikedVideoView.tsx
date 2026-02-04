@@ -2,7 +2,7 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { usePlugin } from '../store/pluginContext';
 import { localStorageService } from 'src/storage';
 import { YouTubeVideo, YouTubeVideosResponse, ContentTypeOption, ContentTypeSelection } from 'src/types';
-import { Youtube, Settings, RefreshCcw, Filter, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowRight, ArrowRightToLine, ArrowLeftToLine, ArrowLeft } from 'lucide-react';
+import { Youtube, Settings, RefreshCcw, Filter, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowRight, ArrowRightToLine, ArrowLeftToLine, ArrowLeft, Bot } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
 import { APP_ID } from 'src/main';
@@ -24,6 +24,7 @@ export const LikedVideoView: React.FC = () => {
     const [contentTypeSelection, setContentTypeSelection] = useState<ContentTypeSelection>(
         localStorageService.getContentTypeSelection()
     );
+    const [showAINoteOnly, setShowAINoteOnly] = useState(localStorageService.getAINoteFilter());
     const [videos, setVideos] = useContext(VideosContext);
     const [isFetching, setIsFetching] = useState(false);
     const plugin = usePlugin();
@@ -87,6 +88,10 @@ export const LikedVideoView: React.FC = () => {
         localStorageService.setContentTypeSelection(contentTypeSelection);
     }, [contentTypeSelection]);
 
+    useEffect(() => {
+        localStorageService.setAINoteFilter(showAINoteOnly);
+    }, [showAINoteOnly]);
+
     // Debounce search term
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -134,9 +139,12 @@ export const LikedVideoView: React.FC = () => {
                 }
             }
 
-            return searchMatch && categoryMatch && contentTypeMatch;
+            // AI Note filter
+            const aiNoteMatch = !showAINoteOnly || plugin.summaryStorage.hasVideoSummary(video.id);
+
+            return searchMatch && categoryMatch && contentTypeMatch && aiNoteMatch;
         });
-    }, [videos, debouncedSearchTerm, selectedCategory, contentTypeSelection, videoDurations]);
+    }, [videos, debouncedSearchTerm, selectedCategory, contentTypeSelection, videoDurations, showAINoteOnly]);
 
     const sortedVideos = useMemo(() => {
         const sorted = [...filteredVideos];
@@ -194,7 +202,7 @@ export const LikedVideoView: React.FC = () => {
     // Reset currentPage to 1 when debouncedSearchTerm, sortOption, or filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearchTerm, sortOption, selectedCategory, contentTypeSelection]);
+    }, [debouncedSearchTerm, sortOption, selectedCategory, contentTypeSelection, showAINoteOnly]);
 
     const getContentTypeLabel = (type: ContentTypeOption): string => {
         switch (type) {
@@ -343,6 +351,19 @@ export const LikedVideoView: React.FC = () => {
                         </label>
                     ))}
                 </div>
+                <label
+                    className={`content-type-filter__option ${showAINoteOnly ? 'content-type-filter__option--selected' : ''}`}
+                    title={UI_TEXT.AI_NOTE_FILTER_TOOLTIP}
+                >
+                    <input
+                        type="checkbox"
+                        checked={showAINoteOnly}
+                        onChange={() => setShowAINoteOnly(prev => !prev)}
+                        className="content-type-filter__input"
+                    />
+                    <Bot size={14} />
+                    <span className="content-type-filter__text">{UI_TEXT.AI_NOTE_FILTER_LABEL}</span>
+                </label>
             </div>
             <div className="sort-controls">
                 <label htmlFor="sort-video-select">{UI_TEXT.SORT_LABEL}</label>

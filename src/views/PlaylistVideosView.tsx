@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { usePlugin } from '../store/pluginContext';
-import { Play, Search, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Play, Search, Loader2, AlertCircle, RefreshCw, Bot } from 'lucide-react';
 import { VideoCard } from 'src/ui/VideoCard';
 import { SearchBar } from 'src/ui/SearchBar';
 import { PlaylistSource, PlaylistInfo } from 'src/api';
 import { YouTubeVideo } from 'src/types';
 import { Notice } from 'obsidian';
 import { UI_TEXT } from 'src/constants/uiText';
+import { localStorageService } from 'src/storage';
 import { useNoteExistenceMap } from 'src/hooks/useNoteExistence';
 
 interface PlaylistVideosViewProps {
@@ -23,6 +24,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasMoreToShow, setHasMoreToShow] = useState(false);
+    const [showAINoteOnly, setShowAINoteOnly] = useState(localStorageService.getAINoteFilter());
     const plugin = usePlugin();
     const loadingRef = useRef(false);
     const noteExistenceMap = useNoteExistenceMap(plugin, displayedVideos);
@@ -53,12 +55,16 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
         };
     }, [searchTerm]);
 
-    // Reset displayed videos when search changes
+    useEffect(() => {
+        localStorageService.setAINoteFilter(showAINoteOnly);
+    }, [showAINoteOnly]);
+
+    // Reset displayed videos when search or filters change
     useEffect(() => {
         const filtered = getFilteredVideos();
         setDisplayedVideos(filtered.slice(0, videosPerBatch));
         setHasMoreToShow(filtered.length > videosPerBatch);
-    }, [debouncedSearchTerm, allVideos]);
+    }, [debouncedSearchTerm, allVideos, showAINoteOnly]);
 
     // Load all videos when component mounts or playlist changes with abort controller
     useEffect(() => {
@@ -140,10 +146,15 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
             .filter(video => video && video.snippet && video.id)
             .slice(0, maxVideosToShow);
 
-        if (!debouncedSearchTerm) return validVideos;
+        // Apply AI note filter
+        const aiFiltered = showAINoteOnly
+            ? validVideos.filter(video => plugin.summaryStorage.hasVideoSummary(video.id))
+            : validVideos;
+
+        if (!debouncedSearchTerm) return aiFiltered;
 
         const lowerSearchTerm = debouncedSearchTerm.toLowerCase();
-        return validVideos.filter(video => {
+        return aiFiltered.filter(video => {
             const titleMatch = video.snippet.title.toLowerCase().includes(lowerSearchTerm);
             const tagsMatch = (video.snippet.tags ?? []).some(tag => tag.toLowerCase().includes(lowerSearchTerm));
             const channelMatch = video.snippet.channelTitle.toLowerCase().includes(lowerSearchTerm);
@@ -152,7 +163,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
     };
 
     // Memoized filtered videos for performance
-    const filteredVideos = useMemo(() => getFilteredVideos(), [allVideos, debouncedSearchTerm]);
+    const filteredVideos = useMemo(() => getFilteredVideos(), [allVideos, debouncedSearchTerm, showAINoteOnly]);
 
     // Load more videos for infinite scroll
     const loadMoreVideos = () => {
@@ -303,6 +314,21 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({ playlist
                         searchTerm={searchTerm}
                         onSearchTermChange={setSearchTerm}
                     />
+                </div>
+                <div className="content-type-filter" role="group" aria-label="Filter options">
+                    <label
+                        className={`content-type-filter__option ${showAINoteOnly ? 'content-type-filter__option--selected' : ''}`}
+                        title={UI_TEXT.AI_NOTE_FILTER_TOOLTIP}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={showAINoteOnly}
+                            onChange={() => setShowAINoteOnly(prev => !prev)}
+                            className="content-type-filter__input"
+                        />
+                        <Bot size={14} />
+                        <span className="content-type-filter__text">{UI_TEXT.AI_NOTE_FILTER_LABEL}</span>
+                    </label>
                 </div>
                 <div className="video-count">
                     <p style={{ margin: '0' }}>
