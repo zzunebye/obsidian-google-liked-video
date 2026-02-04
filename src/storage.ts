@@ -1,4 +1,4 @@
-import { YouTubeVideo, ContentTypeSelection, ContentTypeOption, CachedLLMSummary } from "./types";
+import { YouTubeVideo, ContentTypeSelection, ContentTypeOption } from "./types";
 import { PlaylistInfo } from "./api";
 
 export interface SavedPlaylist extends PlaylistInfo {
@@ -213,38 +213,6 @@ class LocalStorageService {
         }
     }
 
-    /// AI Summaries Management
-
-    getVideoSummaries(): Record<string, CachedLLMSummary> {
-        const summaries = window.localStorage.getItem("googleYtbVideoSummaries");
-        return summaries ? JSON.parse(summaries) : {};
-    }
-
-    setVideoSummaries(summaries: Record<string, CachedLLMSummary>): void {
-        window.localStorage.setItem("googleYtbVideoSummaries", JSON.stringify(summaries));
-    }
-
-    getVideoSummary(videoId: string): CachedLLMSummary | null {
-        const summaries = this.getVideoSummaries();
-        return summaries[videoId] || null;
-    }
-
-    setVideoSummary(videoId: string, summary: CachedLLMSummary): void {
-        const summaries = this.getVideoSummaries();
-        summaries[videoId] = summary;
-        this.setVideoSummaries(summaries);
-    }
-
-    hasVideoSummary(videoId: string): boolean {
-        const summaries = this.getVideoSummaries();
-        return videoId in summaries;
-    }
-
-    deleteVideoSummary(videoId: string): void {
-        const summaries = this.getVideoSummaries();
-        delete summaries[videoId];
-        this.setVideoSummaries(summaries);
-    }
 }
 
 export const localStorageService = new LocalStorageService();
