@@ -8,26 +8,31 @@ interface FeatureIntroModalProps {
 const FeatureIntroModalContent: React.FC<FeatureIntroModalProps> = ({ onClose }) => {
 	const features = [
 		{
+			icon: '🤖',
+			title: 'AI Video Summaries',
+			description: 'Generate AI-powered summaries for your videos using Google Gemini or OpenRouter, with real-time streaming.'
+		},
+		{
+			icon: '💬',
+			title: 'Smart One-Liners',
+			description: 'Automatic one-line summary generation after full summary, with expandable two-level view.'
+		},
+		{
 			icon: '📝',
-			title: 'Video Notes',
-			description: 'Create dedicated notes for your favorite videos with structured templates and automatic metadata.'
+			title: 'Add Summary to Notes',
+			description: 'Append AI summaries to your video notes, with context menu integration for quick access.'
 		},
 		{
-			icon: '📋',
-			title: 'Playlist Browsing',
-			description: 'Browse and manage all your YouTube playlists directly within Obsidian, and add other playlists by ID/URL.'
-		},
-		{
-			icon: '🎬',
-			title: 'Playlist Video Management',
-			description: 'View and search videos within specific playlists.'
+			icon: '🔍',
+			title: 'AI Note Filter',
+			description: 'Filter your video list to show only videos that have AI-generated notes.'
 		}
 	];
 
 	return (
 		<div className="feature-intro-modal">
 			<div className="modal-header">
-				<h2>🎉 What's New in Geulo</h2>
+				<h2>🎉 What's New in Geulo 3.0</h2>
 				<p>Discover the latest features to enhance your YouTube video management experience!</p>
 			</div>
 

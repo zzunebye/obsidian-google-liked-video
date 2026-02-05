@@ -162,8 +162,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.initializeCategories();
 
 		// Check if this is a version update and show feature intro modal
-		// TODO: Re-enable after implementing version-specific changelog display
-		// this.checkVersionUpdate();
+		this.checkVersionUpdate();
 	}
 
 	onunload() {
@@ -488,18 +487,25 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	private async checkVersionUpdate(): Promise<void> {
 		const currentVersion = this.manifest.version;
 		const lastSeenVersion = this.settings.lastSeenVersion;
+		const lastSeenVersionFromStorage = localStorageService.getLastSeenVersion();
+
+		// Use whichever source has the most recent version seen
+		const effectiveLastSeen = lastSeenVersion && this.isNewerVersion(lastSeenVersion, lastSeenVersionFromStorage)
+			? lastSeenVersion
+			: (lastSeenVersionFromStorage || lastSeenVersion);
 
 		// Show modal if this is a new installation or version update
-		if (!lastSeenVersion || this.isNewerVersion(currentVersion, lastSeenVersion)) {
+		if (!effectiveLastSeen || this.isNewerVersion(currentVersion, effectiveLastSeen)) {
 			// Wait a bit for the plugin to fully load before showing the modal
 			setTimeout(() => {
 				const modal = new FeatureIntroModal(this.app);
 				modal.open();
 			}, 2000);
 
-			// Update the last seen version
+			// Update the last seen version in both settings and localStorage
 			this.settings.lastSeenVersion = currentVersion;
 			await this.saveSettings();
+			localStorageService.setLastSeenVersion(currentVersion);
 		}
 	}
 

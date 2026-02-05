@@ -215,6 +215,14 @@ class LocalStorageService {
         return savedPlaylists.some(p => p.id === playlistId);
     }
 
+    getLastSeenVersion(): string {
+        return window.localStorage.getItem("geuloLastSeenVersion") ?? "";
+    }
+
+    setLastSeenVersion(version: string): void {
+        window.localStorage.setItem("geuloLastSeenVersion", version);
+    }
+
     updateSavedPlaylist(playlistInfo: PlaylistInfo): void {
         const savedPlaylists = this.getSavedPlaylists();
         const index = savedPlaylists.findIndex(p => p.id === playlistInfo.id);
