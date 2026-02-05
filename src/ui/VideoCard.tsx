@@ -56,6 +56,7 @@ export const VideoCard = ({
 	const [hasSummary, setHasSummary] = useState(() =>
 		plugin.summaryStorage.hasVideoSummary(videoInfo.id),
 	);
+	const [previewVersion, setPreviewVersion] = useState(0);
 
 	// Format duration from seconds to display format
 	const formatDuration = (duration: string | undefined): string => {
@@ -509,10 +510,7 @@ export const VideoCard = ({
 					>
 						<Bot size={12} className="summary-preview__icon" />
 						<span className="summary-preview__text">
-							{plugin.summaryStorage
-								.getVideoSummaryPreview(videoInfo.id)
-								?.slice(0, 100)}
-							...
+							{plugin.summaryStorage.getVideoSummaryPreview(videoInfo.id)}
 						</span>
 					</div>
 				)}
@@ -525,6 +523,7 @@ export const VideoCard = ({
 					setIsExpanded={setIsSummaryExpanded}
 					onSummaryGenerated={() => setHasSummary(true)}
 					onAddToNote={handleAddSummaryToNote}
+					onPreviewUpdated={() => setPreviewVersion(v => v + 1)}
 				/>
 			</div>
 		);

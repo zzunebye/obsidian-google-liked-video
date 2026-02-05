@@ -45,7 +45,8 @@ export class SummaryStorageService {
 
 	getVideoSummaryPreview(videoId: string): string | null {
 		const entry = this.cache.get(videoId);
-		return entry ? entry.summary.slice(0, 150) : null;
+		if (!entry) return null;
+		return entry.oneLinerSummary || entry.summary.slice(0, 150) + '...';
 	}
 
 	async getVideoSummary(videoId: string): Promise<SummaryFileData | null> {
@@ -83,6 +84,14 @@ export class SummaryStorageService {
 	async deleteVideoSummary(videoId: string): Promise<void> {
 		this.cache.delete(videoId);
 		await this.persist();
+	}
+
+	async setOneLinerSummary(videoId: string, oneLiner: string): Promise<void> {
+		const entry = this.cache.get(videoId);
+		if (!entry) return;
+		entry.oneLinerSummary = oneLiner;
+		await this.persist();
+		debugLogger.debug(`[SummaryStorage] Set one-liner summary for ${videoId}`);
 	}
 
 	async migrateFromLocalStorage(): Promise<void> {

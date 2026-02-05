@@ -61,6 +61,22 @@ export class OpenRouterService extends BaseAIService {
 		}
 	}
 
+	protected buildTextCompletionUrl(): string {
+		return OPENROUTER_URL;
+	}
+
+	protected buildTextCompletionBody(prompt: string): object {
+		return {
+			model: this.model,
+			stream: false,
+			messages: [{ role: 'user', content: prompt }]
+		};
+	}
+
+	protected parseTextCompletionResponse(data: any): string {
+		return data?.choices?.[0]?.message?.content || '';
+	}
+
 	protected mapHttpStatusToError(status: number, message: string): AIServiceError {
 		if (status === 401 || status === 403) {
 			return { type: 'invalid_key', message: `Invalid API key: ${message}` };

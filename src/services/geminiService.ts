@@ -27,6 +27,7 @@ export interface StreamOptions {
 export interface AIService {
 	generateVideoSummary(videoId: string, prompt: string): Promise<AIServiceResult>;
 	generateVideoSummaryStream?(videoId: string, prompt: string, options: StreamOptions): Promise<void>;
+	generateTextCompletion(prompt: string): Promise<string>;
 }
 
 // Keep old names as aliases for backwards compatibility with any external consumers
@@ -83,6 +84,20 @@ export class GeminiService extends BaseAIService {
 			debugLogger.debug(`[AI Summary] Failed to parse Gemini SSE chunk: ${jsonStr}`);
 			return null;
 		}
+	}
+
+	protected buildTextCompletionUrl(): string {
+		return `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent`;
+	}
+
+	protected buildTextCompletionBody(prompt: string): object {
+		return {
+			contents: [{ parts: [{ text: prompt }] }]
+		};
+	}
+
+	protected parseTextCompletionResponse(data: any): string {
+		return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 	}
 
 	protected mapHttpStatusToError(status: number, message: string): AIServiceError {

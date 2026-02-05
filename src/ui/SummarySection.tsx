@@ -23,6 +23,7 @@ interface SummarySectionProps {
 	setIsExpanded: (expanded: boolean) => void;
 	onSummaryGenerated: () => void;
 	onAddToNote: (summary: string) => Promise<void>;
+	onPreviewUpdated?: () => void;
 }
 
 export const SummarySection = ({
@@ -34,6 +35,7 @@ export const SummarySection = ({
 	setIsExpanded,
 	onSummaryGenerated,
 	onAddToNote,
+	onPreviewUpdated,
 }: SummarySectionProps) => {
 	const plugin = usePlugin();
 	const [summary, setSummary] = useState<string | null>(null);
@@ -85,6 +87,24 @@ export const SummarySection = ({
 	useEffect(() => {
 		setIsContentCollapsed(true);
 	}, [summary]);
+
+	const generateOneLiner = useCallback((fullSummary: string) => {
+		try {
+			const aiService = createAIService(plugin.settings);
+			const prompt = `Condense the following video summary into a single concise sentence (max 120 chars). Return ONLY the sentence.\n\n${fullSummary}`;
+			aiService.generateTextCompletion(prompt).then((oneLiner) => {
+				const trimmed = oneLiner.trim();
+				if (trimmed) {
+					plugin.summaryStorage.setOneLinerSummary(videoId, trimmed);
+					onPreviewUpdated?.();
+				}
+			}).catch((err) => {
+				debugLogger.warn(`[AI Summary] One-liner generation failed for ${videoId}:`, err);
+			});
+		} catch (err) {
+			debugLogger.warn(`[AI Summary] One-liner generation setup failed for ${videoId}:`, err);
+		}
+	}, [plugin, videoId, onPreviewUpdated]);
 
 	const generateSummary = useCallback(
 		async (forceRegenerate = false) => {
@@ -167,6 +187,7 @@ export const SummarySection = ({
 								setIsStreaming(false);
 								abortControllerRef.current = null;
 								onSummaryGenerated();
+								generateOneLiner(result.summary);
 								new Notice(`AI summary generated for "${videoTitle}"`, 5000);
 							},
 							onError: (err: AIServiceError) => {
@@ -197,6 +218,7 @@ export const SummarySection = ({
 					});
 					setSummary(result.summary);
 					onSummaryGenerated();
+					generateOneLiner(result.summary);
 					new Notice(`AI summary generated for "${videoTitle}"`, 5000);
 					debugLogger.debug(
 						`[AI Summary] State updated and parent notified for video: ${videoId}`,
@@ -218,7 +240,7 @@ export const SummarySection = ({
 				setIsStreaming(false);
 			}
 		},
-		[videoId, plugin, isLoading, isStreaming, onSummaryGenerated, streamingContent, videoTitle, channelTitle, channelId],
+		[videoId, plugin, isLoading, isStreaming, onSummaryGenerated, generateOneLiner, streamingContent, videoTitle, channelTitle, channelId],
 	);
 
 	useEffect(() => {
@@ -293,7 +315,7 @@ export const SummarySection = ({
 
 	return (
 		<div className="summary-section" onClick={(e) => e.stopPropagation()}>
-			{(isLoading || isStreaming) && (
+			{(isLoading || (isStreaming && !streamingContent)) && (
 				<div className="summary-section__skeleton">
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--long" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--medium" />

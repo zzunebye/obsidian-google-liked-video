@@ -2,6 +2,7 @@ import { debugLogger } from '../debug';
 import { AIService, AIServiceResult, AIServiceError, StreamOptions, StreamCallback } from './geminiService';
 
 const REQUEST_TIMEOUT_MS = 90000;
+const TEXT_COMPLETION_TIMEOUT_MS = 30000;
 
 export abstract class BaseAIService implements AIService {
 	protected abstract serviceName: string;
@@ -13,6 +14,9 @@ export abstract class BaseAIService implements AIService {
 	protected abstract executeRequest(url: string, body: object, signal?: AbortSignal): Promise<Response>;
 	protected abstract parseChunk(jsonStr: string): string | null;
 	protected abstract mapHttpStatusToError(status: number, message: string): AIServiceError;
+	protected abstract buildTextCompletionUrl(): string;
+	protected abstract buildTextCompletionBody(prompt: string): object;
+	protected abstract parseTextCompletionResponse(data: any): string;
 
 	async generateVideoSummary(videoId: string, prompt: string): Promise<AIServiceResult> {
 		return new Promise((resolve, reject) => {
@@ -69,6 +73,35 @@ export abstract class BaseAIService implements AIService {
 			this.handleStreamError(error, accumulated, options, videoId);
 		} finally {
 			debugLogger.timeEnd(`ai-summary-${videoId}`);
+		}
+	}
+
+	async generateTextCompletion(prompt: string): Promise<string> {
+		this.validateApiKey();
+
+		const url = this.buildTextCompletionUrl();
+		const body = this.buildTextCompletionBody(prompt);
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), TEXT_COMPLETION_TIMEOUT_MS);
+
+		try {
+			const response = await this.executeRequest(url, body, controller.signal);
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				const errorMessage = (errorData as any)?.error?.message || response.statusText;
+				throw this.mapHttpStatusToError(response.status, errorMessage);
+			}
+
+			const data = await response.json();
+			return this.parseTextCompletionResponse(data);
+		} catch (error: any) {
+			clearTimeout(timeoutId);
+			if (error?.name === 'AbortError') {
+				throw { type: 'network_error', message: 'Text completion request timed out' } as AIServiceError;
+			}
+			throw error;
 		}
 	}
 

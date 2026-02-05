@@ -144,6 +144,7 @@ export interface SummaryFileData {
     channelId: string;
     videoUrl: string;
     summary: string;
+    oneLinerSummary?: string;
     generatedAt: string; // ISO string
     model: string;
 }

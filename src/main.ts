@@ -425,6 +425,18 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
 				});
 				debugLogger.debug(`[AI Summary] Summary cached successfully for video: ${videoId}`);
+
+				try {
+					const oneLinerPrompt = `Condense the following video summary into a single concise sentence (max 120 chars). Return ONLY the sentence.\n\n${result.summary}`;
+					const oneLiner = await aiService.generateTextCompletion(oneLinerPrompt);
+					const trimmed = oneLiner.trim();
+					if (trimmed) {
+						await this.summaryStorage.setOneLinerSummary(videoId, trimmed);
+					}
+				} catch (oneLinerErr) {
+					debugLogger.warn(`[AI Summary] One-liner generation failed for ${videoId}:`, oneLinerErr);
+				}
+
 				return result.summary;
 			} catch (error) {
 				debugLogger.error(`[AI Summary] Auto-create summary generation failed for video ${videoId}:`, error);
