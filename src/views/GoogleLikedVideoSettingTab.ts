@@ -215,11 +215,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             // AI Features section
             new Setting(containerEl)
                 .setHeading()
-                .setName('AI Features')
+                .setName('[Experimental] AI Features')
                 .setDesc('Configure AI-powered features');
 
             new Setting(containerEl)
-                .setName('Enable AI Summary [Experimental]')
+                .setName('Enable AI Summary')
                 .setDesc('Use Google Gemini to generate AI summaries of YouTube videos. Requires a Gemini API key.')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.enableAISummary)
