@@ -31,7 +31,7 @@ import { categoriesService } from "src/categoriesService";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { ViewHeader } from "src/ui/ViewHeader";
-
+const SHORT_VIDEO_MAX_DURATION_SECONDS = 90;
 export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -169,8 +169,10 @@ export const LikedVideoView: React.FC = () => {
 			// Content type filter (OR logic - show if matches ANY selected type)
 			const durationInSeconds = videoDurations.get(video.id) || 0;
 			const isMusic = video.snippet.categoryId === "10";
-			const isShort = durationInSeconds > 0 && durationInSeconds <= 90;
-			const isRegularVideo = durationInSeconds > 60 && !isMusic;
+			const isShort =
+				durationInSeconds > 0 &&
+				durationInSeconds <= SHORT_VIDEO_MAX_DURATION_SECONDS;
+			const isRegularVideo = !isShort && !isMusic;
 
 			let contentTypeMatch = true;
 			// If no selection or all selected, show everything
