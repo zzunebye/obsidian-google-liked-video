@@ -167,7 +167,7 @@ export const SummarySection = ({
 								setIsStreaming(false);
 								abortControllerRef.current = null;
 								onSummaryGenerated();
-								new Notice(`AI summary generated for "${videoTitle}"`);
+								new Notice(`AI summary generated for "${videoTitle}"`, 5000);
 							},
 							onError: (err: AIServiceError) => {
 								debugLogger.error(
@@ -197,7 +197,7 @@ export const SummarySection = ({
 					});
 					setSummary(result.summary);
 					onSummaryGenerated();
-					new Notice(`AI summary generated for "${videoTitle}"`);
+					new Notice(`AI summary generated for "${videoTitle}"`, 5000);
 					debugLogger.debug(
 						`[AI Summary] State updated and parent notified for video: ${videoId}`,
 					);
