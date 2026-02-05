@@ -210,8 +210,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 const referenceContent = detailsEl.createDiv();
                 referenceContent.innerHTML = TEMPLATE_VARIABLES_REFERENCE;
             }
-        // Debug settings - only show in development mode
-        if (true) {
+
             // AI Features section
             new Setting(containerEl)
                 .setHeading()
@@ -314,7 +313,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             }
-        }
 
 
             new Setting(containerEl)
@@ -450,9 +448,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setHeading()
             .setName('Functions')
             .setDesc('Functions to fetch and update liked videos');
+        
         if (refreshToken !== null && refreshToken !== "") {
-
-
             new Setting(containerEl)
                 .setName('Fetch all liked videos so far and add to local storage. This will override all the liked videos in local storage.')
                 .addButton(button => button
