@@ -267,7 +267,7 @@ export const SummarySection = ({
 
 	return (
 		<div className="summary-section" onClick={(e) => e.stopPropagation()}>
-			{isLoading && !isStreaming && (
+			{(isLoading || isStreaming) && (
 				<div className="summary-section__skeleton">
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--long" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--medium" />
@@ -326,7 +326,6 @@ export const SummarySection = ({
 								title="Copy summary"
 							>
 								<Copy size={14} />
-								<span>Copy</span>
 							</button>
 							<button
 								className="summary-section__action-btn"
