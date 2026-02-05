@@ -57,6 +57,7 @@ export const VideoCard = ({
 		plugin.summaryStorage.hasVideoSummary(videoInfo.id),
 	);
 	const [previewVersion, setPreviewVersion] = useState(0);
+	const [regenerateTrigger, setRegenerateTrigger] = useState(0);
 
 	// Format duration from seconds to display format
 	const formatDuration = (duration: string | undefined): string => {
@@ -358,6 +359,17 @@ export const VideoCard = ({
 				item.setIcon("bot");
 				item.onClick(() => setIsSummaryExpanded(true));
 			});
+
+			if (hasSummary) {
+				menu.addItem((item) => {
+					item.setTitle("Regenerate AI summary");
+					item.setIcon("refresh-cw");
+					item.onClick(() => {
+						setIsSummaryExpanded(true);
+						setRegenerateTrigger(prev => prev + 1);
+					});
+				});
+			}
 		}
 
 		menu.showAtPosition({ x: e.clientX, y: e.clientY });
@@ -524,6 +536,7 @@ export const VideoCard = ({
 					onSummaryGenerated={() => setHasSummary(true)}
 					onAddToNote={handleAddSummaryToNote}
 					onPreviewUpdated={() => setPreviewVersion(v => v + 1)}
+					regenerateTrigger={regenerateTrigger}
 				/>
 			</div>
 		);

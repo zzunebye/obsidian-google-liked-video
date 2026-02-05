@@ -24,6 +24,7 @@ interface SummarySectionProps {
 	onSummaryGenerated: () => void;
 	onAddToNote: (summary: string) => Promise<void>;
 	onPreviewUpdated?: () => void;
+	regenerateTrigger?: number;
 }
 
 export const SummarySection = ({
@@ -36,6 +37,7 @@ export const SummarySection = ({
 	onSummaryGenerated,
 	onAddToNote,
 	onPreviewUpdated,
+	regenerateTrigger,
 }: SummarySectionProps) => {
 	const plugin = usePlugin();
 	const [summary, setSummary] = useState<string | null>(null);
@@ -256,6 +258,12 @@ export const SummarySection = ({
 		}
 	}, [isExpanded]);
 
+	useEffect(() => {
+		if (regenerateTrigger && regenerateTrigger > 0) {
+			generateSummary(true);
+		}
+	}, [regenerateTrigger]);
+
 	const handleCopy = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		if (summary) {
@@ -341,10 +349,12 @@ export const SummarySection = ({
 
 			{isStreaming && (
 				<>
-					<div
-						className="summary-section__content"
-						ref={contentRef}
-					/>
+					<div className="summary-section__fade-overlay">
+						<div
+							className="summary-section__content summary-section__content--collapsed"
+							ref={contentRef}
+						/>
+					</div>
 					<div className="summary-section__streaming-indicator">
 						<div className="summary-section__streaming-dot" />
 						<span>Generating...</span>
@@ -390,18 +400,18 @@ export const SummarySection = ({
 						<div className="summary-section__left-actions">
 							<button
 								className="summary-section__action-btn"
-								onClick={handleCopy}
-								title="Copy summary"
-							>
-								<Copy size={14} />
-							</button>
-							<button
-								className="summary-section__action-btn"
 								onClick={handleAddToNote}
 								title="Add summary to video note"
 							>
 								<FileText size={14} />
 								<span>Add to Note</span>
+							</button>
+							<button
+								className="summary-section__action-btn"
+								onClick={handleCopy}
+								title="Copy summary"
+							>
+								<Copy size={14} />
 							</button>
 						</div>
 						<button
