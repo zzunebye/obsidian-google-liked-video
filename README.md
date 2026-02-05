@@ -126,7 +126,7 @@ If you encounter any issues, consider the following steps:
 
 ## Release Notes
 
-### Unreleased
+### 3.0.0
 
 - **AI video summaries**: Generate summaries using Google Gemini or OpenRouter with real-time streaming responses
 - **One-liner summaries**: Automatic brief summary generation after full summary completes
