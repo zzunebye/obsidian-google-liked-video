@@ -11,6 +11,7 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 - Instantly access your entire YouTube 'liked video' collection
 - Browse and manage your YouTube playlists
 - Search, filter and sort to rediscover videos
+- AI-powered video summaries (Gemini / OpenRouter)
 - One-click integration with your daily notes
 - Curate your collection by removing videos directly from the sidebar
 
@@ -19,6 +20,7 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 ## Table of Contents
 
 - [Features](#features)
+- [AI Summary Setup](#ai-summary-setup)
 - [Tips](#tips)
 - [Requirements](#requirements)
 - [Release Notes](#release-notes)
@@ -27,13 +29,25 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 
 - **Video retrieval**: Access your entire YouTube liked video history
 - **Playlist browsing**: Browse your YouTube playlists and add custom playlists by ID
-- **Smart sidebar interface**: Search, filter, and sort your videos with multiple options. Search is based on the video title, channel title, and tags.
+- **Searching and Content type filtering**: Search, filter, and sort your videos with multiple options. Search is based on the video title, channel title, and tags. Filter videos by type — Videos, Shorts, or Music.
 - **Create Video Notes**: Create video notes with a single click and write your own notes. You can also organize them by channel.
 - **Daily note integration**: Add videos to your daily notes with a single click
 - **Collection curation**: Remove videos from your liked list directly within Obsidian
+- **AI video summaries**: Generate video summaries using Google Gemini or OpenRouter with Gemini's video_url parameter. Summaries stream in real-time, with a collapsible one-liner preview and full expandable summary.
+- **Add summary to note**: Append AI-generated summaries to your video notes
 - **Video info display**: Display video info with a single click
 - **Search by channel name**: Search by channel title when channel is clicked in the video card
+
 It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/obsidian-google-calendar) plugin.
+
+## AI Summary Setup
+
+1. Enable **AI Summary** in the plugin settings
+2. Choose a provider: **Gemini** (direct) or **OpenRouter**
+3. Enter the API key for your chosen provider
+4. (OpenRouter only) Select or enter a model ID
+5. Optionally customize the summary prompt
+6. Click the summary button on any video card to generate a summary
 
 ## Tips
 
@@ -111,6 +125,16 @@ If you encounter any issues, consider the following steps:
 3. If granting permission to your google project fails, check if there are multiple window/tabs for login process opened. If so, close all of them and try again.
 
 ## Release Notes
+
+### Unreleased
+
+- **AI video summaries**: Generate summaries using Google Gemini or OpenRouter with real-time streaming responses
+- **One-liner summaries**: Automatic brief summary generation after full summary completes
+- **Summary management**: Regenerate summaries, add summaries to notes, filter by AI note
+- **Content type filtering**: Filter liked videos by Videos, Shorts, or Music
+- **Streaming UI**: Live streaming display with skeleton loading and cancel support
+- **OpenRouter support**: Use OpenRouter API as an alternative AI provider with model selection
+- **UI improvements**: Polishing the UI in general. reusable ViewHeader component, fixed thumbnail layout shift, chevron indicators for expandable sections
 
 ### 2.3.0
 
