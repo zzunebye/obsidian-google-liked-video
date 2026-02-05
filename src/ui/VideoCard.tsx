@@ -14,6 +14,7 @@ import {
 	FilePlus,
 	FileCheck,
 	Bot,
+	ChevronDown,
 } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
@@ -524,6 +525,7 @@ export const VideoCard = ({
 						<span className="summary-preview__text">
 							{plugin.summaryStorage.getVideoSummaryPreview(videoInfo.id)}
 						</span>
+						<ChevronDown size={12} className="summary-preview__chevron" />
 					</div>
 				)}
 				<SummarySection

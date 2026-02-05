@@ -1694,7 +1694,13 @@ If your plugin does not need CSS, delete this file.
 	gap: 6px;
 	padding: 4px 8px;
 	border-top: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
 	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.summary-preview:hover {
+	background-color: var(--background-secondary);
 }
 
 .summary-preview__icon {
@@ -1709,8 +1715,19 @@ If your plugin does not need CSS, delete this file.
 	white-space: pre-line;
 }
 
+.summary-preview__chevron {
+	color: var(--text-faint);
+	flex-shrink: 0;
+	margin-left: auto;
+	margin-top: 2px;
+}
+
 .summary-preview:hover .summary-preview__text {
 	color: var(--text-normal);
+}
+
+.summary-preview:hover .summary-preview__chevron {
+	color: var(--text-muted);
 }
 
 /* Summary section (expanded) */
@@ -1730,7 +1747,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 .summary-section__content--collapsed {
-	max-height: 270px;
+	max-height: 300px;
 	overflow-y: auto;
 }
 

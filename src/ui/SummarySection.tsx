@@ -79,7 +79,7 @@ export const SummarySection = ({
 		if (!summary || isStreaming || !contentRef.current) return;
 		const timer = setTimeout(() => {
 			if (contentRef.current) {
-				setIsOverflowing(contentRef.current.scrollHeight > 270);
+				setIsOverflowing(contentRef.current.scrollHeight > 300);
 			}
 		}, 50);
 		return () => clearTimeout(timer);
