@@ -3,18 +3,26 @@ import { debugLogger } from '../debug';
 const GEMINI_MODEL = 'gemini-3-flash-preview';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-export interface GeminiSummaryResult {
+export interface AIServiceResult {
 	summary: string;
 	generatedAt: string;
 	model: string;
 }
 
-export interface GeminiError {
+export interface AIServiceError {
 	type: 'no_api_key' | 'invalid_key' | 'network_error' | 'rate_limit' | 'unknown';
 	message: string;
 }
 
-export class GeminiService {
+export interface AIService {
+	generateVideoSummary(videoId: string, prompt: string): Promise<AIServiceResult>;
+}
+
+// Keep old names as aliases for backwards compatibility with any external consumers
+export type GeminiSummaryResult = AIServiceResult;
+export type GeminiError = AIServiceError;
+
+export class GeminiService implements AIService {
 	private apiKey: string;
 
 	constructor(apiKey: string) {
@@ -22,10 +30,10 @@ export class GeminiService {
 		debugLogger.debug(`[AI Summary] GeminiService initialized (model: ${GEMINI_MODEL})`);
 	}
 
-	async generateVideoSummary(videoId: string, prompt: string): Promise<GeminiSummaryResult> {
+	async generateVideoSummary(videoId: string, prompt: string): Promise<AIServiceResult> {
 		if (!this.apiKey) {
 			debugLogger.warn('[AI Summary] No API key configured, aborting generation');
-			throw { type: 'no_api_key', message: 'Gemini API key is not configured' } as GeminiError;
+			throw { type: 'no_api_key', message: 'Gemini API key is not configured' } as AIServiceError;
 		}
 
 		const url = `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent`;
@@ -79,13 +87,13 @@ export class GeminiService {
 				debugLogger.error(`[AI Summary] API error: HTTP ${response.status} - ${errorMessage}`, errorData);
 
 				if (response.status === 400 || response.status === 403) {
-					throw { type: 'invalid_key', message: `Invalid API key: ${errorMessage}` } as GeminiError;
+					throw { type: 'invalid_key', message: `Invalid API key: ${errorMessage}` } as AIServiceError;
 				}
 				if (response.status === 429) {
 					debugLogger.warn(`[AI Summary] Rate limited by Gemini API`);
-					throw { type: 'rate_limit', message: 'Rate limit exceeded. Try again later.' } as GeminiError;
+					throw { type: 'rate_limit', message: 'Rate limit exceeded. Try again later.' } as AIServiceError;
 				}
-				throw { type: 'unknown', message: `HTTP ${response.status}: ${errorMessage}` } as GeminiError;
+				throw { type: 'unknown', message: `HTTP ${response.status}: ${errorMessage}` } as AIServiceError;
 			}
 
 			const data = await response.json();
@@ -100,7 +108,7 @@ export class GeminiService {
 
 			if (!text) {
 				debugLogger.error(`[AI Summary] No text in response. Full response:`, data);
-				throw { type: 'unknown', message: 'No summary text in Gemini response' } as GeminiError;
+				throw { type: 'unknown', message: 'No summary text in Gemini response' } as AIServiceError;
 			}
 
 			debugLogger.info(`[AI Summary] Summary generated successfully for video: ${videoId} (${text.length} chars)`);
@@ -114,14 +122,14 @@ export class GeminiService {
 		} catch (error: any) {
 			if (error?.name === 'AbortError') {
 				debugLogger.error(`[AI Summary] Request aborted (timeout) for video: ${videoId}`);
-				throw { type: 'network_error', message: 'Request timed out' } as GeminiError;
+				throw { type: 'network_error', message: 'Request timed out' } as AIServiceError;
 			}
 			if (error?.type) {
 				debugLogger.error(`[AI Summary] GeminiError thrown: type=${error.type}, message=${error.message}`);
 				throw error;
 			}
 			debugLogger.error(`[AI Summary] Unexpected error for video ${videoId}:`, error);
-			throw { type: 'network_error', message: error?.message || 'Network error' } as GeminiError;
+			throw { type: 'network_error', message: error?.message || 'Network error' } as AIServiceError;
 		} finally {
 			clearTimeout(timeoutId);
 			debugLogger.timeEnd(`ai-summary-${videoId}`);

@@ -14,7 +14,7 @@ import { FeatureIntroModal } from './components/FeatureIntroModal';
 import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
 import { DEFAULT_TEMPLATE } from './utils/templateConstants';
 import { TemplateService } from './services/templateService';
-import { GeminiService } from './services/geminiService';
+import { createAIService, getActiveApiKey } from './services/aiServiceFactory';
 import { SummaryStorageService } from './services/summaryStorageService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
@@ -39,6 +39,9 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	openInObsidianWebViewer: false,
 	enableAISummary: false,
 	geminiApiKey: '',
+	aiProvider: 'gemini',
+	openRouterApiKey: '',
+	openRouterModel: 'google/gemini-3-flash-preview',
 	summaryPrompt: 'Summarize this YouTube video. Include the main topics discussed, key takeaways, and any notable quotes or insights. Format with markdown headers and bullet points.',
 }
 
@@ -402,9 +405,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	async getAISummary(title: string, description: string, videoId?: string): Promise<string> {
 		debugLogger.info(`[AI Summary] getAISummary called - title: "${title}", videoId: ${videoId || 'none'}`);
-		debugLogger.debug(`[AI Summary] Settings check - enabled: ${this.settings.enableAISummary}, hasApiKey: ${!!this.settings.geminiApiKey}`);
+		debugLogger.debug(`[AI Summary] Settings check - enabled: ${this.settings.enableAISummary}, hasApiKey: ${!!getActiveApiKey(this.settings)}`);
 
-		if (!this.settings.enableAISummary || !this.settings.geminiApiKey) {
+		if (!this.settings.enableAISummary || !getActiveApiKey(this.settings)) {
 			debugLogger.debug('[AI Summary] Feature disabled or no API key - skipping');
 			return "";
 		}
@@ -412,8 +415,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		if (videoId) {
 			try {
 				debugLogger.info(`[AI Summary] Generating summary via auto-create flow for video: ${videoId}`);
-				const gemini = new GeminiService(this.settings.geminiApiKey);
-				const result = await gemini.generateVideoSummary(videoId, this.settings.summaryPrompt);
+				const aiService = createAIService(this.settings);
+				const result = await aiService.generateVideoSummary(videoId, this.settings.summaryPrompt);
 				debugLogger.info(`[AI Summary] Auto-create summary generated for video: ${videoId} - caching to file`);
 				await this.summaryStorage.setVideoSummary(videoId, result, {
 					title,

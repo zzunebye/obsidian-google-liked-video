@@ -26,6 +26,9 @@ export interface ObsidianGoogleLikedVideoSettings {
     openInObsidianWebViewer: boolean;
     enableAISummary: boolean;
     geminiApiKey: string;
+    aiProvider: 'gemini' | 'openrouter';
+    openRouterApiKey: string;
+    openRouterModel: string;
     summaryPrompt: string;
 }
 

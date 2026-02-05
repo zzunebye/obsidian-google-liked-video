@@ -7,7 +7,8 @@ import {
 	ChevronUp,
 	FileText,
 } from "lucide-react";
-import { GeminiService, GeminiError } from "../services/geminiService";
+import { AIServiceError } from "../services/geminiService";
+import { createAIService, getActiveApiKey } from "../services/aiServiceFactory";
 import { usePlugin } from "../store/pluginContext";
 import { debugLogger } from "../debug";
 
@@ -35,7 +36,7 @@ export const SummarySection = ({
 	const plugin = usePlugin();
 	const [summary, setSummary] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState<GeminiError | null>(null);
+	const [error, setError] = useState<AIServiceError | null>(null);
 	const contentRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -55,14 +56,14 @@ export const SummarySection = ({
 				return;
 			}
 
-			if (!plugin.settings.geminiApiKey) {
+			if (!getActiveApiKey(plugin.settings)) {
 				debugLogger.warn(
 					`[AI Summary] No API key configured for video: ${videoId}`,
 				);
 				setError({
 					type: "no_api_key",
 					message:
-						"Please configure your Gemini API key in Settings > AI Features",
+						"Please configure your API key in Settings > AI Features",
 				});
 				return;
 			}
@@ -93,8 +94,8 @@ export const SummarySection = ({
 			setError(null);
 
 			try {
-				const gemini = new GeminiService(plugin.settings.geminiApiKey);
-				const result = await gemini.generateVideoSummary(
+				const aiService = createAIService(plugin.settings);
+				const result = await aiService.generateVideoSummary(
 					videoId,
 					plugin.settings.summaryPrompt,
 				);
@@ -113,11 +114,11 @@ export const SummarySection = ({
 					`[AI Summary] State updated and parent notified for video: ${videoId}`,
 				);
 			} catch (err) {
-				const geminiError = err as GeminiError;
+				const aiError = err as AIServiceError;
 				debugLogger.error(
-					`[AI Summary] Generation failed for video ${videoId}: type=${geminiError.type}, message=${geminiError.message}`,
+					`[AI Summary] Generation failed for video ${videoId}: type=${aiError.type}, message=${aiError.message}`,
 				);
-				setError(geminiError);
+				setError(aiError);
 			} finally {
 				setIsLoading(false);
 			}

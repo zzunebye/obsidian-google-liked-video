@@ -211,7 +211,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 referenceContent.innerHTML = TEMPLATE_VARIABLES_REFERENCE;
             }
         // Debug settings - only show in development mode
-        if (debugLogger.getConfig().enabled) {
+        if (true) {
             // AI Features section
             new Setting(containerEl)
                 .setHeading()
@@ -231,19 +231,63 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
             if (this.plugin.settings.enableAISummary) {
                 new Setting(containerEl)
-                    .setName('Gemini API Key')
-                    .setDesc('Your Google Gemini API key. Get one from Google AI Studio (https://aistudio.google.com/app/apikey).')
-                    .addText(text => {
-                        text.inputEl.type = 'password';
-                        text.inputEl.style.width = '100%';
-                        text
-                            .setPlaceholder('Enter your Gemini API key')
-                            .setValue(this.plugin.settings.geminiApiKey)
-                            .onChange(async (value) => {
-                                this.plugin.settings.geminiApiKey = value;
-                                await this.plugin.saveSettings();
-                            });
-                    });
+                    .setName('AI Provider')
+                    .setDesc('Choose which AI provider to use for video summaries.')
+                    .addDropdown(dropdown => dropdown
+                        .addOption('gemini', 'Gemini (Direct)')
+                        .addOption('openrouter', 'OpenRouter')
+                        .setValue(this.plugin.settings.aiProvider)
+                        .onChange(async (value: 'gemini' | 'openrouter') => {
+                            this.plugin.settings.aiProvider = value;
+                            await this.plugin.saveSettings();
+                            this.display();
+                        }));
+
+                if (this.plugin.settings.aiProvider === 'gemini') {
+                    new Setting(containerEl)
+                        .setName('Gemini API Key')
+                        .setDesc('Your Google Gemini API key. Get one from Google AI Studio (https://aistudio.google.com/app/apikey).')
+                        .addText(text => {
+                            text.inputEl.type = 'password';
+                            text.inputEl.style.width = '100%';
+                            text
+                                .setPlaceholder('Enter your Gemini API key')
+                                .setValue(this.plugin.settings.geminiApiKey)
+                                .onChange(async (value) => {
+                                    this.plugin.settings.geminiApiKey = value;
+                                    await this.plugin.saveSettings();
+                                });
+                        });
+                } else {
+                    new Setting(containerEl)
+                        .setName('OpenRouter API Key')
+                        .setDesc('Your OpenRouter API key. Get one from openrouter.ai/keys.')
+                        .addText(text => {
+                            text.inputEl.type = 'password';
+                            text.inputEl.style.width = '100%';
+                            text
+                                .setPlaceholder('sk-or-...')
+                                .setValue(this.plugin.settings.openRouterApiKey)
+                                .onChange(async (value) => {
+                                    this.plugin.settings.openRouterApiKey = value;
+                                    await this.plugin.saveSettings();
+                                });
+                        });
+
+                    new Setting(containerEl)
+                        .setName('Model ID')
+                        .setDesc('Enter a Gemini model ID from OpenRouter (e.g. google/gemini-3-flash-preview).')
+                        .addText(text => {
+                            text.inputEl.style.width = '100%';
+                            text
+                                .setPlaceholder('google/gemini-3-flash-preview')
+                                .setValue(this.plugin.settings.openRouterModel)
+                                .onChange(async (value) => {
+                                    this.plugin.settings.openRouterModel = value;
+                                    await this.plugin.saveSettings();
+                                });
+                        });
+                }
 
                 new Setting(containerEl)
                     .setName('Summary Prompt')
