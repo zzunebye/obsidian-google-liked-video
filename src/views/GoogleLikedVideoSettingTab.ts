@@ -219,7 +219,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setDesc('Configure AI-powered features');
 
             new Setting(containerEl)
-                .setName('Enable AI Summary')
+                .setName('Enable AI Summary [Experimental]')
                 .setDesc('Use Google Gemini to generate AI summaries of YouTube videos. Requires a Gemini API key.')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.enableAISummary)
@@ -234,8 +234,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     .setName('AI Provider')
                     .setDesc('Choose which AI provider to use for video summaries.')
                     .addDropdown(dropdown => dropdown
-                        .addOption('gemini', 'Gemini (Direct)')
-                        .addOption('openrouter', 'OpenRouter')
+                        .addOption('gemini', 'Google Gemini')
+                        .addOption('openrouter', 'OpenRouter (experimental)')
                         .setValue(this.plugin.settings.aiProvider)
                         .onChange(async (value: 'gemini' | 'openrouter') => {
                             this.plugin.settings.aiProvider = value;
@@ -246,7 +246,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 if (this.plugin.settings.aiProvider === 'gemini') {
                     new Setting(containerEl)
                         .setName('Gemini API Key')
-                        .setDesc('Your Google Gemini API key. Get one from Google AI Studio (https://aistudio.google.com/app/apikey).')
+                        .setDesc('Your Google Gemini API key. Get one from [Google AI Studio] (https://aistudio.google.com/app/apikey). Only Google AI Studio support video_url at this time. Vertex AI does not support video_url yet.')
                         .addText(text => {
                             text.inputEl.type = 'password';
                             text.inputEl.style.width = '100%';

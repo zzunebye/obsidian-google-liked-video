@@ -1828,3 +1828,55 @@ If your plugin does not need CSS, delete this file.
 		background: var(--background-secondary);
 	}
 }
+
+/* Streaming indicator */
+.summary-section__streaming-indicator {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.summary-section__streaming-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--interactive-accent);
+	animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.4; }
+}
+
+.summary-section__cancel-btn {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	font-size: 11px;
+	background: transparent;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	cursor: pointer;
+	color: var(--text-muted);
+	transition: all 0.15s ease;
+}
+
+.summary-section__cancel-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	border-color: var(--background-modifier-border-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.summary-section__streaming-dot {
+		animation: none;
+	}
+}

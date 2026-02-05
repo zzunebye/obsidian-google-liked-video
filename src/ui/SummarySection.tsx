@@ -6,8 +6,9 @@ import {
 	AlertCircle,
 	ChevronUp,
 	FileText,
+	Square,
 } from "lucide-react";
-import { AIServiceError } from "../services/geminiService";
+import { AIServiceError, AIServiceResult } from "../services/geminiService";
 import { createAIService, getActiveApiKey } from "../services/aiServiceFactory";
 import { usePlugin } from "../store/pluginContext";
 import { debugLogger } from "../debug";
@@ -37,21 +38,40 @@ export const SummarySection = ({
 	const [summary, setSummary] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<AIServiceError | null>(null);
+	const [streamingContent, setStreamingContent] = useState<string>('');
+	const [isStreaming, setIsStreaming] = useState(false);
 	const contentRef = useRef<HTMLDivElement>(null);
+	const abortControllerRef = useRef<AbortController | null>(null);
+	const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	useEffect(() => {
 		const el = contentRef.current;
-		if (!el || !summary) return;
-		el.empty();
-		MarkdownRenderer.render(plugin.app, summary, el, "", plugin);
-		console.log("Rendered summary!");
-	}, [summary, plugin, isExpanded]);
+		const contentToRender = streamingContent || summary;
+		if (!el || !contentToRender) return;
+
+		// Debounce rendering during streaming to reduce flicker
+		if (renderTimeoutRef.current) {
+			clearTimeout(renderTimeoutRef.current);
+		}
+
+		const delay = isStreaming ? 100 : 0;
+		renderTimeoutRef.current = setTimeout(() => {
+			el.empty();
+			MarkdownRenderer.render(plugin.app, contentToRender, el, "", plugin);
+		}, delay);
+
+		return () => {
+			if (renderTimeoutRef.current) {
+				clearTimeout(renderTimeoutRef.current);
+			}
+		};
+	}, [summary, streamingContent, plugin, isExpanded, isStreaming]);
 
 	const generateSummary = useCallback(
 		async (forceRegenerate = false) => {
-			if (isLoading) {
+			if (isLoading || isStreaming) {
 				debugLogger.debug(
-					`[AI Summary] Skipping generation for ${videoId} - already loading`,
+					`[AI Summary] Skipping generation for ${videoId} - already loading/streaming`,
 				);
 				return;
 			}
@@ -92,38 +112,92 @@ export const SummarySection = ({
 			);
 			setIsLoading(true);
 			setError(null);
+			setStreamingContent('');
 
 			try {
 				const aiService = createAIService(plugin.settings);
-				const result = await aiService.generateVideoSummary(
-					videoId,
-					plugin.settings.summaryPrompt,
-				);
-				debugLogger.info(
-					`[AI Summary] Generation complete for video: ${videoId} - caching result`,
-				);
-				await plugin.summaryStorage.setVideoSummary(videoId, result, {
-					title: videoTitle,
-					channelTitle,
-					channelId,
-					videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-				});
-				setSummary(result.summary);
-				onSummaryGenerated();
-				debugLogger.debug(
-					`[AI Summary] State updated and parent notified for video: ${videoId}`,
-				);
+
+				// Check if streaming is supported
+				if (aiService.generateVideoSummaryStream) {
+					debugLogger.info(`[AI Summary] Using streaming mode for video: ${videoId}`);
+
+					const abortController = new AbortController();
+					abortControllerRef.current = abortController;
+					setIsStreaming(true);
+					setIsLoading(false); // Hide skeleton once streaming starts
+
+					await aiService.generateVideoSummaryStream(
+						videoId,
+						plugin.settings.summaryPrompt,
+						{
+							onChunk: (_chunk: string, accumulated: string) => {
+								setStreamingContent(accumulated);
+							},
+							onComplete: async (result: AIServiceResult) => {
+								debugLogger.info(
+									`[AI Summary] Streaming complete for video: ${videoId} - caching result`,
+								);
+								await plugin.summaryStorage.setVideoSummary(videoId, result, {
+									title: videoTitle,
+									channelTitle,
+									channelId,
+									videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+								});
+								setSummary(result.summary);
+								setStreamingContent('');
+								setIsStreaming(false);
+								abortControllerRef.current = null;
+								onSummaryGenerated();
+							},
+							onError: (err: AIServiceError) => {
+								debugLogger.error(
+									`[AI Summary] Streaming failed for video ${videoId}: type=${err.type}, message=${err.message}`,
+								);
+								setError(err);
+								setIsStreaming(false);
+								abortControllerRef.current = null;
+							},
+							signal: abortController.signal,
+						}
+					);
+				} else {
+					// Fallback to non-streaming
+					const result = await aiService.generateVideoSummary(
+						videoId,
+						plugin.settings.summaryPrompt,
+					);
+					debugLogger.info(
+						`[AI Summary] Generation complete for video: ${videoId} - caching result`,
+					);
+					await plugin.summaryStorage.setVideoSummary(videoId, result, {
+						title: videoTitle,
+						channelTitle,
+						channelId,
+						videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+					});
+					setSummary(result.summary);
+					onSummaryGenerated();
+					debugLogger.debug(
+						`[AI Summary] State updated and parent notified for video: ${videoId}`,
+					);
+				}
 			} catch (err) {
 				const aiError = err as AIServiceError;
 				debugLogger.error(
 					`[AI Summary] Generation failed for video ${videoId}: type=${aiError.type}, message=${aiError.message}`,
 				);
+				// If we have partial streaming content on error, keep it visible
+				if (streamingContent) {
+					setSummary(streamingContent);
+					setStreamingContent('');
+				}
 				setError(aiError);
 			} finally {
 				setIsLoading(false);
+				setIsStreaming(false);
 			}
 		},
-		[videoId, plugin, isLoading, onSummaryGenerated],
+		[videoId, plugin, isLoading, isStreaming, onSummaryGenerated, streamingContent, videoTitle, channelTitle, channelId],
 	);
 
 	useEffect(() => {
@@ -169,11 +243,31 @@ export const SummarySection = ({
 		}
 	};
 
+	const handleCancel = useCallback((e: React.MouseEvent) => {
+		e.stopPropagation();
+		debugLogger.info(`[AI Summary] User cancelled streaming for video: ${videoId}`);
+		abortControllerRef.current?.abort();
+		setIsStreaming(false);
+		setIsLoading(false);
+		// Keep streaming content visible if any was received
+		if (streamingContent) {
+			setSummary(streamingContent);
+			setStreamingContent('');
+		}
+	}, [videoId, streamingContent]);
+
+	// Cleanup abort controller on unmount
+	useEffect(() => {
+		return () => {
+			abortControllerRef.current?.abort();
+		};
+	}, []);
+
 	if (!isExpanded) return null;
 
 	return (
 		<div className="summary-section" onClick={(e) => e.stopPropagation()}>
-			{isLoading && (
+			{isLoading && !isStreaming && (
 				<div className="summary-section__skeleton">
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--long" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--medium" />
@@ -182,7 +276,7 @@ export const SummarySection = ({
 				</div>
 			)}
 
-			{error && !isLoading && (
+			{error && !isLoading && !isStreaming && (
 				<div className="summary-section__error">
 					<AlertCircle size={14} />
 					<span>{error.message}</span>
@@ -197,7 +291,28 @@ export const SummarySection = ({
 				</div>
 			)}
 
-			{summary && !isLoading && (
+			{isStreaming && (
+				<>
+					<div
+						className="summary-section__content"
+						ref={contentRef}
+					/>
+					<div className="summary-section__streaming-indicator">
+						<div className="summary-section__streaming-dot" />
+						<span>Generating...</span>
+						<button
+							className="summary-section__cancel-btn"
+							onClick={handleCancel}
+							title="Cancel generation"
+						>
+							<Square size={10} />
+							<span>Stop</span>
+						</button>
+					</div>
+				</>
+			)}
+
+			{summary && !isLoading && !isStreaming && (
 				<>
 					<div
 						className="summary-section__content"
