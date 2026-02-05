@@ -5,6 +5,7 @@ import {
 	RefreshCw,
 	AlertCircle,
 	ChevronUp,
+	ChevronDown,
 	FileText,
 	Square,
 } from "lucide-react";
@@ -40,6 +41,8 @@ export const SummarySection = ({
 	const [error, setError] = useState<AIServiceError | null>(null);
 	const [streamingContent, setStreamingContent] = useState<string>('');
 	const [isStreaming, setIsStreaming] = useState(false);
+	const [isContentCollapsed, setIsContentCollapsed] = useState(true);
+	const [isOverflowing, setIsOverflowing] = useState(false);
 	const contentRef = useRef<HTMLDivElement>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,6 +69,22 @@ export const SummarySection = ({
 			}
 		};
 	}, [summary, streamingContent, plugin, isExpanded, isStreaming]);
+
+	// Measure content overflow after markdown rendering completes
+	useEffect(() => {
+		if (!summary || isStreaming || !contentRef.current) return;
+		const timer = setTimeout(() => {
+			if (contentRef.current) {
+				setIsOverflowing(contentRef.current.scrollHeight > 270);
+			}
+		}, 50);
+		return () => clearTimeout(timer);
+	}, [summary, isStreaming]);
+
+	// Reset collapsed state when summary changes
+	useEffect(() => {
+		setIsContentCollapsed(true);
+	}, [summary]);
 
 	const generateSummary = useCallback(
 		async (forceRegenerate = false) => {
@@ -148,6 +167,7 @@ export const SummarySection = ({
 								setIsStreaming(false);
 								abortControllerRef.current = null;
 								onSummaryGenerated();
+								new Notice(`AI summary generated for "${videoTitle}"`);
 							},
 							onError: (err: AIServiceError) => {
 								debugLogger.error(
@@ -177,6 +197,7 @@ export const SummarySection = ({
 					});
 					setSummary(result.summary);
 					onSummaryGenerated();
+					new Notice(`AI summary generated for "${videoTitle}"`);
 					debugLogger.debug(
 						`[AI Summary] State updated and parent notified for video: ${videoId}`,
 					);
@@ -256,6 +277,11 @@ export const SummarySection = ({
 		}
 	}, [videoId, streamingContent]);
 
+	const handleToggleCollapse = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setIsContentCollapsed(prev => !prev);
+	};
+
 	// Cleanup abort controller on unmount
 	useEffect(() => {
 		return () => {
@@ -314,10 +340,30 @@ export const SummarySection = ({
 
 			{summary && !isLoading && !isStreaming && (
 				<>
-					<div
-						className="summary-section__content"
-						ref={contentRef}
-					/>
+					<div className={isOverflowing && isContentCollapsed ? 'summary-section__fade-overlay' : ''}>
+						<div
+							className={`summary-section__content${isOverflowing && isContentCollapsed ? ' summary-section__content--collapsed' : ''}`}
+							ref={contentRef}
+						/>
+					</div>
+					{isOverflowing && (
+						<button
+							className="summary-section__toggle-btn"
+							onClick={handleToggleCollapse}
+						>
+							{isContentCollapsed ? (
+								<>
+									<span>Show more</span>
+									<ChevronDown size={14} />
+								</>
+							) : (
+								<>
+									<span>Show less</span>
+									<ChevronUp size={14} />
+								</>
+							)}
+						</button>
+					)}
 					<div className="summary-section__actions">
 						<div className="summary-section__left-actions">
 							<button

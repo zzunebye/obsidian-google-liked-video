@@ -1726,8 +1726,46 @@ If your plugin does not need CSS, delete this file.
 	/* line-height: 1.6; */
 	color: var(--text-normal);
 	word-wrap: break-word;
-	max-height: 300px;
+	overflow: hidden;
+	position: relative;
+}
+
+.summary-section__content--collapsed {
+	max-height: 270px;
 	overflow-y: auto;
+}
+
+.summary-section__fade-overlay {
+	position: relative;
+}
+
+.summary-section__fade-overlay::after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 40px;
+	background: linear-gradient(transparent, var(--background-primary));
+	pointer-events: none;
+}
+
+.summary-section__toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	width: 100%;
+	padding: 4px 0;
+	border: none;
+	background: none;
+	color: var(--text-muted);
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.summary-section__toggle-btn:hover {
+	color: var(--text-normal);
 }
 
 .summary-section__actions {
