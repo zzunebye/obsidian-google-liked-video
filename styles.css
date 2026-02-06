@@ -443,7 +443,7 @@ If your plugin does not need CSS, delete this file.
 /* View */
 
 .liked-videos-view {
-	padding: 0 0px;
+	padding: 0;
 }
 
 /* View Header */
@@ -511,7 +511,7 @@ If your plugin does not need CSS, delete this file.
 	padding: 6px 10px;
 	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
+	border-radius: 8px;
 	flex-wrap: wrap;
 }
 
@@ -800,7 +800,7 @@ If your plugin does not need CSS, delete this file.
 .video-card__container {
 	position: relative;
 	background-color: var(--background-primary-alt);
-	border: var(--border-width) solid var(--background-modifier-border);
+	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
 	padding: 8px;
 	display: flex;
@@ -810,7 +810,6 @@ If your plugin does not need CSS, delete this file.
 	transition: background-color 0.3s ease;
 	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 	opacity: 1;
-	border: 1px solid var(--background-modifier-border);
 }
 
 .video-card__container:hover {
@@ -820,7 +819,7 @@ If your plugin does not need CSS, delete this file.
 
 .video-card__container--dragging {
 	opacity: 0.5;
-	border: 1px dashed #2d2;
+	border: 1px dashed var(--text-success);
 }
 
 .video-card-inner {
@@ -1157,25 +1156,20 @@ If your plugin does not need CSS, delete this file.
 	border: none;
 	cursor: pointer;
 	font-size: 16px;
-	color: #999;
+	color: var(--text-faint);
 	border-radius: 0px 8px 8px 0px;
 	transition: color 0.3s ease;
 }
 
 .search-bar__button:hover {
-	color: #666;
+	color: var(--text-muted);
 }
-
-/* .search-bar > input:focus {
-	border-color: var(--background-modifier-border-active);
-	box-shadow: 0 2px 8px var(--background-modifier-border-active);
-} */
 
 /* Other Styles for Liked Video View */
 
 .video-count {
 	font-size: 16px;
-	color: #555;
+	color: var(--text-muted);
 }
 
 .no-videos-found {
@@ -1190,7 +1184,7 @@ If your plugin does not need CSS, delete this file.
 
 .no-videos-found__text {
 	font-size: 16px;
-	color: #555;
+	color: var(--text-muted);
 }
 
 .no-videos-found__fetch-all-button {
