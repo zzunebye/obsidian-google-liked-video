@@ -716,11 +716,33 @@ export const LikedVideoView: React.FC = () => {
 						videoInfo={video}
 						noteExists={noteExistenceMap.get(video.id) ?? false}
 						onUnlike={async () => {
+							const index = videos.findIndex((v) => v.id === video.id);
 							await plugin.likedVideoApi.unlikeVideo(video.id);
-							localStorageService.setLikedVideos(
-								videos.filter((v) => v.id !== video.id),
-							);
-							setVideos(videos.filter((v) => v.id !== video.id));
+							const filtered = videos.filter((v) => v.id !== video.id);
+							localStorageService.setLikedVideos(filtered);
+							setVideos(filtered);
+
+							const fragment = document.createDocumentFragment();
+							fragment.createEl("span", { text: `Unliked "${video.snippet.title}" ` });
+							const undoBtn = fragment.createEl("span", {
+								text: "Undo",
+								cls: "geulo-undo-btn",
+							});
+							const notice = new Notice(fragment, 5000);
+							undoBtn.addEventListener("click", async () => {
+								try {
+									await plugin.likedVideoApi.likeVideo(video.id);
+									const current = localStorageService.getLikedVideos();
+									const restored = [...current];
+									restored.splice(Math.min(index, restored.length), 0, video);
+									localStorageService.setLikedVideos(restored);
+									setVideos(restored);
+									notice.hide();
+								} catch (error) {
+									console.error("Failed to undo unlike:", error);
+									new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+								}
+							});
 						}}
 						onAddToDailyNote={async (videoData, file) => {
 							const contentToAppend = `\n${videoData}`;

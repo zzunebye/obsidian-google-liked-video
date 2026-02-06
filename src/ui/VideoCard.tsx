@@ -280,15 +280,8 @@ export const VideoCard = ({
 			menu.addItem((item) => {
 				item.setTitle("Unlike");
 				item.setIcon("heart-off");
-				item.onClick(async () => {
-					const confirmed = await confirmUnlikeAction(
-						plugin.app,
-						videoInfo.snippet.title,
-					);
-
-					if (confirmed) {
-						onUnlike();
-					}
+				item.onClick(() => {
+					onUnlike();
 				});
 			});
 		} else if (source === "playlist") {
@@ -453,8 +446,22 @@ export const VideoCard = ({
 								{formatCount(videoInfo.statistics.viewCount)}
 							</span>
 						</div>
-						<div className="video-stat">
-							<ThumbsUp size={14} fill={source === "playlist" && isLiked ? "currentColor" : "none"} className={`video-stat-icon${source === "playlist" && isLiked ? " video-stat-icon--liked" : ""}`} />
+						<div
+							className="video-stat video-stat--clickable"
+							aria-label={source === "liked" ? "Unlike" : isLiked ? "Unlike" : "Like"}
+							onClick={async (e) => {
+								e.stopPropagation();
+								if (source === "liked") {
+									onUnlike();
+								} else if (isLiked) {
+									const confirmed = await confirmUnlikeAction(plugin.app, videoInfo.snippet.title);
+									if (confirmed) onUnlike();
+								} else {
+									onLike?.();
+								}
+							}}
+						>
+							<ThumbsUp size={14} fill={source === "liked" || isLiked ? "currentColor" : "none"} className={`video-stat-icon${source === "liked" || isLiked ? " video-stat-icon--liked" : ""}`} />
 							<span className="video-stat-count">
 								{formatCount(videoInfo.statistics.likeCount)}
 							</span>

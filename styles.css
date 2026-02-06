@@ -914,9 +914,29 @@ If your plugin does not need CSS, delete this file.
 	opacity: 0.7;
 }
 
+.video-stat--clickable {
+	cursor: pointer;
+	border-radius: 4px;
+	padding: 2px 4px;
+	margin: -2px -4px;
+	transition: background-color 0.15s ease;
+}
+
+.video-stat--clickable:hover {
+	background-color: var(--background-modifier-hover);
+}
+
 .video-stat-icon--liked {
 	color: var(--interactive-accent);
 	opacity: 1;
+}
+
+.geulo-undo-btn {
+	cursor: pointer;
+	font-weight: 600;
+	color: var(--interactive-accent);
+	text-decoration: underline;
+	margin-left: 4px;
 }
 
 .video-stat-count {

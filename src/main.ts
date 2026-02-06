@@ -148,6 +148,17 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'full-fetch-liked-videos',
+			name: 'Full Fetch Liked Videos',
+			callback: () => {
+				if (!localStorageService.getAccessToken()) {
+					new Notice('Geulo: Please authenticate first in plugin settings.');
+					return;
+				}
+				this.performAutoFetch(true);
+			}
+		});
 
 		if (this.settings.fetchOnStartup && localStorageService.getAccessToken()) {
 			debugLogger.info('Fetch on startup enabled, scheduling fetch in 5 seconds');
@@ -255,7 +266,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 	}
 
-	async performAutoFetch() {
+	async performAutoFetch(forceFullFetch = false) {
 		if (this.isFetching) {
 			debugLogger.autoFetch('Skipping auto-fetch - already fetching');
 			return;
@@ -270,7 +281,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 			if (this.likedVideoApi && localStorageService.getAccessToken()) {
 				let allLikedVideos: YouTubeVideo[] = [];
-				const shouldFetchAllVideos = this.settings.fullFetchOnEveryAutoFetch;
+				const shouldFetchAllVideos = forceFullFetch || this.settings.fullFetchOnEveryAutoFetch;
 				const fetchInterval = this.settings.autoFetchInterval;
 
 				if (shouldFetchAllVideos) {
