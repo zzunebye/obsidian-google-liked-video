@@ -807,7 +807,7 @@ If your plugin does not need CSS, delete this file.
 	gap: 4px;
 	cursor: pointer;
 	font-family: "Roboto", sans-serif; /* Added sans-serif as a fallback */
-	transition: background-color 0.3s ease;
+	transition: background-color 0.3s ease, border-color 0.3s ease;
 	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 	opacity: 1;
 }
@@ -943,6 +943,8 @@ If your plugin does not need CSS, delete this file.
 	right: 0;
 	top: 0;
 	visibility: hidden;
+	opacity: 0;
+	transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .video-card-options > div {
@@ -970,6 +972,7 @@ If your plugin does not need CSS, delete this file.
 
 .video-card__container:hover .video-card-options {
 	visibility: visible;
+	opacity: 1;
 }
 
 /* Search Bar */
@@ -1177,11 +1180,7 @@ If your plugin does not need CSS, delete this file.
 	padding-top: 32px;
 	flex: 1;
 	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	height: 100%;
 }
-
 .no-videos-found__text {
 	font-size: 16px;
 	color: var(--text-muted);
