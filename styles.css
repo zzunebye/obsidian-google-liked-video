@@ -1438,6 +1438,14 @@ If your plugin does not need CSS, delete this file.
 	color: var(--text-faint);
 }
 
+.playlist-card__created-at {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	color: var(--text-faint);
+}
+
 .playlist-card__hover-overlay {
 	position: absolute;
 	inset: 0;

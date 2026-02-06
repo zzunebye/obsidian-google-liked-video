@@ -20,6 +20,15 @@ export const PlaylistCard = ({
 		return `${count} videos`;
 	};
 
+	const formatDate = (dateString: string): string => {
+		const date = new Date(dateString);
+		return date.toLocaleDateString(undefined, {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+		});
+	};
+
 	const handlePinClick = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation(); // Prevent triggering playlist selection
@@ -92,6 +101,12 @@ export const PlaylistCard = ({
 					<span className="playlist-card__item-count">
 						{formatItemCount(playlist.itemCount)}
 					</span>
+					{playlist.publishedAt && (
+						<span className="playlist-card__created-at">
+							<Calendar size={12} />
+							{formatDate(playlist.publishedAt)}
+						</span>
+					)}
 				</div>
 			</div>
 
