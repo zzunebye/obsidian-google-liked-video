@@ -156,7 +156,6 @@ export interface VideoMetadata {
     videoUrl: string;
 }
 
-
 // Playlist source types for generic playlist handling
 export type PlaylistSource =
     | { type: 'liked' }
@@ -170,7 +169,6 @@ export interface PlaylistInfo {
     thumbnailUrl?: string;
     publishedAt?: string; // Playlist creation date
 }
-
 
 // Type-safe YouTube API response interfaces
 export interface YouTubePlaylistResponse {
