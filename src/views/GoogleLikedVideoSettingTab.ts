@@ -226,6 +226,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         this.plugin.settings.enableAISummary = value;
                         await this.plugin.saveSettings();
                         this.display();
+                        this.updateListPaneView();
                     }));
 
             if (this.plugin.settings.enableAISummary) {

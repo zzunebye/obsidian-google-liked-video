@@ -6,7 +6,7 @@ class UserPreferencesService {
 
     private defaultPreferences = {
         skipUnlikeConfirmation: false,
-        // Add more preferences here in the future
+        skipLongVideoSummaryConfirmation: false,
     };
 
     /**
@@ -71,6 +71,20 @@ class UserPreferencesService {
      */
     setSkipUnlikeConfirmation(skip: boolean) {
         this.setPreference('skipUnlikeConfirmation', skip);
+    }
+
+    /**
+     * Check if user wants to skip long video summary confirmation
+     */
+    shouldSkipLongVideoSummaryConfirmation(): boolean {
+        return this.getPreference('skipLongVideoSummaryConfirmation');
+    }
+
+    /**
+     * Set whether to skip long video summary confirmation
+     */
+    setSkipLongVideoSummaryConfirmation(skip: boolean) {
+        this.setPreference('skipLongVideoSummaryConfirmation', skip);
     }
 
     /**

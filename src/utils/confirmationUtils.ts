@@ -65,3 +65,40 @@ export const confirmDangerousAction = async (
 
     return result.confirmed;
 };
+
+/**
+ * Utility function to handle long video summary confirmation with user preference checking
+ * @param app Obsidian App instance
+ * @param videoTitle Title of the video
+ * @param durationMinutes Duration of the video in minutes
+ * @returns Promise resolving to true if user confirms, false otherwise
+ */
+export const confirmLongVideoSummary = async (
+    app: App,
+    videoTitle: string,
+    durationMinutes: number
+): Promise<boolean> => {
+    // Check if user has chosen to skip confirmation
+    if (userPreferencesService.shouldSkipLongVideoSummaryConfirmation()) {
+        return true;
+    }
+
+    const result = await confirmAction(
+        app,
+        `This video is approximately ${Math.round(durationMinutes)} minutes long.\n\nGenerating an AI summary for long videos may consume a significant number of API tokens.\n\nDo you want to proceed?`,
+        {
+            title: 'Long Video Summary Warning',
+            confirmText: 'Generate Summary',
+            cancelText: 'Cancel',
+            type: 'warning',
+            showRememberChoice: true,
+            rememberChoiceText: "Don't ask me again for long videos"
+        }
+    );
+
+    if (result.confirmed && result.rememberChoice) {
+        userPreferencesService.setSkipLongVideoSummaryConfirmation(true);
+    }
+
+    return result.confirmed;
+};

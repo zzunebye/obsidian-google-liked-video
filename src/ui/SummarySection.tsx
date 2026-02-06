@@ -13,6 +13,10 @@ import { AIServiceError, AIServiceResult } from "../services/geminiService";
 import { createAIService, getActiveApiKey } from "../services/aiServiceFactory";
 import { usePlugin } from "../store/pluginContext";
 import { debugLogger } from "../debug";
+import { parseDurationToSeconds } from "./VideoInfoModal";
+import { confirmLongVideoSummary } from "../utils/confirmationUtils";
+
+const LONG_VIDEO_THRESHOLD_SECONDS = 30 * 60; // 30 minutes
 
 interface SummarySectionProps {
 	videoId: string;
@@ -25,6 +29,7 @@ interface SummarySectionProps {
 	onAddToNote: (summary: string) => Promise<void>;
 	onPreviewUpdated?: () => void;
 	regenerateTrigger?: number;
+	videoDuration?: string; // ISO 8601 duration format (e.g., "PT1H30M")
 }
 
 export const SummarySection = ({
@@ -38,6 +43,7 @@ export const SummarySection = ({
 	onAddToNote,
 	onPreviewUpdated,
 	regenerateTrigger,
+	videoDuration,
 }: SummarySectionProps) => {
 	const plugin = usePlugin();
 	const [summary, setSummary] = useState<string | null>(null);
@@ -148,6 +154,29 @@ export const SummarySection = ({
 				);
 			}
 
+			// Check if video is longer than 30 minutes and warn user
+			if (videoDuration) {
+				const durationSeconds = parseDurationToSeconds(videoDuration);
+				if (durationSeconds && durationSeconds > LONG_VIDEO_THRESHOLD_SECONDS) {
+					const durationMinutes = durationSeconds / 60;
+					debugLogger.info(
+						`[AI Summary] Video ${videoId} is ${Math.round(durationMinutes)} minutes long - showing confirmation`,
+					);
+					const confirmed = await confirmLongVideoSummary(
+						plugin.app,
+						videoTitle,
+						durationMinutes
+					);
+					if (!confirmed) {
+						debugLogger.info(
+							`[AI Summary] User cancelled long video summary for: ${videoId}`,
+						);
+						setIsExpanded(false);
+						return;
+					}
+				}
+			}
+
 			debugLogger.info(
 				`[AI Summary] Starting generation for video: ${videoId}`,
 			);
@@ -242,7 +271,7 @@ export const SummarySection = ({
 				setIsStreaming(false);
 			}
 		},
-		[videoId, plugin, isLoading, isStreaming, onSummaryGenerated, generateOneLiner, streamingContent, videoTitle, channelTitle, channelId],
+		[videoId, plugin, isLoading, isStreaming, onSummaryGenerated, generateOneLiner, streamingContent, videoTitle, channelTitle, channelId, videoDuration],
 	);
 
 	useEffect(() => {

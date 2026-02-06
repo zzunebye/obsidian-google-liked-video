@@ -539,6 +539,7 @@ export const VideoCard = ({
 					onAddToNote={handleAddSummaryToNote}
 					onPreviewUpdated={() => setPreviewVersion(v => v + 1)}
 					regenerateTrigger={regenerateTrigger}
+					videoDuration={videoInfo.contentDetails?.duration}
 				/>
 			</div>
 		);

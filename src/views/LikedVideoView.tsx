@@ -772,12 +772,12 @@ export const LikedVideoView: React.FC = () => {
 					{currentPage > 1 && (
 						<>
 							<button onClick={() => setCurrentPage(1)}>
-								<ArrowLeft size={16} />
+								<ArrowLeftToLine size={16} />
 							</button>
 							<button
 								onClick={() => setCurrentPage(currentPage - 1)}
 							>
-								<ArrowLeftToLine size={16} />
+								<ArrowLeft size={16} />
 							</button>
 						</>
 					)}
@@ -804,6 +804,7 @@ export const LikedVideoView: React.FC = () => {
 					)}
 				</div>
 			</div>
+            <div style={{ height: "24px" }}></div>
 		</div>
 	);
 };
