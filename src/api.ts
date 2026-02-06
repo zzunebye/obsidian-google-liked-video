@@ -277,7 +277,8 @@ export class PlaylistApi {
             title: playlist.snippet.title,
             description: playlist.snippet.description || '',
             itemCount: playlist.contentDetails.itemCount,
-            thumbnailUrl: playlist.snippet.thumbnails?.medium?.url
+            thumbnailUrl: playlist.snippet.thumbnails?.medium?.url,
+            publishedAt: playlist.snippet.publishedAt
         };
     }
 
@@ -603,6 +604,13 @@ export class LikedVideoApi {
         const response = await this.sendRequest('GET', url, {});
         const data: YouTubeVideosResponse = await response.json();
         return data.pageInfo.totalResults;
+    }
+
+    async likeVideo(videoId: string): Promise<void> {
+        const url = BASE_URL + 'videos/rate?id=' + videoId + '&rating=like';
+        await this.sendRequest('POST', url, {
+            'Content-Type': 'application/json'
+        });
     }
 
     async unlikeVideo(videoId: string): Promise<void> {

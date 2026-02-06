@@ -1,4 +1,4 @@
-import { Pin, Play, Video } from "lucide-react";
+import { Calendar, Pin, Play, Video } from "lucide-react";
 import { PlaylistInfo } from "src/types";
 
 interface PlaylistCardProps {

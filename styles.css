@@ -914,6 +914,11 @@ If your plugin does not need CSS, delete this file.
 	opacity: 0.7;
 }
 
+.video-stat-icon--liked {
+	color: var(--interactive-accent);
+	opacity: 1;
+}
+
 .video-stat-count {
 	font-weight: 500;
 	color: var(--text-normal);

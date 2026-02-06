@@ -37,6 +37,10 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 	const [showAINoteOnly, setShowAINoteOnly] = useState(
 		localStorageService.getAINoteFilter(),
 	);
+	const [likedVideoIds, setLikedVideoIds] = useState<Set<string>>(() => {
+		const likedVideos = localStorageService.getLikedVideos();
+		return new Set(likedVideos.map((v) => v.id));
+	});
 	const plugin = usePlugin();
 	const loadingRef = useRef(false);
 	const noteExistenceMap = useNoteExistenceMap(plugin, displayedVideos);
@@ -321,6 +325,42 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		);
 	}
 
+	const handleLikeVideo = async (video: YouTubeVideo) => {
+		try {
+			await plugin.likedVideoApi.likeVideo(video.id);
+			const currentLikedVideos = localStorageService.getLikedVideos();
+			localStorageService.setLikedVideos([video, ...currentLikedVideos]);
+			setLikedVideoIds((prev) => {
+				const next = new Set(prev);
+				next.add(video.id);
+				return next;
+			});
+			new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
+		} catch (error) {
+			console.error("Failed to like video:", error);
+			new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+		}
+	};
+
+	const handleUnlikeVideo = async (video: YouTubeVideo) => {
+		try {
+			await plugin.likedVideoApi.unlikeVideo(video.id);
+			const currentLikedVideos = localStorageService.getLikedVideos();
+			localStorageService.setLikedVideos(
+				currentLikedVideos.filter((v) => v.id !== video.id),
+			);
+			setLikedVideoIds((prev) => {
+				const next = new Set(prev);
+				next.delete(video.id);
+				return next;
+			});
+			new Notice(UI_TEXT.NOTICE_VIDEO_UNLIKED(video.snippet.title));
+		} catch (error) {
+			console.error("Failed to unlike video:", error);
+			new Notice(UI_TEXT.NOTICE_UNLIKE_FAILED);
+		}
+	};
+
 	return (
 		<div className="playlist-videos-view">
 			<ViewHeader
@@ -443,6 +483,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 								noteExists={
 									noteExistenceMap.get(video.id) ?? false
 								}
+								isLiked={likedVideoIds.has(video.id)}
+								onLike={() => handleLikeVideo(video)}
 								onLinkClick={async (videoUrl) => {
 									const leaf =
 										plugin.app.workspace.getLeaf("split");
@@ -469,12 +511,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 								}}
 								id={video.id}
 								url={`https://www.youtube.com/watch?v=${video.id}`}
-								onUnlike={() => {
-									// Playlist videos don't have unlike functionality
-									console.log(
-										"Unlike not available for playlist videos",
-									);
-								}}
+								onUnlike={() => handleUnlikeVideo(video)}
 								onAddToDailyNote={async (videoData, file) => {
 									const contentToAppend = `\n${videoData}`;
 

@@ -35,7 +35,9 @@ interface VideoCardProps {
 	id: string;
 	url: string;
 	noteExists: boolean;
+	isLiked?: boolean;
 	onUnlike: () => void;
+	onLike?: () => void;
 	onAddToDailyNote: (videoData: string, file: TFile) => void;
 	onChannelClick: (channelTitle: string) => void;
 	onLinkClick: (url: string) => void;
@@ -46,7 +48,9 @@ export const VideoCard = ({
 	videoInfo,
 	url,
 	noteExists,
+	isLiked,
 	onUnlike,
+	onLike,
 	onAddToDailyNote,
 	onChannelClick,
 	onLinkClick,
@@ -287,6 +291,30 @@ export const VideoCard = ({
 					}
 				});
 			});
+		} else if (source === "playlist") {
+			if (isLiked) {
+				menu.addItem((item) => {
+					item.setTitle("Unlike");
+					item.setIcon("heart-off");
+					item.onClick(async () => {
+						const confirmed = await confirmUnlikeAction(
+							plugin.app,
+							videoInfo.snippet.title,
+						);
+						if (confirmed) {
+							onUnlike();
+						}
+					});
+				});
+			} else {
+				menu.addItem((item) => {
+					item.setTitle("Like");
+					item.setIcon("heart");
+					item.onClick(() => {
+						onLike?.();
+					});
+				});
+			}
 		}
 
 		menu.addItem((item) => {
@@ -426,7 +454,7 @@ export const VideoCard = ({
 							</span>
 						</div>
 						<div className="video-stat">
-							<ThumbsUp size={14} className="video-stat-icon" />
+							<ThumbsUp size={14} fill={source === "playlist" && isLiked ? "currentColor" : "none"} className={`video-stat-icon${source === "playlist" && isLiked ? " video-stat-icon--liked" : ""}`} />
 							<span className="video-stat-count">
 								{formatCount(videoInfo.statistics.likeCount)}
 							</span>
