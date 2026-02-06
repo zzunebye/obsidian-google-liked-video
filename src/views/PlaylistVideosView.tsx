@@ -526,7 +526,13 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 					{!hasMoreToShow &&
 						displayedVideos.length > 0 &&
 						displayedVideos.length >= filteredVideos.length && (
-							<div className="infinite-scroll-complete" style={{ textAlign: "center", color: "var(--text-muted)" }}>
+							<div
+								className="infinite-scroll-complete"
+								style={{
+									textAlign: "center",
+									color: "var(--text-muted)",
+								}}
+							>
 								<p>
 									{allVideos.length > maxVideosToShow
 										? `All available videos loaded (limited to ${maxVideosToShow})`
