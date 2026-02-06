@@ -4,7 +4,7 @@ import { StrictMode } from "react";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { PlaylistVideosView } from "./PlaylistVideosView";
-import { PlaylistSource, PlaylistInfo } from "../api";
+import { PlaylistSource, PlaylistInfo } from "src/types";
 
 interface IPlaylistVideosViewPersistedState {
     playlistSource: PlaylistSource;

@@ -1,5 +1,4 @@
-import { YouTubeVideo, ContentTypeSelection, ContentTypeOption } from "./types";
-import { PlaylistInfo } from "./api";
+import { YouTubeVideo, ContentTypeSelection, ContentTypeOption, PlaylistInfo } from "./types";
 
 export interface SavedPlaylist extends PlaylistInfo {
     savedAt: string; // ISO string

@@ -1,60 +1,9 @@
 import { Notice } from "obsidian";
 import { getGoogleAccessTokenFromLocal, getValidAccessToken } from "./auth";
-import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse, YouTubeCategory, YoutubeCategoriesResponse } from "./types";
+import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse, YouTubeCategory, YoutubeCategoriesResponse, PlaylistCache, YouTubePlaylistResponse, PlaylistSource, PaginatedResult, PlaylistInfo } from "./types";
 import { debugLogger } from "./debug";
 
 const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
-
-// Playlist source types for generic playlist handling
-export type PlaylistSource =
-    | { type: 'liked' }
-    | { type: 'playlist', playlistId: string };
-
-export interface PlaylistInfo {
-    id: string;
-    title: string;
-    description: string;
-    itemCount: number;
-    thumbnailUrl?: string;
-    publishedAt?: string; // Playlist creation date
-}
-
-
-// Type-safe YouTube API response interfaces
-interface YouTubePlaylistResponse {
-    id: string;
-    snippet: {
-        title: string;
-        description?: string;
-        publishedAt: string;
-        thumbnails?: {
-            medium?: {
-                url: string;
-            };
-        };
-    };
-    contentDetails: {
-        itemCount: number;
-    };
-}
-
-export interface PaginatedResult {
-    videos: YouTubeVideo[];
-    currentPage: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-    totalResults?: number;
-    totalPages?: number;
-}
-
-interface PlaylistCache {
-    pages: Map<number, YouTubeVideo[]>;
-    tokens: Map<number, string>;
-    totalResults?: number;
-    allVideos?: YouTubeVideo[];  // Cache all videos for the playlist
-    lastFetched?: number;  // Timestamp of last fetch (required)
-    ttl?: number; // Time to live in milliseconds
-}
 
 // Generic Playlist API that can handle different playlist sources
 export class PlaylistApi {
@@ -696,3 +645,4 @@ export class LikedVideoApi {
         }
     }
 }
+

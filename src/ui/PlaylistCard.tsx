@@ -1,5 +1,5 @@
 import { Pin, Play, Video } from "lucide-react";
-import { PlaylistInfo } from "src/api";
+import { PlaylistInfo } from "src/types";
 
 interface PlaylistCardProps {
 	playlist: PlaylistInfo;

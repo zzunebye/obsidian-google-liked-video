@@ -1,8 +1,3 @@
-export interface CachedLLMSummary {
-    summary: string;
-    generatedAt: string; // ISO string
-    model: string;
-}
 
 export interface ObsidianGoogleLikedVideoSettings {
     accessToken: string;
@@ -161,3 +156,62 @@ export interface VideoMetadata {
     videoUrl: string;
 }
 
+
+// Playlist source types for generic playlist handling
+export type PlaylistSource =
+    | { type: 'liked' }
+    | { type: 'playlist', playlistId: string };
+
+export interface PlaylistInfo {
+    id: string;
+    title: string;
+    description: string;
+    itemCount: number;
+    thumbnailUrl?: string;
+    publishedAt?: string; // Playlist creation date
+}
+
+
+// Type-safe YouTube API response interfaces
+export interface YouTubePlaylistResponse {
+    id: string;
+    snippet: {
+        title: string;
+        description?: string;
+        publishedAt: string;
+        thumbnails?: {
+            medium?: {
+                url: string;
+            };
+        };
+    };
+    contentDetails: {
+        itemCount: number;
+    };
+}
+
+export interface PaginatedResult {
+    videos: YouTubeVideo[];
+    currentPage: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    totalResults?: number;
+    totalPages?: number;
+}
+
+export interface PlaylistCache {
+    pages: Map<number, YouTubeVideo[]>;
+    tokens: Map<number, string>;
+    totalResults?: number;
+    allVideos?: YouTubeVideo[];  // Cache all videos for the playlist
+    lastFetched?: number;  // Timestamp of last fetch (required)
+    ttl?: number; // Time to live in milliseconds
+}
+
+/// LLM Summary Cache Interface
+
+export interface CachedLLMSummary {
+    summary: string;
+    generatedAt: string; // ISO string
+    model: string;
+}

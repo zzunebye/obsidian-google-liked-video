@@ -10,8 +10,7 @@ import {
 } from "lucide-react";
 import { VideoCard } from "src/ui/VideoCard";
 import { SearchBar } from "src/ui/SearchBar";
-import { PlaylistSource, PlaylistInfo } from "src/api";
-import { YouTubeVideo } from "src/types";
+import { PlaylistInfo, PlaylistSource, YouTubeVideo } from "src/types";
 import { Notice } from "obsidian";
 import { UI_TEXT } from "src/constants/uiText";
 import { localStorageService } from "src/storage";

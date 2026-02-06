@@ -1,5 +1,4 @@
 import { ItemView, Menu, MenuItem, ViewStateResult, WorkspaceLeaf, Notice } from "obsidian";
-import { PlaylistInfo } from "src/api";
 import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
 import GoogleLikedVideoPlugin from "../main";
@@ -7,6 +6,7 @@ import { PluginContext } from "../store/pluginContext";
 import { UserPlaylistsView } from "./UserPlaylistsView";
 import { localStorageService } from "../storage";
 import { VIEW_TYPE_PLAYLIST_VIDEOS } from "./PlaylistVideosPane";
+import { PlaylistInfo } from "src/types";
 
 interface IUserPlaylistsPaneState {
     playlists: PlaylistInfo[];
