@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { PlaylistInfo } from "src/api";
 import {
 	Search,
 	AlertCircle,
@@ -15,6 +14,7 @@ import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { PlaylistCard } from "src/ui/PlaylistCard";
 import { AddPlaylistForm } from "src/ui/AddPlaylistForm";
 import { ViewHeader } from "src/ui/ViewHeader";
+import { PlaylistInfo } from "src/types";
 
 interface UserPlaylistsViewProps {
 	playlists: PlaylistInfo[];
