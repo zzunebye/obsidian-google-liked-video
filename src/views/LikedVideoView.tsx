@@ -615,6 +615,7 @@ export const LikedVideoView: React.FC = () => {
 						{UI_TEXT.NO_VIDEOS_FOUND}
 					</div>
 
+					{videos.length === 0 && (
 					<button
 						className="no-videos-found__fetch-all-button"
 						onClick={async () => {
@@ -701,6 +702,7 @@ export const LikedVideoView: React.FC = () => {
 					>
 						{UI_TEXT.BTN_FETCH_ALL}
 					</button>
+				)}
 				</div>
 			)}
 			{/* Videos */}
