@@ -11,6 +11,7 @@ import { debugLogger } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
 import { UI_TEXT } from '../constants/uiText';
 import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templateConstants';
+import { PlaylistVideosPane } from './PlaylistVideosPane';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
@@ -25,6 +26,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     updateListPaneView(): void {
         this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onClose();
         this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onOpen();
+    }
+
+    updatePlaylistVideosPaneView(): void {
+        this.app.workspace.getActiveViewOfType(PlaylistVideosPane)?.onClose();
+        this.app.workspace.getActiveViewOfType(PlaylistVideosPane)?.onOpen();
     }
 
     display(): void {
@@ -227,6 +233,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         this.display();
                         this.updateListPaneView();
+                        this.updatePlaylistVideosPaneView();
                     }));
 
             if (this.plugin.settings.enableAISummary) {
