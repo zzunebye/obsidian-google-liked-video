@@ -717,6 +717,7 @@ export const LikedVideoView: React.FC = () => {
 						noteExists={noteExistenceMap.get(video.id) ?? false}
 						onUnlike={async () => {
 							const index = videos.findIndex((v) => v.id === video.id);
+							const previousVideoId = index > 0 ? videos[index - 1].id : null;
 							await plugin.likedVideoApi.unlikeVideo(video.id);
 							const filtered = videos.filter((v) => v.id !== video.id);
 							localStorageService.setLikedVideos(filtered);
@@ -734,7 +735,12 @@ export const LikedVideoView: React.FC = () => {
 									await plugin.likedVideoApi.likeVideo(video.id);
 									const current = localStorageService.getLikedVideos();
 									const restored = [...current];
-									restored.splice(Math.min(index, restored.length), 0, video);
+									let insertIndex = 0;
+									if (previousVideoId) {
+										const prevIdx = restored.findIndex((v) => v.id === previousVideoId);
+										insertIndex = prevIdx >= 0 ? prevIdx + 1 : Math.min(index, restored.length);
+									}
+									restored.splice(insertIndex, 0, video);
 									localStorageService.setLikedVideos(restored);
 									setVideos(restored);
 									notice.hide();
@@ -742,7 +748,7 @@ export const LikedVideoView: React.FC = () => {
 									console.error("Failed to undo unlike:", error);
 									new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
 								}
-							});
+							}, { once: true });
 						}}
 						onAddToDailyNote={async (videoData, file) => {
 							const contentToAppend = `\n${videoData}`;
