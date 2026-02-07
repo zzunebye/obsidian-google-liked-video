@@ -15,7 +15,9 @@ Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube
 - One-click integration with your daily notes
 - Curate your collection by removing videos directly from the sidebar
 
-*Features are still at its early stages - your feedback shapes the future.* Connect with me at [zzunebye@gmail.com](mailto:zzunebye@gmail.com) or open an issue for suggestions.
+I'd appreciate your feedback. Open an issue for suggestions.
+
+Mobile version is still experimental!
 
 ## Table of Contents
 
@@ -125,6 +127,13 @@ If you encounter any issues, consider the following steps:
 3. If granting permission to your google project fails, check if there are multiple window/tabs for login process opened. If so, close all of them and try again.
 
 ## Release Notes
+
+### 3.1.0
+
+- **Like feature for Playlist videos**
+- **Undo unliking video from Liked Video View**
+- **Add full fetch command for liked videos**
+- Add more commands
 
 ### 3.0.0
 
