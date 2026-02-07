@@ -436,7 +436,7 @@ export const VideoCard = ({
 				</div>
 				<div className="video-bottom-row">
 					<p className="video-pulled-at">
-						Pulled At{" "}
+						Pulled at{" "}
 						{new Date(videoInfo.pulled_at).toLocaleDateString()}
 					</p>
 					<div className="video-statistics">
