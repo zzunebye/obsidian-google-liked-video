@@ -5,7 +5,6 @@ import { debugLogger } from "../debug";
 export class SummaryStorageService {
 	private adapter: DataAdapter;
 	private filePath: string;
-	private legacyDir: string;
 	private maxEntries: number;
 	private cache: Map<string, SummaryFileData> = new Map();
 	private writeQueue: Promise<void> = Promise.resolve();
@@ -13,7 +12,6 @@ export class SummaryStorageService {
 	constructor(adapter: DataAdapter, manifestDir: string, maxEntries = 500) {
 		this.adapter = adapter;
 		this.filePath = `${manifestDir}/summaries.json`;
-		this.legacyDir = `${manifestDir}/summaries`;
 		this.maxEntries = maxEntries;
 	}
 
@@ -149,59 +147,6 @@ export class SummaryStorageService {
 			if (oldest === undefined) break;
 			debugLogger.debug(`[SummaryStorage] Evicting oldest summary: ${oldest}`);
 			this.cache.delete(oldest);
-		}
-	}
-
-	/**
-	 * Migrate from Option 4 per-video file storage to single-file storage.
-	 * Reads all .json files from the legacy summaries/ directory, merges into cache,
-	 * persists to summaries.json, then removes the directory.
-	 */
-	private async migrateFromPerVideoFiles(): Promise<void> {
-		if (!(await this.adapter.exists(this.legacyDir))) return;
-
-		debugLogger.info("[SummaryStorage] Migrating from per-video files...");
-
-		try {
-			const listing = await this.adapter.list(this.legacyDir);
-			let migrated = 0;
-
-			for (const filePath of listing.files) {
-				if (!filePath.endsWith(".json")) continue;
-				try {
-					const content = await this.adapter.read(filePath);
-					const data: SummaryFileData = JSON.parse(content);
-					if (!this.cache.has(data.videoId)) {
-						this.cache.set(data.videoId, data);
-						migrated++;
-					}
-				} catch (err) {
-					debugLogger.error(`[SummaryStorage] Failed to read legacy file ${filePath}:`, err);
-				}
-			}
-
-			// Persist merged data
-			if (migrated > 0) {
-				this.evictIfNeeded();
-				await this.persist();
-			}
-
-			// Clean up legacy files and directory
-			for (const filePath of listing.files) {
-				try {
-					await this.adapter.remove(filePath);
-				} catch (err) {
-					debugLogger.error(`[SummaryStorage] Failed to remove legacy file ${filePath}:`, err);
-				}
-			}
-			try {
-				await this.adapter.rmdir(this.legacyDir, false);
-				debugLogger.info(`[SummaryStorage] Migrated ${migrated} summaries from per-video files, removed legacy directory`);
-			} catch (err) {
-				debugLogger.error("[SummaryStorage] Failed to remove legacy directory:", err);
-			}
-		} catch (err) {
-			debugLogger.error("[SummaryStorage] Per-video file migration failed:", err);
 		}
 	}
 }
