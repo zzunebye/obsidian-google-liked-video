@@ -15,6 +15,7 @@ export class SummaryStorageService {
 		this.maxEntries = maxEntries;
 	}
 
+	// Initialize the storage service, loading existing summaries
 	async initialize(): Promise<void> {
 		debugLogger.info("[SummaryStorage] Initializing...");
 
