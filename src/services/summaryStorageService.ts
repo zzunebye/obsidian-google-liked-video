@@ -20,9 +20,6 @@ export class SummaryStorageService {
 	async initialize(): Promise<void> {
 		debugLogger.info("[SummaryStorage] Initializing...");
 
-		// Migrate from Option 4 per-video files if legacy directory exists
-		await this.migrateFromPerVideoFiles();
-
 		// Load single file
 		if (await this.adapter.exists(this.filePath)) {
 			try {
