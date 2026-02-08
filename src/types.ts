@@ -144,6 +144,7 @@ export interface SummaryFileData {
     model: string;
 }
 
+// File format for persisting AI generated Video summaries
 export interface SummaryStorageFile {
     schemaVersion: 1;
     summaries: Record<string, SummaryFileData>;

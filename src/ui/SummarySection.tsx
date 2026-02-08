@@ -158,7 +158,7 @@ export const SummarySection = ({
 
 			if (!forceRegenerate) {
 				const cached =
-					await plugin.summaryStorage.getVideoSummary(videoId);
+					await plugin.summaryStorage.getVideoSummaryData(videoId);
 				if (cached) {
 					debugLogger.debug(
 						`[AI Summary] Cache hit for video: ${videoId} (generated: ${cached.generatedAt})`,

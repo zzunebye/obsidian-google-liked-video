@@ -76,7 +76,6 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, this.manifest.dir!, 500);
 		await this.summaryStorage.initialize();
-		await this.summaryStorage.migrateFromLocalStorage();
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,

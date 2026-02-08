@@ -39,13 +39,13 @@ export class SummaryStorageService {
 		return this.cache.has(videoId);
 	}
 
-	getVideoSummaryPreview(videoId: string): string | null {
+	getOneLineSummary(videoId: string): string | null {
 		const entry = this.cache.get(videoId);
 		if (!entry) return null;
 		return entry.oneLinerSummary || entry.summary.slice(0, 100) + '...';
 	}
 
-	async getVideoSummary(videoId: string): Promise<SummaryFileData | null> {
+	async getVideoSummaryData(videoId: string): Promise<SummaryFileData | null> {
 		return this.cache.get(videoId) ?? null;
 	}
 
@@ -88,46 +88,6 @@ export class SummaryStorageService {
 		entry.oneLinerSummary = oneLiner;
 		await this.persist();
 		debugLogger.debug(`[SummaryStorage] Set one-liner summary for ${videoId}`);
-	}
-
-	async migrateFromLocalStorage(): Promise<void> {
-		const raw = window.localStorage.getItem("googleYtbVideoSummaries");
-		if (!raw) return;
-
-		debugLogger.info("[SummaryStorage] Migrating summaries from localStorage...");
-
-		try {
-			const summaries: Record<string, CachedLLMSummary> = JSON.parse(raw);
-			const entries = Object.entries(summaries);
-			let migrated = 0;
-
-			for (const [videoId, cached] of entries) {
-				if (this.cache.has(videoId)) continue;
-
-				this.cache.set(videoId, {
-					schemaVersion: 1,
-					videoId,
-					title: "",
-					channelTitle: "",
-					channelId: "",
-					videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-					summary: cached.summary,
-					generatedAt: cached.generatedAt,
-					model: cached.model,
-				});
-				migrated++;
-			}
-
-			if (migrated > 0) {
-				this.evictIfNeeded();
-				await this.persist();
-			}
-
-			window.localStorage.removeItem("googleYtbVideoSummaries");
-			debugLogger.info(`[SummaryStorage] Migrated ${migrated} summaries from localStorage, removed key`);
-		} catch (err) {
-			debugLogger.error("[SummaryStorage] localStorage migration failed:", err);
-		}
 	}
 
 	private persist(): Promise<void> {

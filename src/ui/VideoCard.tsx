@@ -558,7 +558,7 @@ export const VideoCard = ({
 					>
 						<Bot size={12} className="summary-preview__icon" />
 						<span className="summary-preview__text">
-							{plugin.summaryStorage.getVideoSummaryPreview(videoInfo.id)}
+							{plugin.summaryStorage.getOneLineSummary(videoInfo.id)}
 						</span>
 						<ChevronDown size={12} className="summary-preview__chevron" />
 					</div>
