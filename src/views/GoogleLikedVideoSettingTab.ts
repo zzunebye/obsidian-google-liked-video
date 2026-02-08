@@ -11,6 +11,7 @@ import { debugLogger } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
 import { UI_TEXT } from '../constants/uiText';
 import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templateConstants';
+import { mergeVideos } from '../utils/videoMergeUtils';
 import { PlaylistVideosPane } from './PlaylistVideosPane';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
@@ -466,7 +467,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         try {
                             // Store existing videos before fetch to identify new ones
                             const storedLikedVideosBefore = localStorageService.getLikedVideos();
-                            const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
 
                             /// get number of the videos in the liked videos
                             const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
@@ -489,17 +489,20 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                                 }
                             } while (nextPageToken !== undefined);
 
-                            // Save the fetched videos to LocalStorage
-                            localStorageService.setLikedVideos(allLikedVideos);
+                            // Merge with stored videos (full scan - drop unfetched/unliked videos)
+                            const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos } =
+                                mergeVideos(allLikedVideos, storedLikedVideosBefore, { keepUnfetched: false });
+
+                            // Save the merged videos to LocalStorage
+                            localStorageService.setLikedVideos(updatedLikedVideos);
                             this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
-                                { videos: allLikedVideos },
+                                { videos: updatedLikedVideos },
                                 { history: true });
                             this.display();
                             this.updateListPaneView()
-                            new Notice(`All liked videos have been fetched and saved to LocalStorage - ${allLikedVideos.length} videos`);
+                            new Notice(`All liked videos have been fetched and saved to LocalStorage - ${updatedLikedVideos.length} videos`);
 
                             // Auto-create notes for new videos if enabled
-                            const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
                             if (this.plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
                                 for (const video of newLikedVideos) {
                                     await this.plugin.automateVideoProcessing(video);
@@ -520,34 +523,26 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         try {
                             // Store existing videos before fetch to identify new ones
                             const storedLikedVideosBefore = localStorageService.getLikedVideos();
-                            const storedVideoIdsSet = new Set(storedLikedVideosBefore.map(v => v.id));
 
-                            /// get number of the videos in the liked videos
-                            // const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
-                            // new Notice(`${totalLikedVideos} videos in total`);
+                            // Fetch one page of liked videos
+                            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fetchLimit);
+                            const fetchedLikedVideos = response.items || [];
 
-                            // repeat fetching liked videos
-                            // this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
-                            // If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
-                            // Then, merge the fetched videos data and save to LocalStorage.
-                            let allLikedVideos: YouTubeVideo[] = [];
-                            let nextPageToken: string | undefined = undefined;
+                            // Merge with stored videos (partial merge - keep unfetched)
+                            const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos } =
+                                mergeVideos(fetchedLikedVideos, storedLikedVideosBefore, { keepUnfetched: true });
 
-                            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fetchLimit, nextPageToken);
-                            allLikedVideos = allLikedVideos.concat(response.items);
-
-                            // Save the fetched videos to LocalStorage
-                            localStorageService.setLikedVideos(allLikedVideos);
+                            // Save the merged videos to LocalStorage
+                            localStorageService.setLikedVideos(updatedLikedVideos);
                             this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
-                                { videos: allLikedVideos },
+                                { videos: updatedLikedVideos },
                                 { history: true });
                             this.display();
                             this.updateListPaneView()
 
-                            new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(response.items?.length || 0));
+                            new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
 
                             // Auto-create notes for new videos if enabled
-                            const newLikedVideos = allLikedVideos.filter(v => !storedVideoIdsSet.has(v.id));
                             if (this.plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
                                 for (const video of newLikedVideos) {
                                     await this.plugin.automateVideoProcessing(video);
@@ -717,46 +712,5 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setDesc('Enable: enableGeuloDebug() | Disable: disableGeuloDebug()');
         }
     }
-
-    async fetchAndUpdateLikedVideos(app: App, limit = 50, repetitive = false): Promise<void> {
-        let allLikedVideos: YouTubeVideo[] = [];
-        let nextPageToken: string | undefined = undefined;
-        do {
-            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(limit, nextPageToken);
-            allLikedVideos = allLikedVideos.concat(response.items);
-            nextPageToken = response.nextPageToken;
-        } while (repetitive && nextPageToken);
-
-        const storedLikedVideos = localStorageService.getLikedVideos();
-        const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
-
-        const newLikedVideos = allLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
-        const fetchedLikedVideoIdsSet = new Set(allLikedVideos.map(video => video.id));
-
-        if (newLikedVideos.length > 0) {
-            new Modal(app).setTitle('New Liked Videos').setContent(JSON.stringify(newLikedVideos, null, 2)).open();
-        }
-
-        let updatedLikedVideos;
-        if (repetitive) {
-            updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos.filter(video => fetchedLikedVideoIdsSet.has(video.id))];
-        } else {
-            updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos];
-        }
-        localStorageService.setLikedVideos(updatedLikedVideos);
-        this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
-            { videos: updatedLikedVideos },
-            { history: true });
-
-        new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
-
-        // Automatically create notes for new videos if enabled
-        if (this.plugin.settings.autoCreateNoteEnabled) {
-            for (const video of newLikedVideos) {
-                await this.plugin.automateVideoProcessing(video);
-            }
-        }
-    }
-
 }
 

@@ -31,6 +31,7 @@ import { categoriesService } from "src/categoriesService";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { ViewHeader } from "src/ui/ViewHeader";
+import { mergeVideos } from "src/utils/videoMergeUtils";
 const SHORT_VIDEO_MAX_DURATION_SECONDS = 90;
 export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -381,22 +382,9 @@ export const LikedVideoView: React.FC = () => {
 
 								const storedLikedVideos =
 									localStorageService.getLikedVideos();
-								const storedLikedVideoIdsSet = new Set(
-									storedLikedVideos.map((video) => video.id),
-								);
 
-								const newLikedVideos =
-									fetchedLikedVideos.filter(
-										(video) =>
-											!storedLikedVideoIdsSet.has(
-												video.id,
-											),
-									);
-
-								const updatedLikedVideos = [
-									...newLikedVideos,
-									...storedLikedVideos,
-								];
+								const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos } =
+									mergeVideos(fetchedLikedVideos, storedLikedVideos, { keepUnfetched: true });
 
 								// Batch state updates to avoid unnecessary re-renders
 								localStorageService.setLikedVideos(
@@ -623,9 +611,6 @@ export const LikedVideoView: React.FC = () => {
 								// Store existing videos before fetch to identify new ones
 								const storedLikedVideosBefore =
 									localStorageService.getLikedVideos();
-								const storedVideoIdsSet = new Set(
-									storedLikedVideosBefore.map((v) => v.id),
-								);
 
 								/// get number of the videos in the liked videos
 								const totalLikedVideos =
@@ -666,11 +651,15 @@ export const LikedVideoView: React.FC = () => {
 									}
 								} while (nextPageToken !== undefined);
 
-								// Save the fetched videos to LocalStorage
+								// Merge with stored videos, updating existing properties
+								const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos } =
+									mergeVideos(allLikedVideos, storedLikedVideosBefore, { keepUnfetched: false });
+
+								// Save the merged videos to LocalStorage
 								localStorageService.setLikedVideos(
-									allLikedVideos,
+									updatedLikedVideos,
 								);
-								setVideos(allLikedVideos);
+								setVideos(updatedLikedVideos);
 
 								new Notice(
 									UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(
@@ -679,9 +668,6 @@ export const LikedVideoView: React.FC = () => {
 								);
 
 								// Auto-create notes for new videos if enabled
-								const newLikedVideos = allLikedVideos.filter(
-									(v) => !storedVideoIdsSet.has(v.id),
-								);
 								if (
 									plugin.settings.autoCreateNoteEnabled &&
 									newLikedVideos.length > 0

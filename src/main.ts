@@ -13,6 +13,7 @@ import { categoriesService } from './categoriesService';
 import { FeatureIntroModal } from './components/FeatureIntroModal';
 import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
 import { DEFAULT_TEMPLATE } from './utils/templateConstants';
+import { mergeVideos } from './utils/videoMergeUtils';
 import { TemplateService } from './services/templateService';
 import { createAIService, getActiveApiKey } from './services/aiServiceFactory';
 import { SummaryStorageService } from './services/summaryStorageService';
@@ -322,14 +323,18 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				}
 
 				const storedLikedVideos = localStorageService.getLikedVideos();
-				const storedLikedVideoIdsSet = new Set(storedLikedVideos.map(video => video.id));
 
-				const newLikedVideos = allLikedVideos.filter(video => !storedLikedVideoIdsSet.has(video.id));
-				const updatedLikedVideos = [...newLikedVideos, ...storedLikedVideos]; // All fetched videos are now considered 'stored'
+				const mergeResult = mergeVideos(allLikedVideos, storedLikedVideos, { keepUnfetched: true });
+				const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos, updatedCount } = mergeResult;
 
-				if (newLikedVideos.length > 0) {
+				// Save when there are new videos OR when existing videos were updated
+				if (newLikedVideos.length > 0 || updatedCount > 0) {
 					localStorageService.setLikedVideos(updatedLikedVideos);
-					new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
+					if (newLikedVideos.length > 0) {
+						new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
+					} else {
+						debugLogger.autoFetch(`Updated ${updatedCount} existing video(s) with fresh data.`);
+					}
 
 					this.settings.lastAutoFetchTime = now;
 					await this.saveData(this.settings);
