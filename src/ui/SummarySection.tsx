@@ -49,7 +49,7 @@ export const SummarySection = ({
 	const [summary, setSummary] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<AIServiceError | null>(null);
-	const [streamingContent, setStreamingContent] = useState<string>('');
+	const [streamingContent, setStreamingContent] = useState<string>("");
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [isContentCollapsed, setIsContentCollapsed] = useState(true);
 	const [isOverflowing, setIsOverflowing] = useState(false);
@@ -70,7 +70,13 @@ export const SummarySection = ({
 		const delay = isStreaming ? 100 : 0;
 		renderTimeoutRef.current = setTimeout(() => {
 			el.empty();
-			MarkdownRenderer.render(plugin.app, contentToRender, el, "", plugin);
+			MarkdownRenderer.render(
+				plugin.app,
+				contentToRender,
+				el,
+				"",
+				plugin,
+			);
 		}, delay);
 
 		return () => {
@@ -96,23 +102,38 @@ export const SummarySection = ({
 		setIsContentCollapsed(true);
 	}, [summary]);
 
-	const generateOneLiner = useCallback((fullSummary: string) => {
-		try {
-			const aiService = createAIService(plugin.settings);
-			const prompt = `Condense the following video summary into a single concise sentence (max 120 chars). Return ONLY the sentence.\n\n${fullSummary}`;
-			aiService.generateTextCompletion(prompt).then((oneLiner) => {
-				const trimmed = oneLiner.trim();
-				if (trimmed) {
-					plugin.summaryStorage.setOneLinerSummary(videoId, trimmed);
-					onPreviewUpdated?.();
-				}
-			}).catch((err) => {
-				debugLogger.warn(`[AI Summary] One-liner generation failed for ${videoId}:`, err);
-			});
-		} catch (err) {
-			debugLogger.warn(`[AI Summary] One-liner generation setup failed for ${videoId}:`, err);
-		}
-	}, [plugin, videoId, onPreviewUpdated]);
+	const generateOneLiner = useCallback(
+		(fullSummary: string) => {
+			try {
+				const aiService = createAIService(plugin.settings);
+				const prompt = `Condense the following video summary into a single concise sentence (max 120 chars). Return ONLY the sentence.\n\n${fullSummary}`;
+				aiService
+					.generateTextCompletion(prompt)
+					.then((oneLiner) => {
+						const trimmed = oneLiner.trim();
+						if (trimmed) {
+							plugin.summaryStorage.setOneLinerSummary(
+								videoId,
+								trimmed,
+							);
+							onPreviewUpdated?.();
+						}
+					})
+					.catch((err) => {
+						debugLogger.warn(
+							`[AI Summary] One-liner generation failed for ${videoId}:`,
+							err,
+						);
+					});
+			} catch (err) {
+				debugLogger.warn(
+					`[AI Summary] One-liner generation setup failed for ${videoId}:`,
+					err,
+				);
+			}
+		},
+		[plugin, videoId, onPreviewUpdated],
+	);
 
 	const generateSummary = useCallback(
 		async (forceRegenerate = false) => {
@@ -157,7 +178,10 @@ export const SummarySection = ({
 			// Check if video is longer than 30 minutes and warn user
 			if (videoDuration) {
 				const durationSeconds = parseDurationToSeconds(videoDuration);
-				if (durationSeconds && durationSeconds > LONG_VIDEO_THRESHOLD_SECONDS) {
+				if (
+					durationSeconds &&
+					durationSeconds > LONG_VIDEO_THRESHOLD_SECONDS
+				) {
 					const durationMinutes = durationSeconds / 60;
 					debugLogger.info(
 						`[AI Summary] Video ${videoId} is ${Math.round(durationMinutes)} minutes long - showing confirmation`,
@@ -165,7 +189,7 @@ export const SummarySection = ({
 					const confirmed = await confirmLongVideoSummary(
 						plugin.app,
 						videoTitle,
-						durationMinutes
+						durationMinutes,
 					);
 					if (!confirmed) {
 						debugLogger.info(
@@ -182,14 +206,16 @@ export const SummarySection = ({
 			);
 			setIsLoading(true);
 			setError(null);
-			setStreamingContent('');
+			setStreamingContent("");
 
 			try {
 				const aiService = createAIService(plugin.settings);
 
 				// Check if streaming is supported
 				if (aiService.generateVideoSummaryStream) {
-					debugLogger.info(`[AI Summary] Using streaming mode for video: ${videoId}`);
+					debugLogger.info(
+						`[AI Summary] Using streaming mode for video: ${videoId}`,
+					);
 
 					const abortController = new AbortController();
 					abortControllerRef.current = abortController;
@@ -207,19 +233,26 @@ export const SummarySection = ({
 								debugLogger.info(
 									`[AI Summary] Streaming complete for video: ${videoId} - caching result`,
 								);
-								await plugin.summaryStorage.setVideoSummary(videoId, result, {
-									title: videoTitle,
-									channelTitle,
-									channelId,
-									videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-								});
+								await plugin.summaryStorage.setVideoSummary(
+									videoId,
+									result,
+									{
+										title: videoTitle,
+										channelTitle,
+										channelId,
+										videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+									},
+								);
 								setSummary(result.summary);
-								setStreamingContent('');
+								setStreamingContent("");
 								setIsStreaming(false);
 								abortControllerRef.current = null;
 								onSummaryGenerated();
 								generateOneLiner(result.summary);
-								new Notice(`AI summary generated for "${videoTitle}"`, 5000);
+								new Notice(
+									`AI summary generated for "${videoTitle}"`,
+									5000,
+								);
 							},
 							onError: (err: AIServiceError) => {
 								debugLogger.error(
@@ -230,7 +263,7 @@ export const SummarySection = ({
 								abortControllerRef.current = null;
 							},
 							signal: abortController.signal,
-						}
+						},
 					);
 				} else {
 					// Fallback to non-streaming
@@ -241,16 +274,23 @@ export const SummarySection = ({
 					debugLogger.info(
 						`[AI Summary] Generation complete for video: ${videoId} - caching result`,
 					);
-					await plugin.summaryStorage.setVideoSummary(videoId, result, {
-						title: videoTitle,
-						channelTitle,
-						channelId,
-						videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-					});
+					await plugin.summaryStorage.setVideoSummary(
+						videoId,
+						result,
+						{
+							title: videoTitle,
+							channelTitle,
+							channelId,
+							videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+						},
+					);
 					setSummary(result.summary);
 					onSummaryGenerated();
 					generateOneLiner(result.summary);
-					new Notice(`AI summary generated for "${videoTitle}"`, 5000);
+					new Notice(
+						`AI summary generated for "${videoTitle}"`,
+						5000,
+					);
 					debugLogger.debug(
 						`[AI Summary] State updated and parent notified for video: ${videoId}`,
 					);
@@ -263,7 +303,7 @@ export const SummarySection = ({
 				// If we have partial streaming content on error, keep it visible
 				if (streamingContent) {
 					setSummary(streamingContent);
-					setStreamingContent('');
+					setStreamingContent("");
 				}
 				setError(aiError);
 			} finally {
@@ -271,7 +311,19 @@ export const SummarySection = ({
 				setIsStreaming(false);
 			}
 		},
-		[videoId, plugin, isLoading, isStreaming, onSummaryGenerated, generateOneLiner, streamingContent, videoTitle, channelTitle, channelId, videoDuration],
+		[
+			videoId,
+			plugin,
+			isLoading,
+			isStreaming,
+			onSummaryGenerated,
+			generateOneLiner,
+			streamingContent,
+			videoTitle,
+			channelTitle,
+			channelId,
+			videoDuration,
+		],
 	);
 
 	useEffect(() => {
@@ -323,22 +375,27 @@ export const SummarySection = ({
 		}
 	};
 
-	const handleCancel = useCallback((e: React.MouseEvent) => {
-		e.stopPropagation();
-		debugLogger.info(`[AI Summary] User cancelled streaming for video: ${videoId}`);
-		abortControllerRef.current?.abort();
-		setIsStreaming(false);
-		setIsLoading(false);
-		// Keep streaming content visible if any was received
-		if (streamingContent) {
-			setSummary(streamingContent);
-			setStreamingContent('');
-		}
-	}, [videoId, streamingContent]);
+	const handleCancel = useCallback(
+		(e: React.MouseEvent) => {
+			e.stopPropagation();
+			debugLogger.info(
+				`[AI Summary] User cancelled streaming for video: ${videoId}`,
+			);
+			abortControllerRef.current?.abort();
+			setIsStreaming(false);
+			setIsLoading(false);
+			// Keep streaming content visible if any was received
+			if (streamingContent) {
+				setSummary(streamingContent);
+				setStreamingContent("");
+			}
+		},
+		[videoId, streamingContent],
+	);
 
 	const handleToggleCollapse = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		setIsContentCollapsed(prev => !prev);
+		setIsContentCollapsed((prev) => !prev);
 	};
 
 	// Cleanup abort controller on unmount
@@ -401,9 +458,15 @@ export const SummarySection = ({
 
 			{summary && !isLoading && !isStreaming && (
 				<>
-					<div className={isOverflowing && isContentCollapsed ? 'summary-section__fade-overlay' : ''}>
+					<div
+						className={
+							isOverflowing && isContentCollapsed
+								? "summary-section__fade-overlay"
+								: ""
+						}
+					>
 						<div
-							className={`summary-section__content${isOverflowing && isContentCollapsed ? ' summary-section__content--collapsed' : ''}`}
+							className={`summary-section__content${isOverflowing && isContentCollapsed ? " summary-section__content--collapsed" : ""}`}
 							ref={contentRef}
 						/>
 					</div>
