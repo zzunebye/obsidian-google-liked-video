@@ -110,4 +110,15 @@ export class SummaryStorageService {
 			this.cache.delete(oldest);
 		}
 	}
+
+	/**
+	 * Cleanup resources when plugin is unloaded
+	 */
+	cleanup(): void {
+		// Clear pending write queue
+		this.writeQueue = Promise.resolve();
+		// Clear in-memory cache
+		this.cache.clear();
+		debugLogger.info("[SummaryStorage] Resources cleaned up");
+	}
 }

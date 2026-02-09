@@ -61,7 +61,7 @@ export const VideoCard = ({
 	const [hasSummary, setHasSummary] = useState(() =>
 		plugin.summaryStorage.hasVideoSummary(videoInfo.id),
 	);
-	const [previewVersion, setPreviewVersion] = useState(0);
+	const [, setPreviewVersion] = useState(0);
 	const [regenerateTrigger, setRegenerateTrigger] = useState(0);
 
 	// Format duration from seconds to display format
@@ -388,7 +388,7 @@ export const VideoCard = ({
 					item.setIcon("refresh-cw");
 					item.onClick(() => {
 						setIsSummaryExpanded(true);
-						setRegenerateTrigger(prev => prev + 1);
+						setRegenerateTrigger((prev) => prev + 1);
 					});
 				});
 			}
@@ -448,20 +448,37 @@ export const VideoCard = ({
 						</div>
 						<div
 							className="video-stat video-stat--clickable"
-							aria-label={source === "liked" ? "Unlike" : isLiked ? "Unlike" : "Like"}
+							aria-label={
+								source === "liked"
+									? "Unlike"
+									: isLiked
+										? "Unlike"
+										: "Like"
+							}
 							onClick={async (e) => {
 								e.stopPropagation();
 								if (source === "liked") {
 									onUnlike();
 								} else if (isLiked) {
-									const confirmed = await confirmUnlikeAction(plugin.app, videoInfo.snippet.title);
+									const confirmed = await confirmUnlikeAction(
+										plugin.app,
+										videoInfo.snippet.title,
+									);
 									if (confirmed) onUnlike();
 								} else {
 									onLike?.();
 								}
 							}}
 						>
-							<ThumbsUp size={14} fill={source === "liked" || isLiked ? "currentColor" : "none"} className={`video-stat-icon${source === "liked" || isLiked ? " video-stat-icon--liked" : ""}`} />
+							<ThumbsUp
+								size={14}
+								fill={
+									source === "liked" || isLiked
+										? "currentColor"
+										: "none"
+								}
+								className={`video-stat-icon${source === "liked" || isLiked ? " video-stat-icon--liked" : ""}`}
+							/>
 							<span className="video-stat-count">
 								{formatCount(videoInfo.statistics.likeCount)}
 							</span>
@@ -558,9 +575,14 @@ export const VideoCard = ({
 					>
 						<Bot size={12} className="summary-preview__icon" />
 						<span className="summary-preview__text">
-							{plugin.summaryStorage.getOneLineSummary(videoInfo.id)}
+							{plugin.summaryStorage.getOneLineSummary(
+								videoInfo.id,
+							)}
 						</span>
-						<ChevronDown size={12} className="summary-preview__chevron" />
+						<ChevronDown
+							size={12}
+							className="summary-preview__chevron"
+						/>
 					</div>
 				)}
 				<SummarySection
@@ -572,7 +594,7 @@ export const VideoCard = ({
 					setIsExpanded={setIsSummaryExpanded}
 					onSummaryGenerated={() => setHasSummary(true)}
 					onAddToNote={handleAddSummaryToNote}
-					onPreviewUpdated={() => setPreviewVersion(v => v + 1)}
+					onPreviewUpdated={() => setPreviewVersion((v) => v + 1)}
 					regenerateTrigger={regenerateTrigger}
 					videoDuration={videoInfo.contentDetails?.duration}
 				/>

@@ -4,6 +4,7 @@ import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse, 
 import { debugLogger } from "./debug";
 
 const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
+const REQUEST_TIMEOUT_MS = 90000;
 
 // Generic Playlist API that can handle different playlist sources
 export class PlaylistApi {
@@ -12,6 +13,14 @@ export class PlaylistApi {
     private static readonly DEFAULT_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
 
     constructor(private pluginSettings: ObsidianGoogleLikedVideoSettings) { }
+
+    /**
+     * Cleanup resources when plugin is unloaded
+     */
+    cleanup(): void {
+        this.paginationCache.clear();
+        debugLogger.api('PlaylistApi resources cleaned up');
+    }
 
     // Type-safe validation for YouTube playlist responses
     private validatePlaylistResponse(playlist: unknown): playlist is YouTubePlaylistResponse {
@@ -49,7 +58,7 @@ export class PlaylistApi {
 
         // Add request timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
         try {
             accessToken = await getValidAccessToken(
@@ -84,7 +93,7 @@ export class PlaylistApi {
             }
 
             return response;
-        } catch (error) {
+        } catch (error: any) {
             if (error.name === 'AbortError') {
                 debugLogger.error('Request timeout');
                 new Notice("Request timeout - please try again");
@@ -511,6 +520,12 @@ export class LikedVideoApi {
         this.pluginSettings = pluginSettings;
     }
 
+    /**
+     * Cleanup resources when plugin is unloaded
+     */
+    cleanup(): void {
+        debugLogger.api('LikedVideoApi resources cleaned up');
+    }
 
     // Wrapper function for sending request to the YouTube Data API
     // 1. It will get the access token from the plugin settings

@@ -177,7 +177,17 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	}
 
 	onunload() {
+		debugLogger.info('Plugin unloading...');
 		this.stopAutoFetch();
+
+		// Cleanup API resources
+		this.likedVideoApi?.cleanup();
+		this.playlistApi?.cleanup();
+
+		// Cleanup summary storage
+		this.summaryStorage?.cleanup();
+
+		debugLogger.info('Plugin unloaded successfully');
 	}
 
 	reloadView() {
