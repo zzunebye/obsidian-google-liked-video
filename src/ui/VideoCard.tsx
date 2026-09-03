@@ -441,7 +441,7 @@ export const VideoCard = ({
 					</p>
 					<div className="video-statistics">
 						<div className="video-stat">
-							<Eye size={14} className="video-stat-icon" />
+							<Eye size={16} className="video-stat-icon" />
 							<span className="video-stat-count">
 								{formatCount(videoInfo.statistics.viewCount)}
 							</span>
@@ -449,6 +449,13 @@ export const VideoCard = ({
 						<div
 							className="video-stat video-stat--clickable"
 							aria-label={
+								source === "liked"
+									? "Unlike"
+									: isLiked
+										? "Unlike"
+										: "Like"
+							}
+							title={
 								source === "liked"
 									? "Unlike"
 									: isLiked
@@ -471,7 +478,7 @@ export const VideoCard = ({
 							}}
 						>
 							<ThumbsUp
-								size={14}
+								size={16}
 								fill={
 									source === "liked" || isLiked
 										? "currentColor"
@@ -485,7 +492,7 @@ export const VideoCard = ({
 						</div>
 						<div className="video-stat">
 							<MessageCircle
-								size={14}
+								size={16}
 								className="video-stat-icon"
 							/>
 							<span className="video-stat-count">
