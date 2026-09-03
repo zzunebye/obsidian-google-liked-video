@@ -13,16 +13,15 @@ interface ILikedVideoListViewPersistedState {
 export const VIEW_TYPE_LIKED_VIDEO_LIST = "liked-video-list";
 
 export class LikedVideoListPane
-	extends ItemView
-	implements ILikedVideoListViewPersistedState
-{
+    extends ItemView
+    implements ILikedVideoListViewPersistedState {
     root: Root | null = null;
 
     /// Persisted State
     videos: YouTubeVideo[] = [];
     plugin: GoogleLikedVideoPlugin | null = null;
 
-	constructor(leaf: WorkspaceLeaf, plugin: GoogleLikedVideoPlugin) {
+    constructor(leaf: WorkspaceLeaf, plugin: GoogleLikedVideoPlugin) {
         super(leaf);
 
         // Initialize the state
@@ -31,7 +30,7 @@ export class LikedVideoListPane
     }
 
     onPaneMenu(menu: Menu, source: string): void {
-		super.onPaneMenu(menu, source);
+        super.onPaneMenu(menu, source);
         menu.addItem((item: MenuItem) => {
             item.setTitle("Refresh");
             item.setIcon("sync");
@@ -39,7 +38,7 @@ export class LikedVideoListPane
                 this.onClose();
                 this.onOpen();
             });
-		});
+        });
     }
 
     getViewType(): string {
@@ -51,7 +50,7 @@ export class LikedVideoListPane
     }
 
     getIcon(): string {
-        return "youtube";
+        return "tv-minimal-play";
     }
 
     async onOpen() {
@@ -70,10 +69,10 @@ export class LikedVideoListPane
         this.root?.unmount();
     }
 
-	async setState(
-		state: ILikedVideoListViewPersistedState,
-		result: ViewStateResult,
-	): Promise<void> {
+    async setState(
+        state: ILikedVideoListViewPersistedState,
+        result: ViewStateResult,
+    ): Promise<void> {
         if (state.videos) {
             this.videos = state.videos;
         }
