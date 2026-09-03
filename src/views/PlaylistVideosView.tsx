@@ -159,10 +159,10 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		} catch (error) {
 			console.error("Failed to load playlist videos:", error);
 			setError(
-				`Failed to load videos: ${error.message || "Unknown error"}`,
+				`Failed to load videos: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);
 			new Notice(
-				`Failed to load videos: ${error.message || "Unknown error"}`,
+				`Failed to load videos: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);
 		} finally {
 			loadingRef.current = false;
@@ -182,8 +182,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		// Apply AI note filter
 		const aiFiltered = showAINoteOnly
 			? validVideos.filter((video) =>
-					plugin.summaryStorage.hasVideoSummary(video.id),
-				)
+				plugin.summaryStorage.hasVideoSummary(video.id),
+			)
 			: validVideos;
 
 		if (!debouncedSearchTerm) return aiFiltered;

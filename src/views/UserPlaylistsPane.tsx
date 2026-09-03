@@ -25,8 +25,7 @@ export const VIEW_TYPE_USER_PLAYLISTS = "user-playlists";
 
 export class UserPlaylistsPane
 	extends ItemView
-	implements IUserPlaylistsPaneState
-{
+	implements IUserPlaylistsPaneState {
 	root: Root | null = null;
 
 	/// Persisted State
@@ -145,10 +144,10 @@ export class UserPlaylistsPane
 			this.error = null;
 		} catch (error) {
 			console.error("Failed to load playlists:", error);
-			this.error = `Failed to load playlists: ${error.message || "Unknown error"}`;
+			this.error = `Failed to load playlists: ${error instanceof Error ? error.message : "Unknown error"}`;
 			this.playlists = [];
 			new Notice(
-				`Failed to load playlists: ${error.message || "Unknown error"}`,
+				`Failed to load playlists: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);
 		} finally {
 			this.isLoading = false;
