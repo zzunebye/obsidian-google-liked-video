@@ -105,7 +105,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.addSettingTab(this.settingTabRef);
 
 
-		this.addRibbonIcon("youtube", "Geulo: Open YouTube Liked Videos View", () => {
+		this.addRibbonIcon("tv-minimal-play", "Geulo: Open YouTube Liked Videos View", () => {
 			this.activateView();
 		});
 
@@ -379,7 +379,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			const customPath = this.settings?.videoNotePath || '';
 			const organizeByChannel = this.settings?.organizeByChannel || false;
 			const channelName = video.snippet.channelTitle;
-			
+
 			// Get the expected path for this video note
 			const expectedPath = await getExpectedNotePath(
 				this.app,
