@@ -2,8 +2,6 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { usePlugin } from "../store/pluginContext";
 import { localStorageService } from "src/storage";
 import {
-	YouTubeVideo,
-	YouTubeVideosResponse,
 	ContentTypeOption,
 	ContentTypeSelection,
 } from "src/types";
@@ -31,7 +29,7 @@ import { categoriesService } from "src/categoriesService";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { ViewHeader } from "src/ui/ViewHeader";
-import { mergeVideos } from "src/utils/videoMergeUtils";
+import { createNotesForNewVideos, fetchAndMergeLikedVideos } from "src/services/likedVideoFetchService";
 const SHORT_VIDEO_MAX_DURATION_SECONDS = 90;
 export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -332,11 +330,10 @@ export const LikedVideoView: React.FC = () => {
 						{plugin.settings.autoFetchEnabled && (
 							<span
 								className="auto-fetch-indicator"
-								title={`Auto-fetch: Every ${
-									plugin.settings.autoFetchInterval < 1
-										? `${Math.round(plugin.settings.autoFetchInterval * 60)} seconds`
-										: `${plugin.settings.autoFetchInterval} minutes`
-								}`}
+								title={`Auto-fetch: Every ${plugin.settings.autoFetchInterval < 1
+									? `${Math.round(plugin.settings.autoFetchInterval * 60)} seconds`
+									: `${plugin.settings.autoFetchInterval} minutes`
+									}`}
 							>
 								{plugin.isFetching
 									? "🔄 Fetching..."
@@ -358,59 +355,34 @@ export const LikedVideoView: React.FC = () => {
 							disabled={isFetching || plugin.isFetching}
 							onClick={async () => {
 								setIsFetching(true);
-								let fetchedLikedVideos: YouTubeVideo[] = [];
-								let nextPageToken: string | undefined =
-									undefined;
-
-								const limit = plugin.settings.fetchLimit;
-
-								const response:
-									| YouTubeVideosResponse
-									| undefined =
-									await plugin.likedVideoApi.fetchLikedVideos(
-										limit,
-										nextPageToken,
+								try {
+									const result = await fetchAndMergeLikedVideos(
+										plugin.likedVideoApi,
+										{
+											mode: "partial",
+											pageSize: plugin.settings.fetchLimit,
+											keepUnfetched: true,
+										},
 									);
 
-								if (response) {
-									fetchedLikedVideos =
-										fetchedLikedVideos.concat(
-											response.items,
-										);
-									nextPageToken = response.nextPageToken;
+									localStorageService.setLikedVideos(
+										result.mergedVideos,
+									);
+									setVideos(result.mergedVideos);
+									new Notice(
+										UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(
+											result.newVideos.length,
+										),
+									);
+									await createNotesForNewVideos(
+										result.newVideos,
+										plugin.settings.autoCreateNoteEnabled,
+										(video) =>
+											plugin.automateVideoProcessing(video),
+									);
+								} finally {
+									setIsFetching(false);
 								}
-
-								const storedLikedVideos =
-									localStorageService.getLikedVideos();
-
-								const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos } =
-									mergeVideos(fetchedLikedVideos, storedLikedVideos, { keepUnfetched: true });
-
-								// Batch state updates to avoid unnecessary re-renders
-								localStorageService.setLikedVideos(
-									updatedLikedVideos,
-								);
-								setVideos(updatedLikedVideos);
-
-								new Notice(
-									UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(
-										newLikedVideos.length,
-									),
-								);
-
-								// Auto-create notes for new videos if enabled
-								if (
-									plugin.settings.autoCreateNoteEnabled &&
-									newLikedVideos.length > 0
-								) {
-									for (const video of newLikedVideos) {
-										await plugin.automateVideoProcessing(
-											video,
-										);
-									}
-								}
-
-								setIsFetching(false);
 							}}
 						>
 							<RefreshCcw size={16} />
@@ -604,91 +576,54 @@ export const LikedVideoView: React.FC = () => {
 					</div>
 
 					{videos.length === 0 && (
-					<button
-						className="no-videos-found__fetch-all-button"
-						onClick={async () => {
-							try {
-								// Store existing videos before fetch to identify new ones
-								const storedLikedVideosBefore =
-									localStorageService.getLikedVideos();
-
-								/// get number of the videos in the liked videos
-								const totalLikedVideos =
-									await plugin.likedVideoApi.fetchTotalLikedVideoCount();
-								new Notice(
-									UI_TEXT.NOTICE_TOTAL_VIDEOS(
-										totalLikedVideos ?? 0,
-									),
-								);
-
-								// repeat fetching liked videos
-								// this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
-								// If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
-								// Then, merge the fetched videos data and save to LocalStorage.
-								let allLikedVideos: YouTubeVideo[] = [];
-								let nextPageToken: string | undefined =
-									undefined;
-
-								do {
-									const response:
-										| YouTubeVideosResponse
-										| undefined =
-										await plugin.likedVideoApi.fetchLikedVideos(
-											plugin.settings.fullFetchLimit,
-											nextPageToken,
-										);
-									allLikedVideos = allLikedVideos.concat(
-										response?.items || [],
+						<button
+							className="no-videos-found__fetch-all-button"
+							onClick={async () => {
+								try {
+									const totalLikedVideos =
+										await plugin.likedVideoApi.fetchTotalLikedVideoCount();
+									new Notice(
+										UI_TEXT.NOTICE_TOTAL_VIDEOS(
+											totalLikedVideos ?? 0,
+										),
 									);
-									if (
-										response?.nextPageToken === undefined ||
-										response?.nextPageToken === "" ||
-										response?.nextPageToken === null
-									) {
-										break;
-									} else {
-										nextPageToken = response?.nextPageToken;
-									}
-								} while (nextPageToken !== undefined);
 
-								// Merge with stored videos, updating existing properties
-								const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos } =
-									mergeVideos(allLikedVideos, storedLikedVideosBefore, { keepUnfetched: false });
+									const result = await fetchAndMergeLikedVideos(
+										plugin.likedVideoApi,
+										{
+											mode: "full",
+											pageSize:
+												plugin.settings.fullFetchLimit,
+											keepUnfetched: false,
+										},
+									);
+									localStorageService.setLikedVideos(
+										result.mergedVideos,
+									);
+									setVideos(result.mergedVideos);
 
-								// Save the merged videos to LocalStorage
-								localStorageService.setLikedVideos(
-									updatedLikedVideos,
-								);
-								setVideos(updatedLikedVideos);
-
-								new Notice(
-									UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(
-										allLikedVideos.length,
-									),
-								);
-
-								// Auto-create notes for new videos if enabled
-								if (
-									plugin.settings.autoCreateNoteEnabled &&
-									newLikedVideos.length > 0
-								) {
-									for (const video of newLikedVideos) {
-										await plugin.automateVideoProcessing(
-											video,
-										);
-									}
+									new Notice(
+										UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(
+											result.fetchedCount,
+										),
+									);
+									await createNotesForNewVideos(
+										result.newVideos,
+										plugin.settings.autoCreateNoteEnabled,
+										(video) =>
+											plugin.automateVideoProcessing(video),
+									);
+								} catch (error) {
+									new Modal(plugin.app)
+										.setTitle(UI_TEXT.ERROR_TITLE)
+										.setContent(UI_TEXT.ERROR_MESSAGE(error))
+										.open();
 								}
-							} catch (error) {
-								new Modal(plugin.app)
-									.setTitle(UI_TEXT.ERROR_TITLE)
-									.setContent(UI_TEXT.ERROR_MESSAGE(error))
-									.open();
-							}
-						}}
-					>
-						{UI_TEXT.BTN_FETCH_ALL}
-					</button>
-				)}
+							}}
+						>
+							{UI_TEXT.BTN_FETCH_ALL}
+						</button>
+					)}
 				</div>
 			)}
 			{/* Videos */}
@@ -820,7 +755,7 @@ export const LikedVideoView: React.FC = () => {
 					)}
 				</div>
 			</div>
-            <div style={{ height: "24px" }}></div>
+			<div style={{ height: "24px" }}></div>
 		</div>
 	);
 };

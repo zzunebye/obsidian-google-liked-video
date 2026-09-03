@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Notice, Plugin, WorkspaceLeaf } from 'obsidian';
-import { isAIProvider, ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
+import { isAIProvider, ObsidianGoogleLikedVideoSettings, YouTubeVideo } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
@@ -13,7 +13,7 @@ import { categoriesService } from './categoriesService';
 import { FeatureIntroModal } from './components/FeatureIntroModal';
 import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
 import { DEFAULT_TEMPLATE } from './utils/templateConstants';
-import { mergeVideos } from './utils/videoMergeUtils';
+import { createNotesForNewVideos, fetchAndMergeLikedVideos } from './services/likedVideoFetchService';
 import { TemplateService } from './services/templateService';
 import { createAIService, getActiveApiKey } from './services/aiServiceFactory';
 import { SummaryStorageService } from './services/summaryStorageService';
@@ -285,51 +285,38 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			debugLogger.time('auto-fetch');
 
 			if (this.likedVideoApi && localStorageService.getAccessToken()) {
-				let allLikedVideos: YouTubeVideo[] = [];
 				const shouldFetchAllVideos = forceFullFetch || this.settings.fullFetchOnEveryAutoFetch;
 				const fetchInterval = this.settings.autoFetchInterval;
 
 				if (shouldFetchAllVideos) {
-					// Fetch all videos using pagination
 					debugLogger.warn(
 						'⚠️ Full fetch mode enabled - fetching ALL liked videos. ' +
 						'This may consume significant resources.'
 					);
 					new Notice(UI_TEXT.FULL_FETCH_STARTED_NOTICE);
-
-					let nextPageToken: string | undefined = undefined;
-					do {
-						const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(this.settings.fullFetchLimit, nextPageToken);
-						if (response && response.items.length > 0) {
-							allLikedVideos = allLikedVideos.concat(response.items);
-							nextPageToken = response.nextPageToken;
-						} else {
-							// No more videos or an error occurred
-							nextPageToken = undefined;
-						}
-					} while (nextPageToken !== undefined);
-					debugLogger.autoFetch(`Fetched all videos: ${allLikedVideos.length} total`);
-
-					// Warn if we fetched a very large number of videos
-					if (allLikedVideos.length > 2000 && fetchInterval < 120) {
-						debugLogger.warn(
-							`Fetched ${allLikedVideos.length} videos with full fetch. ` +
-							`Consider increasing auto-fetch interval to reduce resource usage.`
-						);
-					}
-				} else {
-					// Fetch only limited number of videos
-					const response: YouTubeVideosResponse | undefined = await this.likedVideoApi.fetchLikedVideos(this.settings.fetchLimit);
-					if (response && response.items.length > 0) {
-						allLikedVideos = response.items;
-					}
-					debugLogger.autoFetch(`Fetched limited videos: ${allLikedVideos.length} (limit: ${this.settings.fetchLimit})`);
 				}
 
-				const storedLikedVideos = localStorageService.getLikedVideos();
+				const result = await fetchAndMergeLikedVideos(this.likedVideoApi, {
+					mode: shouldFetchAllVideos ? 'full' : 'partial',
+					pageSize: shouldFetchAllVideos
+						? this.settings.fullFetchLimit
+						: this.settings.fetchLimit,
+					// Auto-fetch must not remove locally stored videos.
+					keepUnfetched: true,
+				});
+				const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos, updatedCount } = result;
 
-				const mergeResult = mergeVideos(allLikedVideos, storedLikedVideos, { keepUnfetched: true });
-				const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos, updatedCount } = mergeResult;
+				debugLogger.autoFetch(
+					shouldFetchAllVideos
+						? `Fetched all videos: ${result.fetchedCount} total`
+						: `Fetched limited videos: ${result.fetchedCount} (limit: ${this.settings.fetchLimit})`
+				);
+				if (shouldFetchAllVideos && result.fetchedCount > 2000 && fetchInterval < 120) {
+					debugLogger.warn(
+						`Fetched ${result.fetchedCount} videos with full fetch. ` +
+						'Consider increasing auto-fetch interval to reduce resource usage.'
+					);
+				}
 
 				// Save when there are new videos OR when existing videos were updated
 				if (newLikedVideos.length > 0 || updatedCount > 0) {
@@ -349,11 +336,11 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					}
 					this.settingTabRef?.display();
 
-					if (this.settings.autoCreateNoteEnabled) {
-						for (const video of newLikedVideos) {
-							await this.automateVideoProcessing(video);
-						}
-					}
+					await createNotesForNewVideos(
+						newLikedVideos,
+						this.settings.autoCreateNoteEnabled,
+						(video) => this.automateVideoProcessing(video)
+					);
 				} else {
 					debugLogger.autoFetch('No new videos found during auto-fetch.');
 				}

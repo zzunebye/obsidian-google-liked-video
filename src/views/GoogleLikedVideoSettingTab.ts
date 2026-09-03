@@ -2,26 +2,23 @@
 import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
-import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { LikedVideoApi } from 'src/api';
+import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, ObsidianGoogleLikedVideoSettings } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
 import { LikedVideoListPane } from './LikedVideoListPane';
-import { debugLogger } from 'src/debug';
+import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
 import { UI_TEXT } from '../constants/uiText';
 import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templateConstants';
-import { mergeVideos } from '../utils/videoMergeUtils';
 import { PlaylistVideosPane } from './PlaylistVideosPane';
+import { createNotesForNewVideos, fetchAndMergeLikedVideos, FetchAndMergeLikedVideosResult } from '../services/likedVideoFetchService';
+import { addWideTextSetting, createCollapsibleHtmlReference, createMonospaceTextarea } from '../utils/settingUiUtils';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
-    likedVideoApi: LikedVideoApi;
 
     constructor(app: App, plugin: GoogleLikedVideoPlugin) {
         super(app, plugin);
         this.plugin = plugin;
-        this.likedVideoApi = new LikedVideoApi(this.plugin.settings);
     }
 
     updateListPaneView(): void {
@@ -36,16 +33,72 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     display(): void {
         const { containerEl } = this;
-
         containerEl.empty();
 
-        const likedVideos = localStorageService.getLikedVideos();
-        const likedVideosCount = likedVideos.length;
+        const refreshToken = localStorageService.getRefreshToken();
+        const isLoggedIn = refreshToken !== null && refreshToken !== '';
+
+        this.renderQuotaSection(containerEl);
+        this.renderOpenInWebViewerSetting(containerEl);
+
+        if (isLoggedIn) {
+            this.renderVideoNotesSection(containerEl);
+            this.renderTemplateSection(containerEl);
+            this.renderAISection(containerEl);
+            this.renderAutoFetchSection(containerEl);
+        }
+
+        this.renderFunctionsSection(containerEl, isLoggedIn);
+        this.renderSetupSection(containerEl, refreshToken);
+        this.renderDebugSection(containerEl);
+    }
+
+    private async saveSetting<K extends keyof ObsidianGoogleLikedVideoSettings>(
+        key: K,
+        value: ObsidianGoogleLikedVideoSettings[K],
+        refresh: { display?: boolean; listPane?: boolean; playlistPane?: boolean } = {}
+    ): Promise<void> {
+        this.plugin.settings[key] = value;
+        await this.plugin.saveSettings();
+        if (refresh.display) {
+            this.display();
+        }
+        if (refresh.listPane) {
+            this.updateListPaneView();
+        }
+        if (refresh.playlistPane) {
+            this.updatePlaylistVideosPaneView();
+        }
+    }
+
+    private async applyManualFetchResult(
+        result: FetchAndMergeLikedVideosResult,
+        notice: string
+    ): Promise<void> {
+        localStorageService.setLikedVideos(result.mergedVideos);
+        this.display();
+        this.updateListPaneView();
+        new Notice(notice);
+
+        const createdCount = await createNotesForNewVideos(
+            result.newVideos,
+            this.plugin.settings.autoCreateNoteEnabled,
+            (video) => this.plugin.automateVideoProcessing(video)
+        );
+        if (createdCount > 0) {
+            new Notice(`Created ${createdCount} new video notes`);
+        }
+    }
+
+    private showError(error: unknown): void {
+        new Modal(this.app).setTitle(UI_TEXT.ERROR_TITLE).setContent(UI_TEXT.ERROR_MESSAGE(error)).open();
+    }
+
+    private renderQuotaSection(containerEl: HTMLElement): void {
+        const likedVideosCount = localStorageService.getLikedVideos().length;
         const maxVideos = 5000;
         const progressValue = likedVideosCount / maxVideos;
         const fetchLimit = this.plugin.settings.fetchLimit;
-
-        const refreshToken = localStorageService.getRefreshToken();
 
         new Setting(containerEl)
             .setName('Quota')
@@ -54,7 +107,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setValue(progressValue * 100))
             .addText(text => text
                 .setDisabled(true)
-                .setValue(`${likedVideosCount} / ${maxVideos} (${(progressValue * 100).toFixed(2)}%)`))
+                .setValue(`${likedVideosCount} / ${maxVideos} (${(progressValue * 100).toFixed(2)}%)`));
 
         new Setting(containerEl)
             .setName('Fetch Limit')
@@ -63,459 +116,350 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setValue(fetchLimit)
                 .setLimits(10, 50, 10)
                 .onChange(async (value) => {
-                    this.plugin.settings.fetchLimit = value;
-                    await this.plugin.saveSettings();
-                    this.display();
+                    await this.saveSetting('fetchLimit', value, { display: true });
                 }))
             .addText(text => text
                 .setValue(`${fetchLimit}`)
                 .setDisabled(true));
+    }
 
+    private renderOpenInWebViewerSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setName('Open Videos in Obsidian Web Viewer')
             .setDesc('If enabled, videos will be opened in the Obsidian web viewer instead of the OS\'s default browser even when its \'Open external links\' option is turned off. You need to ENABLE THE "WEB VIEWER" CORE PLUGIN for this to work.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.openInObsidianWebViewer)
                 .onChange(async (value) => {
-                    this.plugin.settings.openInObsidianWebViewer = value;
-                    await this.plugin.saveSettings();
+                    await this.saveSetting('openInObsidianWebViewer', value);
+                }));
+    }
+
+    private renderVideoNotesSection(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Video notes')
+            .setDesc('Configure the video note settings');
+
+        new Setting(containerEl)
+            .setName('Video note location')
+            .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path. Default is \'Youtube\'.')
+            .addText(text => text
+                .setPlaceholder('e.g. Youtube, Youtube/Videos (Default is \'Youtube\')')
+                .setValue(this.plugin.settings.videoNotePath)
+                .onChange(async (value) => {
+                    await this.saveSetting('videoNotePath', value.trim());
                 }));
 
-        if (refreshToken !== null && refreshToken !== "") {
-            new Setting(containerEl)
-                .setHeading()
-                .setName('Video notes')
-                .setDesc('Configure the video note settings');
+        new Setting(containerEl)
+            .setName('Organize by channel')
+            .setDesc('Create subfolders for each channel (e.g., Youtube/Channel Name/video.md). Only applies when using a custom video note location.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.organizeByChannel)
+                .setDisabled(!this.plugin.settings.videoNotePath || !this.plugin.settings.videoNotePath.trim())
+                .onChange(async (value) => {
+                    await this.saveSetting('organizeByChannel', value);
+                }));
 
-            new Setting(containerEl)
-                .setName('Video note location')
-                .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path. Default is \'Youtube\'.')
-                .addText(text => text
-                    .setPlaceholder('e.g. Youtube, Youtube/Videos (Default is \'Youtube\')')
-                    .setValue(this.plugin.settings.videoNotePath)
-                    .onChange(async (value) => {
-                        this.plugin.settings.videoNotePath = value.trim();
-                        await this.plugin.saveSettings();
-                        // Refresh the display to update the organize by channel toggle state
-                        // this.display();
-                    }));
+        new Setting(containerEl)
+            .setName('Automatically create notes')
+            .setDesc('If enabled, a new note will be created for each new video fetched.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoCreateNoteEnabled)
+                .onChange(async (value) => {
+                    await this.saveSetting('autoCreateNoteEnabled', value, { display: true });
+                }));
 
+        if (this.plugin.settings.autoCreateNoteEnabled) {
             new Setting(containerEl)
-                .setName('Organize by channel')
-                .setDesc('Create subfolders for each channel (e.g., Youtube/Channel Name/video.md). Only applies when using a custom video note location.')
+                .setName('Link to daily note')
+                .setDesc('If enabled, a link to the new video note will be added to your daily note.')
                 .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.organizeByChannel)
-                    .setDisabled(!this.plugin.settings.videoNotePath || !this.plugin.settings.videoNotePath.trim())
+                    .setValue(this.plugin.settings.linkToDailyNote)
                     .onChange(async (value) => {
-                        this.plugin.settings.organizeByChannel = value;
-                        await this.plugin.saveSettings();
+                        await this.saveSetting('linkToDailyNote', value);
                     }));
+        }
+    }
 
-            new Setting(containerEl)
-                .setName('Automatically create notes')
-                .setDesc('If enabled, a new note will be created for each new video fetched.')
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.autoCreateNoteEnabled)
-                    .onChange(async (value) => {
-                        this.plugin.settings.autoCreateNoteEnabled = value;
-                        await this.plugin.saveSettings();
-                        this.display();
-                    }));
+    private renderTemplateSection(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Template System')
+            .setDesc('Customize video note templates');
 
-            if (this.plugin.settings.autoCreateNoteEnabled) {
-                new Setting(containerEl)
-                    .setName('Link to daily note')
-                    .setDesc('If enabled, a link to the new video note will be added to your daily note.')
-                    .addToggle(toggle => toggle
-                        .setValue(this.plugin.settings.linkToDailyNote)
-                        .onChange(async (value) => {
-                            this.plugin.settings.linkToDailyNote = value;
-                            await this.plugin.saveSettings();
-                        }));
-            }
+        new Setting(containerEl)
+            .setName('Enable custom templates')
+            .setDesc('Use custom markdown templates for video notes instead of the default format')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableTemplateSystem)
+                .onChange(async (value) => {
+                    await this.saveSetting('enableTemplateSystem', value, { display: true });
+                }));
 
-            new Setting(containerEl)
-                .setHeading()
-                .setName('Template System')
-                .setDesc('Customize video note templates');
-
-            new Setting(containerEl)
-                .setName('Enable custom templates')
-                .setDesc('Use custom markdown templates for video notes instead of the default format')
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.enableTemplateSystem)
-                    .onChange(async (value) => {
-                        this.plugin.settings.enableTemplateSystem = value;
-                        await this.plugin.saveSettings();
-                        this.display(); // Refresh to show/hide template settings
-                    }));
-
-            if (this.plugin.settings.enableTemplateSystem) {
-                // Custom Template Textarea
-                new Setting(containerEl)
-                    .setName('Custom template')
-                    .setDesc('Edit your video note template directly. Use {{variable}} syntax for dynamic content.')
-                    .addButton(button => button
-                        .setButtonText('Reset to Default')
-                        .onClick(async () => {
-                            const confirmed = await confirmAction(
-                                this.app,
-                                'This will reset your template to the default. Any customizations will be lost.',
-                                {
-                                    title: 'Reset Template?',
-                                    confirmText: 'Reset',
-                                    cancelText: 'Cancel',
-                                    type: 'warning'
-                                }
-                            );
-                            if (confirmed.confirmed) {
-                                this.plugin.settings.customTemplate = DEFAULT_TEMPLATE;
-                                await this.plugin.saveSettings();
-                                this.display();
-                                new Notice('Template reset to default');
-                            }
-                        }));
-
-                // Add textarea below the setting
-                const textareaContainer = containerEl.createDiv('template-textarea-container');
-                const textarea = textareaContainer.createEl('textarea', {
-                    cls: 'template-textarea',
-                    text: this.plugin.settings.customTemplate
-                });
-                textarea.rows = 20;
-                textarea.style.width = '100%';
-                textarea.style.fontFamily = 'monospace';
-                textarea.style.fontSize = '12px';
-                textarea.style.resize = 'vertical';
-                textarea.style.minHeight = '300px';
-                textarea.style.padding = '10px';
-                textarea.style.borderRadius = '4px';
-                textarea.style.border = '1px solid var(--background-modifier-border)';
-                textarea.style.backgroundColor = 'var(--background-primary)';
-
-                textarea.addEventListener('change', async () => {
-                    this.plugin.settings.customTemplate = textarea.value;
-                    await this.plugin.saveSettings();
-                });
-
-                // Collapsible Variable Reference Section
-                const detailsEl = containerEl.createEl('details', {
-                    cls: 'template-variables-reference'
-                });
-                detailsEl.style.marginTop = '16px';
-                detailsEl.style.padding = '12px';
-                detailsEl.style.backgroundColor = 'var(--background-secondary)';
-                detailsEl.style.borderRadius = '8px';
-
-                const summaryEl = detailsEl.createEl('summary', {
-                    text: '📖 Available Variables (click to expand)'
-                });
-                summaryEl.style.cursor = 'pointer';
-                summaryEl.style.fontWeight = 'bold';
-                summaryEl.style.marginBottom = '8px';
-
-                const referenceContent = detailsEl.createDiv();
-                referenceContent.innerHTML = TEMPLATE_VARIABLES_REFERENCE;
-            }
-
-            // AI Features section
-            new Setting(containerEl)
-                .setHeading()
-                .setName('[Experimental] AI Features')
-                .setDesc('Configure AI-powered features');
-
-            new Setting(containerEl)
-                .setName('Enable AI Summary')
-                .setDesc('Use Google Gemini to generate AI summaries of YouTube videos. Requires a Gemini API key.')
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.enableAISummary)
-                    .onChange(async (value) => {
-                        this.plugin.settings.enableAISummary = value;
-                        await this.plugin.saveSettings();
-                        this.display();
-                        this.updateListPaneView();
-                        this.updatePlaylistVideosPaneView();
-                    }));
-
-            if (this.plugin.settings.enableAISummary) {
-                new Setting(containerEl)
-                    .setName('AI Provider')
-                    .setDesc('Choose which AI provider to use for video summaries.')
-                    .addDropdown(dropdown => {
-                        for (const provider of AI_PROVIDERS) {
-                            dropdown.addOption(provider, AI_PROVIDER_LABELS[provider]);
-                        }
-                        dropdown
-                            .setValue(this.plugin.settings.aiProvider)
-                            .onChange(async (value) => {
-                                if (!isAIProvider(value)) return;
-                                this.plugin.settings.aiProvider = value;
-                                await this.plugin.saveSettings();
-                                this.display();
-                            });
-                    });
-
-                if (this.plugin.settings.aiProvider === 'gemini') {
-                    new Setting(containerEl)
-                        .setName('Gemini API Key')
-                        .setDesc('Your Google Gemini API key. Get one from [Google AI Studio] (https://aistudio.google.com/app/apikey). Only Google AI Studio support video_url at this time. Vertex AI does not support video_url yet.')
-                        .addText(text => {
-                            text.inputEl.type = 'password';
-                            text.inputEl.style.width = '100%';
-                            text
-                                .setPlaceholder('Enter your Gemini API key')
-                                .setValue(this.plugin.settings.geminiApiKey)
-                                .onChange(async (value) => {
-                                    this.plugin.settings.geminiApiKey = value;
-                                    await this.plugin.saveSettings();
-                                });
-                        });
-                } else {
-                    new Setting(containerEl)
-                        .setName('OpenRouter API Key')
-                        .setDesc('Your OpenRouter API key. Get one from openrouter.ai/keys.')
-                        .addText(text => {
-                            text.inputEl.type = 'password';
-                            text.inputEl.style.width = '100%';
-                            text
-                                .setPlaceholder('sk-or-...')
-                                .setValue(this.plugin.settings.openRouterApiKey)
-                                .onChange(async (value) => {
-                                    this.plugin.settings.openRouterApiKey = value;
-                                    await this.plugin.saveSettings();
-                                });
-                        });
-
-                    new Setting(containerEl)
-                        .setName('Model ID')
-                        .setDesc('Enter a Gemini model ID from OpenRouter (e.g. google/gemini-3-flash-preview).')
-                        .addText(text => {
-                            text.inputEl.style.width = '100%';
-                            text
-                                .setPlaceholder('google/gemini-3-flash-preview')
-                                .setValue(this.plugin.settings.openRouterModel)
-                                .onChange(async (value) => {
-                                    this.plugin.settings.openRouterModel = value;
-                                    await this.plugin.saveSettings();
-                                });
-                        });
-                }
-
-                new Setting(containerEl)
-                    .setName('Summary Prompt')
-                    .setDesc('Customize the prompt sent to Gemini when generating video summaries.');
-
-                const promptContainer = containerEl.createDiv('summary-prompt-container');
-                const promptTextarea = promptContainer.createEl('textarea', {
-                    cls: 'summary-prompt-textarea',
-                    text: this.plugin.settings.summaryPrompt
-                });
-                promptTextarea.rows = 5;
-                promptTextarea.style.width = '100%';
-                promptTextarea.style.fontFamily = 'monospace';
-                promptTextarea.style.fontSize = '12px';
-                promptTextarea.style.resize = 'vertical';
-                promptTextarea.style.minHeight = '80px';
-                promptTextarea.style.padding = '10px';
-                promptTextarea.style.borderRadius = '4px';
-                promptTextarea.style.border = '1px solid var(--background-modifier-border)';
-                promptTextarea.style.backgroundColor = 'var(--background-primary)';
-
-                promptTextarea.addEventListener('change', async () => {
-                    this.plugin.settings.summaryPrompt = promptTextarea.value;
-                    await this.plugin.saveSettings();
-                });
-            }
-
-
-            new Setting(containerEl)
-                .setHeading()
-                .setName('Automatic Fetch')
-                .setDesc('Configure automatic fetching of liked videos');
-
-            new Setting(containerEl)
-                .setName('Enable automatic fetch')
-                .setDesc('Automatically fetch liked videos at regular intervals')
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.autoFetchEnabled)
-                    .onChange(async (value) => {
-                        this.plugin.settings.autoFetchEnabled = value;
-                        await this.plugin.saveSettings();
-                        this.display();
-                        this.updateListPaneView();
-                    }));
-
-
-            if (this.plugin.settings.autoFetchEnabled) {
-                new Setting(containerEl)
-                    .setName('Fetch interval')
-                    .setDesc('How often to automatically fetch videos (in minutes)')
-                    .addDropdown(dropdown => {
-                        // Add debug option for 5 seconds if in debug mode
-                        const debugConfig = debugLogger.getConfig();
-                        if (debugConfig.enabled) {
-                            dropdown.addOption('0.083', '🔧 5 seconds (Debug)');
-                            dropdown.addOption('1', '🔧 1 minute (Debug)');
-                        }
-
-                        dropdown
-                            .addOption('10', '10 minutes')
-                            .addOption('30', '30 minutes')
-                            .addOption('60', '1 hour')
-                            .addOption('120', '2 hours')
-                            .addOption('360', '6 hours')
-                            .addOption('720', '12 hours')
-                            .addOption('1440', '24 hours')
-                            .setValue(String(this.plugin.settings.autoFetchInterval))
-                            .onChange(async (value) => {
-                                this.plugin.settings.autoFetchInterval = parseFloat(value);
-                                await this.plugin.saveSettings();
-
-                                if (parseFloat(value) < 1) {
-                                    new Notice('⚠️ Debug mode: Using very short fetch interval!');
-                                }
-                                this.updateListPaneView();
-                                this.display();
-                            });
-
-                        return dropdown;
-                    });
-
-                new Setting(containerEl)
-                    .setName('Full fetch on every auto-fetch')
-                    .setDesc(UI_TEXT.FULL_FETCH_WARNING_DESC)
-                    .addToggle(toggle => toggle
-                        .setValue(this.plugin.settings.fullFetchOnEveryAutoFetch)
-                        .onChange(async (value) => {
-                            // If user is ENABLING full fetch, show confirmation modal
-                            if (value && !this.plugin.settings.fullFetchOnEveryAutoFetch) {
-                                const result = await confirmAction(
-                                    this.app,
-                                    UI_TEXT.FULL_FETCH_CONFIRM_MESSAGE,
-                                    {
-                                        title: UI_TEXT.FULL_FETCH_WARNING_TITLE,
-                                        confirmText: 'Yes, Enable Full Fetch',
-                                        cancelText: 'Cancel',
-                                        type: 'warning',
-                                        showRememberChoice: false
-                                    }
-                                );
-
-                                if (!result.confirmed) {
-                                    // User cancelled - don't change the setting
-                                    // Reset the toggle to its previous state
-                                    toggle.setValue(false);
-                                    return;
-                                }
-                            }
-
-                            // Apply the setting change
-                            this.plugin.settings.fullFetchOnEveryAutoFetch = value;
-                            await this.plugin.saveSettings();
-
-                            // Show toast notice when enabled
-                            if (value) {
-                                new Notice(UI_TEXT.FULL_FETCH_ENABLED_NOTICE);
-                            }
-
-                            // Refresh display to show/hide conditional warnings
-                            this.display();
-                        }));
-
-                // Show recommendations when full fetch is enabled
-                if (this.plugin.settings.fullFetchOnEveryAutoFetch) {
-                    if (this.plugin.settings.autoCreateNoteEnabled) {
-                        new Setting(containerEl)
-                            .setName('⚠️ Warning')
-                            .setDesc(UI_TEXT.FULL_FETCH_NOT_RECOMMEND_AUTO_VIDEO_NOTE_WARNING)
-                            .setClass('setting-item-info');
-                    }
-                }
-
-                new Setting(containerEl)
-                    .setName('Fetch on startup')
-                    .setDesc('Automatically fetch videos when Obsidian starts')
-                    .addToggle(toggle => toggle
-                        .setValue(this.plugin.settings.fetchOnStartup)
-                        .onChange(async (value) => {
-                            this.plugin.settings.fetchOnStartup = value;
-                            await this.plugin.saveSettings();
-                        }));
-
-                if (this.plugin.settings.lastAutoFetchTime > 0) {
-                    const lastFetch = new Date(this.plugin.settings.lastAutoFetchTime);
-
-                    // Format the interval display
-                    const intervalDisplay = this.plugin.settings.autoFetchInterval < 1
-                        ? `${Math.round(this.plugin.settings.autoFetchInterval * 60)}s`
-                        : `${this.plugin.settings.autoFetchInterval}min`;
-
-                    new Setting(containerEl)
-                        .setName('Last auto-fetch')
-                        .setDesc(`Last: ${lastFetch.toLocaleString()} (every ${intervalDisplay})`);
-                }
-            }
+        if (!this.plugin.settings.enableTemplateSystem) {
+            return;
         }
 
+        new Setting(containerEl)
+            .setName('Custom template')
+            .setDesc('Edit your video note template directly. Use {{variable}} syntax for dynamic content.')
+            .addButton(button => button
+                .setButtonText('Reset to Default')
+                .onClick(async () => {
+                    const confirmed = await confirmAction(
+                        this.app,
+                        'This will reset your template to the default. Any customizations will be lost.',
+                        {
+                            title: 'Reset Template?',
+                            confirmText: 'Reset',
+                            cancelText: 'Cancel',
+                            type: 'warning'
+                        }
+                    );
+                    if (confirmed.confirmed) {
+                        await this.saveSetting('customTemplate', DEFAULT_TEMPLATE, { display: true });
+                        new Notice('Template reset to default');
+                    }
+                }));
+
+        createMonospaceTextarea(containerEl, {
+            className: 'template-textarea',
+            value: this.plugin.settings.customTemplate,
+            rows: 20,
+            onChange: async (value) => {
+                await this.saveSetting('customTemplate', value);
+            },
+        });
+
+        createCollapsibleHtmlReference(
+            containerEl,
+            '📖 Available Variables (click to expand)',
+            TEMPLATE_VARIABLES_REFERENCE
+        );
+    }
+
+    private renderAISection(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setHeading()
+            .setName('[Experimental] AI Features')
+            .setDesc('Configure AI-powered features');
+
+        new Setting(containerEl)
+            .setName('Enable AI Summary')
+            .setDesc('Use Google Gemini to generate AI summaries of YouTube videos. Requires a Gemini API key.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAISummary)
+                .onChange(async (value) => {
+                    await this.saveSetting('enableAISummary', value, {
+                        display: true,
+                        listPane: true,
+                        playlistPane: true,
+                    });
+                }));
+
+        if (!this.plugin.settings.enableAISummary) {
+            return;
+        }
+
+        new Setting(containerEl)
+            .setName('AI Provider')
+            .setDesc('Choose which AI provider to use for video summaries.')
+            .addDropdown(dropdown => {
+                for (const provider of AI_PROVIDERS) {
+                    dropdown.addOption(provider, AI_PROVIDER_LABELS[provider]);
+                }
+                dropdown
+                    .setValue(this.plugin.settings.aiProvider)
+                    .onChange(async (value) => {
+                        if (!isAIProvider(value)) return;
+                        await this.saveSetting('aiProvider', value, { display: true });
+                    });
+            });
+
+        if (this.plugin.settings.aiProvider === 'gemini') {
+            addWideTextSetting(containerEl, {
+                name: 'Gemini API Key',
+                desc: 'Your Google Gemini API key. Get one from [Google AI Studio] (https://aistudio.google.com/app/apikey). Only Google AI Studio support video_url at this time. Vertex AI does not support video_url yet.',
+                placeholder: 'Enter your Gemini API key',
+                value: this.plugin.settings.geminiApiKey,
+                secret: true,
+                onChange: async (value) => {
+                    await this.saveSetting('geminiApiKey', value);
+                },
+            });
+        } else {
+            addWideTextSetting(containerEl, {
+                name: 'OpenRouter API Key',
+                desc: 'Your OpenRouter API key. Get one from openrouter.ai/keys.',
+                placeholder: 'sk-or-...',
+                value: this.plugin.settings.openRouterApiKey,
+                secret: true,
+                onChange: async (value) => {
+                    await this.saveSetting('openRouterApiKey', value);
+                },
+            });
+
+            addWideTextSetting(containerEl, {
+                name: 'Model ID',
+                desc: 'Enter a Gemini model ID from OpenRouter (e.g. google/gemini-3-flash-preview).',
+                placeholder: 'google/gemini-3-flash-preview',
+                value: this.plugin.settings.openRouterModel,
+                onChange: async (value) => {
+                    await this.saveSetting('openRouterModel', value);
+                },
+            });
+        }
+
+        new Setting(containerEl)
+            .setName('Summary Prompt')
+            .setDesc('Customize the prompt sent to Gemini when generating video summaries.');
+
+        createMonospaceTextarea(containerEl, {
+            className: 'summary-prompt-textarea',
+            value: this.plugin.settings.summaryPrompt,
+            rows: 5,
+            onChange: async (value) => {
+                await this.saveSetting('summaryPrompt', value);
+            },
+        });
+    }
+
+    private renderAutoFetchSection(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setHeading()
+            .setName('Automatic Fetch')
+            .setDesc('Configure automatic fetching of liked videos');
+
+        new Setting(containerEl)
+            .setName('Enable automatic fetch')
+            .setDesc('Automatically fetch liked videos at regular intervals')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoFetchEnabled)
+                .onChange(async (value) => {
+                    await this.saveSetting('autoFetchEnabled', value, { display: true, listPane: true });
+                }));
+
+        if (!this.plugin.settings.autoFetchEnabled) {
+            return;
+        }
+
+        new Setting(containerEl)
+            .setName('Fetch interval')
+            .setDesc('How often to automatically fetch videos (in minutes)')
+            .addDropdown(dropdown => {
+                const debugConfig = debugLogger.getConfig();
+                if (debugConfig.enabled) {
+                    dropdown.addOption('0.083', '🔧 5 seconds (Debug)');
+                    dropdown.addOption('1', '🔧 1 minute (Debug)');
+                }
+
+                dropdown
+                    .addOption('10', '10 minutes')
+                    .addOption('30', '30 minutes')
+                    .addOption('60', '1 hour')
+                    .addOption('120', '2 hours')
+                    .addOption('360', '6 hours')
+                    .addOption('720', '12 hours')
+                    .addOption('1440', '24 hours')
+                    .setValue(String(this.plugin.settings.autoFetchInterval))
+                    .onChange(async (value) => {
+                        const interval = parseFloat(value);
+                        await this.saveSetting('autoFetchInterval', interval, { display: true, listPane: true });
+                        if (interval < 1) {
+                            new Notice('⚠️ Debug mode: Using very short fetch interval!');
+                        }
+                    });
+
+                return dropdown;
+            });
+
+        new Setting(containerEl)
+            .setName('Full fetch on every auto-fetch')
+            .setDesc(UI_TEXT.FULL_FETCH_WARNING_DESC)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.fullFetchOnEveryAutoFetch)
+                .onChange(async (value) => {
+                    if (value && !this.plugin.settings.fullFetchOnEveryAutoFetch) {
+                        const result = await confirmAction(
+                            this.app,
+                            UI_TEXT.FULL_FETCH_CONFIRM_MESSAGE,
+                            {
+                                title: UI_TEXT.FULL_FETCH_WARNING_TITLE,
+                                confirmText: 'Yes, Enable Full Fetch',
+                                cancelText: 'Cancel',
+                                type: 'warning',
+                                showRememberChoice: false
+                            }
+                        );
+
+                        if (!result.confirmed) {
+                            toggle.setValue(false);
+                            return;
+                        }
+                    }
+
+                    await this.saveSetting('fullFetchOnEveryAutoFetch', value, { display: true });
+                    if (value) {
+                        new Notice(UI_TEXT.FULL_FETCH_ENABLED_NOTICE);
+                    }
+                }));
+
+        if (this.plugin.settings.fullFetchOnEveryAutoFetch && this.plugin.settings.autoCreateNoteEnabled) {
+            new Setting(containerEl)
+                .setName('⚠️ Warning')
+                .setDesc(UI_TEXT.FULL_FETCH_NOT_RECOMMEND_AUTO_VIDEO_NOTE_WARNING)
+                .setClass('setting-item-info');
+        }
+
+        new Setting(containerEl)
+            .setName('Fetch on startup')
+            .setDesc('Automatically fetch videos when Obsidian starts')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.fetchOnStartup)
+                .onChange(async (value) => {
+                    await this.saveSetting('fetchOnStartup', value);
+                }));
+
+        if (this.plugin.settings.lastAutoFetchTime > 0) {
+            const lastFetch = new Date(this.plugin.settings.lastAutoFetchTime);
+            const intervalDisplay = this.plugin.settings.autoFetchInterval < 1
+                ? `${Math.round(this.plugin.settings.autoFetchInterval * 60)}s`
+                : `${this.plugin.settings.autoFetchInterval}min`;
+
+            new Setting(containerEl)
+                .setName('Last auto-fetch')
+                .setDesc(`Last: ${lastFetch.toLocaleString()} (every ${intervalDisplay})`);
+        }
+    }
+
+    private renderFunctionsSection(containerEl: HTMLElement, isLoggedIn: boolean): void {
         new Setting(containerEl)
             .setHeading()
             .setName('Functions')
             .setDesc('Functions to fetch and update liked videos');
 
-        if (refreshToken !== null && refreshToken !== "") {
+        if (isLoggedIn) {
             new Setting(containerEl)
                 .setName('Fetch all liked videos so far and add to local storage. This will override all the liked videos in local storage.')
                 .addButton(button => button
                     .setButtonText('Full scan')
                     .onClick(async () => {
                         try {
-                            // Store existing videos before fetch to identify new ones
-                            const storedLikedVideosBefore = localStorageService.getLikedVideos();
-
-                            /// get number of the videos in the liked videos
-                            const totalLikedVideos = await this.likedVideoApi.fetchTotalLikedVideoCount();
+                            const totalLikedVideos = await this.plugin.likedVideoApi.fetchTotalLikedVideoCount();
                             new Notice(`${totalLikedVideos} videos in total`);
 
-                            // repeat fetching liked videos
-                            // this works based on nextPageToken. If the fetched result has nextPageToken, fetch the next page.
-                            // If the fetched result has no nextPageToken, that means we have fetched all the liked videos.
-                            // Then, merge the fetched videos data and save to LocalStorage.
-                            let allLikedVideos: YouTubeVideo[] = [];
-                            let nextPageToken: string | undefined = undefined;
+                            const result = await fetchAndMergeLikedVideos(this.plugin.likedVideoApi, {
+                                mode: 'full',
+                                pageSize: this.plugin.settings.fullFetchLimit,
+                                keepUnfetched: false,
+                            });
 
-                            do {
-                                const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fullFetchLimit, nextPageToken);
-                                allLikedVideos = allLikedVideos.concat(response.items);
-                                if (response.nextPageToken === undefined || response.nextPageToken === '' || response.nextPageToken === null) {
-                                    break;
-                                } else {
-                                    nextPageToken = response.nextPageToken;
-                                }
-                            } while (nextPageToken !== undefined);
-
-                            // Merge with stored videos (full scan - drop unfetched/unliked videos)
-                            const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos } =
-                                mergeVideos(allLikedVideos, storedLikedVideosBefore, { keepUnfetched: false });
-
-                            // Save the merged videos to LocalStorage
-                            localStorageService.setLikedVideos(updatedLikedVideos);
-                            this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
-                                { videos: updatedLikedVideos },
-                                { history: true });
-                            this.display();
-                            this.updateListPaneView()
-                            new Notice(`All liked videos have been fetched and saved to LocalStorage - ${updatedLikedVideos.length} videos`);
-
-                            // Auto-create notes for new videos if enabled
-                            if (this.plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
-                                for (const video of newLikedVideos) {
-                                    await this.plugin.automateVideoProcessing(video);
-                                }
-                                new Notice(`Created ${newLikedVideos.length} new video notes`);
-                            }
-
+                            await this.applyManualFetchResult(
+                                result,
+                                `All liked videos have been fetched and saved to LocalStorage - ${result.mergedVideos.length} videos`
+                            );
                         } catch (error) {
-                            new Modal(this.app).setTitle('error').setContent("error: " + error).open();
+                            this.showError(error);
                         }
                     }));
 
@@ -525,38 +469,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     .setButtonText('Fetch')
                     .onClick(async () => {
                         try {
-                            // Store existing videos before fetch to identify new ones
-                            const storedLikedVideosBefore = localStorageService.getLikedVideos();
+                            const result = await fetchAndMergeLikedVideos(this.plugin.likedVideoApi, {
+                                mode: 'partial',
+                                pageSize: this.plugin.settings.fetchLimit,
+                                keepUnfetched: true,
+                            });
 
-                            // Fetch one page of liked videos
-                            const response: YouTubeVideosResponse = await this.likedVideoApi.fetchLikedVideos(this.plugin.settings.fetchLimit);
-                            const fetchedLikedVideos = response.items || [];
-
-                            // Merge with stored videos (partial merge - keep unfetched)
-                            const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos } =
-                                mergeVideos(fetchedLikedVideos, storedLikedVideosBefore, { keepUnfetched: true });
-
-                            // Save the merged videos to LocalStorage
-                            localStorageService.setLikedVideos(updatedLikedVideos);
-                            this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
-                                { videos: updatedLikedVideos },
-                                { history: true });
-                            this.display();
-                            this.updateListPaneView()
-
-                            new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
-
-                            // Auto-create notes for new videos if enabled
-                            if (this.plugin.settings.autoCreateNoteEnabled && newLikedVideos.length > 0) {
-                                for (const video of newLikedVideos) {
-                                    await this.plugin.automateVideoProcessing(video);
-                                }
-                                new Notice(`Created ${newLikedVideos.length} new video notes`);
-                            }
-
+                            await this.applyManualFetchResult(
+                                result,
+                                UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(result.newVideos.length)
+                            );
                         } catch (error) {
                             console.error(error);
-                            new Modal(this.app).setTitle('error').setContent("error: " + error).open();
+                            this.showError(error);
                         }
                     }));
         }
@@ -567,16 +492,13 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setButtonText('Clear stored liked videos in local storage')
                 .onClick(async () => {
                     localStorageService.setLikedVideos([]);
-                    this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.setState(
-                        { videos: [] },
-                        { history: true });
-
                     this.display();
                     this.updateListPaneView();
-
                     new Notice('Liked videos have been cleared');
                 }));
+    }
 
+    private renderSetupSection(containerEl: HTMLElement, refreshToken: string | null): void {
         new Setting(containerEl)
             .setHeading()
             .setName('Setup')
@@ -598,8 +520,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setPlaceholder('Enter your client ID')
                 .setValue(this.plugin.settings.googleClientId)
                 .onChange(async (value) => {
-                    this.plugin.settings.googleClientId = value;
-                    await this.plugin.saveSettings();
+                    await this.saveSetting('googleClientId', value);
                 }));
 
         new Setting(containerEl)
@@ -609,10 +530,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setPlaceholder('Enter your client secret')
                 .setValue(this.plugin.settings.googleClientSecret)
                 .onChange(async (value) => {
-                    this.plugin.settings.googleClientSecret = value;
-                    await this.plugin.saveSettings();
+                    await this.saveSetting('googleClientSecret', value);
                 }));
-
 
         new Setting(containerEl)
             .setName('Login with Google')
@@ -620,101 +539,99 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .addButton(button => button
                 .setButtonText(refreshToken ? 'Logout' : 'Login')
                 .onClick(async (): Promise<void> => {
-                    refreshToken ?
-                        await handleGoogleLogout(this.plugin.settings,
-                            () => {
-                                this.display();
-                                this.updateListPaneView();
-                            }, () => {
-                                this.display();
-                                this.updateListPaneView();
-                            }
-                        )
-                        : await handleGoogleLogin(this.plugin.settings, () => {
-                            this.display();
-                            this.updateListPaneView();
-                        });
+                    const refreshDisplay = () => {
+                        this.display();
+                        this.updateListPaneView();
+                    };
+                    if (refreshToken) {
+                        await handleGoogleLogout(this.plugin.settings, refreshDisplay, refreshDisplay);
+                    } else {
+                        await handleGoogleLogin(this.plugin.settings, refreshDisplay);
+                    }
                 }));
-        // Debug settings - only show in development mode
+    }
+
+    private renderDebugSection(containerEl: HTMLElement): void {
         const debugConfig = debugLogger.getConfig();
-        if (debugConfig.enabled) {
-            new Setting(containerEl)
-                .setHeading()
-                .setName('🔧 Debug Settings')
-                .setDesc('Development mode only');
-
-            new Setting(containerEl)
-                .setName('Log Level')
-                .setDesc('Set the verbosity of debug logs')
-                .addDropdown(dropdown => dropdown
-                    .addOption('error', 'Error')
-                    .addOption('warn', 'Warning')
-                    .addOption('info', 'Info')
-                    .addOption('debug', 'Debug')
-                    .addOption('verbose', 'Verbose')
-                    .setValue(debugConfig.logLevel)
-                    .onChange((value: any) => {
-                        debugLogger.updateConfig({ logLevel: value });
-                        new Notice(`Debug log level set to: ${value}`);
-                    }));
-
-            new Setting(containerEl)
-                .setName('Log API Calls')
-                .setDesc('Log all API requests and responses')
-                .addToggle(toggle => toggle
-                    .setValue(debugConfig.logApiCalls)
-                    .onChange(value => {
-                        debugLogger.updateConfig({ logApiCalls: value });
-                    }));
-
-            new Setting(containerEl)
-                .setName('Log State Changes')
-                .setDesc('Log state updates and changes')
-                .addToggle(toggle => toggle
-                    .setValue(debugConfig.logStateChanges)
-                    .onChange(value => {
-                        debugLogger.updateConfig({ logStateChanges: value });
-                    }));
-
-            new Setting(containerEl)
-                .setName('Log Auto-Fetch')
-                .setDesc('Log automatic fetch operations')
-                .addToggle(toggle => toggle
-                    .setValue(debugConfig.logAutoFetch)
-                    .onChange(value => {
-                        debugLogger.updateConfig({ logAutoFetch: value });
-                    }));
-
-            new Setting(containerEl)
-                .setName('Auto-Fetch Interval Override (minutes)')
-                .setDesc('Override auto-fetch interval for testing (0 = use normal setting)')
-                .addText(text => text
-                    .setPlaceholder('0')
-                    .setValue(String(debugConfig.autoFetchIntervalOverride || 0))
-                    .onChange(value => {
-                        const minutes = parseInt(value) || 0;
-                        debugLogger.updateConfig({
-                            autoFetchIntervalOverride: minutes > 0 ? minutes : undefined
-                        });
-                        if (minutes > 0) {
-                            new Notice(`Auto-fetch interval overridden to ${minutes} minutes. Restart plugin to apply.`);
-                        }
-                    }));
-
-            new Setting(containerEl)
-                .setName('Force Fetch Now')
-                .setDesc('Trigger an immediate fetch for testing')
-                .addButton(button => button
-                    .setButtonText('Fetch Now')
-                    .onClick(async () => {
-                        debugLogger.info('Manual debug fetch triggered');
-                        await this.plugin.performAutoFetch();
-                    }));
-
-            new Setting(containerEl)
-                .setName('Debug Console Commands')
-                .setDesc('Enable: enableGeuloDebug() | Disable: disableGeuloDebug()');
+        if (!debugConfig.enabled) {
+            return;
         }
+
+        new Setting(containerEl)
+            .setHeading()
+            .setName('🔧 Debug Settings')
+            .setDesc('Development mode only');
+
+        new Setting(containerEl)
+            .setName('Log Level')
+            .setDesc('Set the verbosity of debug logs')
+            .addDropdown(dropdown => dropdown
+                .addOption('error', 'Error')
+                .addOption('warn', 'Warning')
+                .addOption('info', 'Info')
+                .addOption('debug', 'Debug')
+                .addOption('verbose', 'Verbose')
+                .setValue(debugConfig.logLevel)
+                .onChange((value) => {
+                    debugLogger.updateConfig({ logLevel: value as DebugConfig['logLevel'] });
+                    new Notice(`Debug log level set to: ${value}`);
+                }));
+
+        new Setting(containerEl)
+            .setName('Log API Calls')
+            .setDesc('Log all API requests and responses')
+            .addToggle(toggle => toggle
+                .setValue(debugConfig.logApiCalls)
+                .onChange(value => {
+                    debugLogger.updateConfig({ logApiCalls: value });
+                }));
+
+        new Setting(containerEl)
+            .setName('Log State Changes')
+            .setDesc('Log state updates and changes')
+            .addToggle(toggle => toggle
+                .setValue(debugConfig.logStateChanges)
+                .onChange(value => {
+                    debugLogger.updateConfig({ logStateChanges: value });
+                }));
+
+        new Setting(containerEl)
+            .setName('Log Auto-Fetch')
+            .setDesc('Log automatic fetch operations')
+            .addToggle(toggle => toggle
+                .setValue(debugConfig.logAutoFetch)
+                .onChange(value => {
+                    debugLogger.updateConfig({ logAutoFetch: value });
+                }));
+
+        new Setting(containerEl)
+            .setName('Auto-Fetch Interval Override (minutes)')
+            .setDesc('Override auto-fetch interval for testing (0 = use normal setting)')
+            .addText(text => text
+                .setPlaceholder('0')
+                .setValue(String(debugConfig.autoFetchIntervalOverride || 0))
+                .onChange(value => {
+                    const minutes = parseInt(value) || 0;
+                    debugLogger.updateConfig({
+                        autoFetchIntervalOverride: minutes > 0 ? minutes : undefined
+                    });
+                    if (minutes > 0) {
+                        new Notice(`Auto-fetch interval overridden to ${minutes} minutes. Restart plugin to apply.`);
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName('Force Fetch Now')
+            .setDesc('Trigger an immediate fetch for testing')
+            .addButton(button => button
+                .setButtonText('Fetch Now')
+                .onClick(async () => {
+                    debugLogger.info('Manual debug fetch triggered');
+                    await this.plugin.performAutoFetch();
+                }));
+
+        new Setting(containerEl)
+            .setName('Debug Console Commands')
+            .setDesc('Enable: enableGeuloDebug() | Disable: disableGeuloDebug()');
     }
 }
-
