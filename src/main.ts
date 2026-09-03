@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { App, Notice, Plugin, PluginManifest, Vault, WorkspaceLeaf } from 'obsidian';
-import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
+import { Notice, Plugin, WorkspaceLeaf } from 'obsidian';
+import { isAIProvider, ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
@@ -49,30 +49,22 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 export const APP_ID = 'geulo-youtube-liked-video';
 
 export default class GoogleLikedVideoPlugin extends Plugin {
-	settings: ObsidianGoogleLikedVideoSettings;
-	vault: Vault;
-	likedVideoApi: LikedVideoApi;
-	playlistApi: PlaylistApi;
-	summaryStorage: SummaryStorageService;
-	autoFetchInterval: NodeJS.Timeout | null = null;
+	settings: ObsidianGoogleLikedVideoSettings = { ...DEFAULT_SETTINGS };
+	vault = this.app.vault;
+	likedVideoApi!: LikedVideoApi;
+	playlistApi!: PlaylistApi;
+	summaryStorage!: SummaryStorageService;
+	autoFetchInterval: ReturnType<typeof setInterval> | null = null;
 	isFetching = false;
 	paneRef: LikedVideoListPane | null = null;
 	settingTabRef: GoogleLikedVideoSettingTab | null = null;
 
-	constructor(app: App, manifest: PluginManifest) {
-		super(app, manifest);
-	}
-
 	async onload() {
 		debugLogger.info('Plugin loading...');
 		await this.loadSettings();
-		if (this.settings) {
-			this.likedVideoApi = new LikedVideoApi(this.settings);
-			this.playlistApi = new PlaylistApi(this.settings);
-			debugLogger.debug('API clients initialized');
-		}
-
-		this.vault = this.app.vault;
+		this.likedVideoApi = new LikedVideoApi(this.settings);
+		this.playlistApi = new PlaylistApi(this.settings);
+		debugLogger.debug('API clients initialized');
 
 		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, this.manifest.dir!, 500);
 		await this.summaryStorage.initialize();
@@ -239,6 +231,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		if (!isAIProvider(this.settings.aiProvider)) {
+			this.settings.aiProvider = DEFAULT_SETTINGS.aiProvider;
+		}
 	}
 
 	async saveSettings() {

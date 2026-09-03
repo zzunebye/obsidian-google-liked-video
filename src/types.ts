@@ -1,3 +1,14 @@
+export const AI_PROVIDERS = ['gemini', 'openrouter'] as const;
+export type AIProvider = typeof AI_PROVIDERS[number];
+
+export const AI_PROVIDER_LABELS: Record<AIProvider, string> = {
+    gemini: 'Google Gemini',
+    openrouter: 'OpenRouter (experimental)',
+};
+
+export function isAIProvider(value: string): value is AIProvider {
+    return (AI_PROVIDERS as readonly string[]).includes(value);
+}
 
 export interface ObsidianGoogleLikedVideoSettings {
     accessToken: string;
@@ -21,7 +32,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     openInObsidianWebViewer: boolean;
     enableAISummary: boolean;
     geminiApiKey: string;
-    aiProvider: 'gemini' | 'openrouter';
+    aiProvider: AIProvider;
     openRouterApiKey: string;
     openRouterModel: string;
     summaryPrompt: string;

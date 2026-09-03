@@ -2,7 +2,7 @@
 import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
-import { YouTubeVideo, YouTubeVideosResponse } from 'src/types';
+import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, YouTubeVideo, YouTubeVideosResponse } from 'src/types';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { LikedVideoApi } from 'src/api';
 import GoogleLikedVideoPlugin from '../main';
@@ -241,15 +241,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 new Setting(containerEl)
                     .setName('AI Provider')
                     .setDesc('Choose which AI provider to use for video summaries.')
-                    .addDropdown(dropdown => dropdown
-                        .addOption('gemini', 'Google Gemini')
-                        .addOption('openrouter', 'OpenRouter (experimental)')
-                        .setValue(this.plugin.settings.aiProvider)
-                        .onChange(async (value: 'gemini' | 'openrouter') => {
-                            this.plugin.settings.aiProvider = value;
-                            await this.plugin.saveSettings();
-                            this.display();
-                        }));
+                    .addDropdown(dropdown => {
+                        for (const provider of AI_PROVIDERS) {
+                            dropdown.addOption(provider, AI_PROVIDER_LABELS[provider]);
+                        }
+                        dropdown
+                            .setValue(this.plugin.settings.aiProvider)
+                            .onChange(async (value) => {
+                                if (!isAIProvider(value)) return;
+                                this.plugin.settings.aiProvider = value;
+                                await this.plugin.saveSettings();
+                                this.display();
+                            });
+                    });
 
                 if (this.plugin.settings.aiProvider === 'gemini') {
                     new Setting(containerEl)
@@ -457,7 +461,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setHeading()
             .setName('Functions')
             .setDesc('Functions to fetch and update liked videos');
-        
+
         if (refreshToken !== null && refreshToken !== "") {
             new Setting(containerEl)
                 .setName('Fetch all liked videos so far and add to local storage. This will override all the liked videos in local storage.')
