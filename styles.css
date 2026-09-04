@@ -1309,6 +1309,20 @@ If your plugin does not need CSS, delete this file.
 	min-width: 80px;
 	text-align: center;
 }
+
+.video-view__pagination__current-page {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--text-muted);
+}
+
+.video-view__pagination__input {
+	width: 48px;
+	min-width: 48px;
+	text-align: center;
+}
+
 .video-card-btn {
 	display: flex;
 	align-items: center;

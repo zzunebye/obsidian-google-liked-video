@@ -70,6 +70,13 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 - **States:** open, cancel, confirm.
 - **Accessibility:** explicit irreversible-action wording; no remember-choice option for permanent deletion.
 
+### Pagination
+
+- **Structure:** first and previous actions, an editable current-page field with the total page count, then next and last actions.
+- **States:** resting, editing, committed, and range-corrected. Empty or non-integer input restores the current page; out-of-range integers move to the nearest valid page.
+- **Accessibility:** icon-only actions and the page field expose explicit accessible names; the field supports Enter to commit and Escape to cancel.
+- **Layout:** controls keep the existing centered, compact arrangement and use Obsidian form-control styling.
+
 ## 6. Motion & Interaction
 
 - Existing micro-interactions use 120-200ms easing for hover and press feedback.

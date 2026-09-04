@@ -36,6 +36,7 @@ export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 	const [currentPage, setCurrentPage] = useState(1);
+	const [pageInput, setPageInput] = useState("1");
 	const [sortOption, setSortOption] = useState(
 		localStorageService.getSortOption(),
 	);
@@ -270,6 +271,7 @@ export const LikedVideoView: React.FC = () => {
 	}, [filteredVideos, sortOption, videos, sortOrder, videoDurations]);
 
 	const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
+	const maximumPage = Math.max(totalPages, 1);
 	const startIndex = (currentPage - 1) * videosPerPage;
 	const endIndex = startIndex + videosPerPage;
 
@@ -278,6 +280,16 @@ export const LikedVideoView: React.FC = () => {
 	}, [sortedVideos, startIndex, endIndex]);
 
 	const noteExistenceMap = useNoteExistenceMap(plugin, currentVideos);
+
+	useEffect(() => {
+		setPageInput(String(currentPage));
+	}, [currentPage]);
+
+	useEffect(() => {
+		if (currentPage > maximumPage) {
+			setCurrentPage(maximumPage);
+		}
+	}, [currentPage, maximumPage]);
 
 	// Reset currentPage to 1 when debouncedSearchTerm, sortOption, or filters change
 	useEffect(() => {
@@ -289,6 +301,20 @@ export const LikedVideoView: React.FC = () => {
 		contentTypeSelection,
 		showAINoteOnly,
 	]);
+
+	const commitPageInput = () => {
+		const trimmedInput = pageInput.trim();
+		const requestedPage = Number(trimmedInput);
+
+		if (!/^-?\d+$/.test(trimmedInput) || !Number.isSafeInteger(requestedPage)) {
+			setPageInput(String(currentPage));
+			return;
+		}
+
+		const nextPage = Math.min(Math.max(requestedPage, 1), maximumPage);
+		setCurrentPage(nextPage);
+		setPageInput(String(nextPage));
+	};
 
 	const getContentTypeLabel = (type: ContentTypeOption): string => {
 		switch (type) {
@@ -726,14 +752,22 @@ export const LikedVideoView: React.FC = () => {
 			</div>
 
 			{/* Pagination */}
-			<div className="video-view__pagination">
+			<nav className="video-view__pagination" aria-label="Pagination">
 				<div className="video-view__pagination__controls">
 					{currentPage > 1 && (
 						<>
-							<button onClick={() => setCurrentPage(1)}>
+							<button
+								type="button"
+								aria-label="First page"
+								title="First page"
+								onClick={() => setCurrentPage(1)}
+							>
 								<ArrowLeftToLine size={16} />
 							</button>
 							<button
+								type="button"
+								aria-label="Previous page"
+								title="Previous page"
 								onClick={() => setCurrentPage(currentPage - 1)}
 							>
 								<ArrowLeft size={16} />
@@ -741,20 +775,48 @@ export const LikedVideoView: React.FC = () => {
 						</>
 					)}
 				</div>
-				<button disabled style={{ width: "48px" }}>
-					{currentPage}
-				</button>
+				<div className="video-view__pagination__current-page">
+					<input
+						className="video-view__pagination__input"
+						type="number"
+						inputMode="numeric"
+						min={1}
+						max={maximumPage}
+						step={1}
+						value={pageInput}
+						aria-label={`Page number, 1 to ${maximumPage}`}
+						onChange={(event) => setPageInput(event.currentTarget.value)}
+						onFocus={(event) => event.currentTarget.select()}
+						onBlur={commitPageInput}
+						onKeyDown={(event) => {
+							if (event.key === "Enter") {
+								event.preventDefault();
+								event.currentTarget.blur();
+							} else if (event.key === "Escape") {
+								event.preventDefault();
+								setPageInput(String(currentPage));
+								event.currentTarget.select();
+							}
+						}}
+					/>
+					<span aria-hidden="true">/</span>
+					<span aria-hidden="true">{maximumPage}</span>
+				</div>
 				<div className="video-view__pagination__controls">
 					{currentPage < totalPages && (
 						<>
 							<button
 								type="button"
+								aria-label="Next page"
+								title="Next page"
 								onClick={() => setCurrentPage(currentPage + 1)}
 							>
 								<ArrowRight size={16} />
 							</button>
 							<button
 								type="button"
+								aria-label="Last page"
+								title="Last page"
 								onClick={() => setCurrentPage(totalPages)}
 							>
 								<ArrowRightToLine size={16} />
@@ -762,7 +824,7 @@ export const LikedVideoView: React.FC = () => {
 						</>
 					)}
 				</div>
-			</div>
+			</nav>
 			<div style={{ height: "24px" }}></div>
 		</div>
 	);
