@@ -4,37 +4,50 @@ import { sanitizeFileName, computeExpectedNotePath } from "src/utils/noteUtils";
 import { YouTubeVideo } from "src/types";
 
 /**
- * Hook that reactively tracks whether video note files exist in the vault
- * for a batch of videos. Uses a single set of vault listeners instead of
- * one per video card.
+ * React hook that efficiently tracks the existence of note files in the Obsidian vault
+ * for a batch of YouTube videos.
  *
- * Returns a Map<videoId, boolean> indicating note existence.
+ * - Accepts a plugin and an array of YouTubeVideo objects.
+ * - For each video, computes the path where its note should exist according to the plugin settings.
+ * - Returns a reactive Map<String, Boolean> where the key is the video ID.
+ *   The value is true if the expected note file currently exists in the vault, false otherwise.
+ *
+ * Key Features:
+ * - Uses a single set of listeners on the vault for all videos, rather than one per video,
+ *   providing efficient and centralized file monitoring.
+ * - The returned Map updates whenever files are created, deleted, or renamed
+ *   in the vault, ensuring consumers always have up-to-date existence info.
+ * - Handles any changes in videos or plugin settings, updating the tracking as needed.
+ *
+ * Example usage:
+ *   const existenceMap = useNoteExistenceMap(plugin, videos);
+ *   const doesExist = existenceMap.get(videoId) // true if a note file exists for that video
  */
 export const useNoteExistenceMap = (
     plugin: any,
     videos: YouTubeVideo[]
 ): Map<string, boolean> => {
     const videoNotePath = plugin.settings?.videoNotePath || 'Youtube';
-    const organizeByChannel = plugin.settings?.organizeByChannel || false;
+    const shouldGroupByChannel = plugin.settings?.organizeByChannel || false;
 
     // Build a stable lookup: expectedPath → videoId, and videoId → expectedPath
     const { pathToId, idToPath } = useMemo(() => {
-        const pathToId = new Map<string, string>();
-        const idToPath = new Map<string, string>();
+        const pathToIdMap = new Map<string, string>();
+        const idToPathMap = new Map<string, string>();
         for (const video of videos) {
             const baseFileName = sanitizeFileName(video.snippet.title);
             const expectedPath = computeExpectedNotePath(
                 plugin.app,
                 baseFileName,
                 videoNotePath,
-                organizeByChannel,
+                shouldGroupByChannel,
                 video.snippet.channelTitle
             );
-            pathToId.set(expectedPath, video.id);
-            idToPath.set(video.id, expectedPath);
+            pathToIdMap.set(expectedPath, video.id);
+            idToPathMap.set(video.id, expectedPath);
         }
-        return { pathToId, idToPath };
-    }, [plugin.app, videos, videoNotePath, organizeByChannel]);
+        return { pathToId: pathToIdMap, idToPath: idToPathMap };
+    }, [plugin.app, videos, videoNotePath, shouldGroupByChannel]);
 
     // Compute existence synchronously when paths change
     const initialExistence = useMemo((): Map<string, boolean> => {
@@ -55,6 +68,7 @@ export const useNoteExistenceMap = (
     }
 
     // Single set of vault listeners for all videos on the current page
+    // These listeners subscribe to file creation, deletion, and rename events in the Obsidian Vault to update the [existenceMap] in real time.
     useEffect(() => {
         const handleVaultChange = (file: TAbstractFile) => {
             const videoId = pathToId.get(file.path);
@@ -101,3 +115,4 @@ export const useNoteExistenceMap = (
 
     return existenceMap;
 };
+
