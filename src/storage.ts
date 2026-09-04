@@ -28,14 +28,6 @@ class LocalStorageService {
         return likedVideos[0].id;
     }
 
-    getRefreshToken(): string {
-        return window.localStorage.getItem("googleYtbLikedVideoRefreshToken") ?? "";
-    }
-
-    getAccessToken(): string {
-        return window.localStorage.getItem("googleYtbLikedVideoAccessToken") ?? "";
-    }
-
     getAccessTokenExpirationTime(): number {
         const expirationTime = window.localStorage.getItem("googleYtbLikedVideoExpirationTime");
         return expirationTime ? parseInt(expirationTime) : 0;
@@ -156,15 +148,6 @@ class LocalStorageService {
         window.localStorage.setItem("googleYtbLikedVideoWatchLaterVideos", JSON.stringify(watchLaterVideos));
     };
 
-    setAccessToken(googleAccessToken: string): void {
-        window.localStorage.setItem("googleYtbLikedVideoAccessToken", googleAccessToken);
-    }
-
-    setRefreshToken(googleRefreshToken: string): void {
-        if (googleRefreshToken == "undefined") return;
-        window.localStorage.setItem("googleYtbLikedVideoRefreshToken", googleRefreshToken);
-    }
-
     setAccessTokenExpirationTime(googleExpirationTime: number): void {
         if (isNaN(googleExpirationTime)) return;
         window.localStorage.setItem("googleYtbLikedVideoExpirationTime", googleExpirationTime.toString());
@@ -240,5 +223,4 @@ class LocalStorageService {
 }
 
 export const localStorageService = new LocalStorageService();
-
 

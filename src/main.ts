@@ -17,6 +17,7 @@ import { createNotesForNewVideos, fetchAndMergeLikedVideos } from './services/li
 import { TemplateService } from './services/templateService';
 import { createAIService, getActiveApiKey } from './services/aiServiceFactory';
 import { SummaryStorageService } from './services/summaryStorageService';
+import { googleTokenStorageService } from './services/googleTokenStorageService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	accessToken: '',
@@ -38,6 +39,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	enableTemplateSystem: false,
 	customTemplate: DEFAULT_TEMPLATE,
 	openInObsidianWebViewer: false,
+	showVideoTags: true,
 	enableAISummary: false,
 	geminiApiKey: '',
 	aiProvider: 'gemini',
@@ -62,6 +64,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	async onload() {
 		debugLogger.info('Plugin loading...');
 		await this.loadSettings();
+		googleTokenStorageService.initialize(this.app.secretStorage);
 		this.likedVideoApi = new LikedVideoApi(this.settings);
 		this.playlistApi = new PlaylistApi(this.settings);
 		debugLogger.debug('API clients initialized');
@@ -144,7 +147,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			id: 'full-fetch-liked-videos',
 			name: 'Full Fetch Liked Videos',
 			callback: () => {
-				if (!localStorageService.getAccessToken()) {
+				if (!googleTokenStorageService.getAccessToken()) {
 					new Notice('Geulo: Please authenticate first in plugin settings.');
 					return;
 				}
@@ -152,7 +155,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			}
 		});
 
-		if (this.settings.fetchOnStartup && localStorageService.getAccessToken()) {
+		if (this.settings.fetchOnStartup && googleTokenStorageService.getAccessToken()) {
 			debugLogger.info('Fetch on startup enabled, scheduling fetch in 5 seconds');
 			setTimeout(() => {
 				this.performAutoFetch();
@@ -284,7 +287,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			const now = Date.now();
 			debugLogger.time('auto-fetch');
 
-			if (this.likedVideoApi && localStorageService.getAccessToken()) {
+			if (this.likedVideoApi && googleTokenStorageService.getAccessToken()) {
 				const shouldFetchAllVideos = forceFullFetch || this.settings.fullFetchOnEveryAutoFetch;
 				const fetchInterval = this.settings.autoFetchInterval;
 
@@ -461,7 +464,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		try {
 			// Load categories asynchronously without blocking plugin startup
 			setTimeout(async () => {
-				if (this.likedVideoApi && localStorageService.getAccessToken()) {
+				if (this.likedVideoApi && googleTokenStorageService.getAccessToken()) {
 					debugLogger.info('Initializing video categories...');
 					await categoriesService.loadCategories(this.likedVideoApi);
 					debugLogger.info('Video categories initialized');

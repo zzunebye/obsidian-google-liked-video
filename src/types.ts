@@ -30,6 +30,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     enableTemplateSystem: boolean;
     customTemplate: string;
     openInObsidianWebViewer: boolean;
+    showVideoTags: boolean;
     enableAISummary: boolean;
     geminiApiKey: string;
     aiProvider: AIProvider;

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { App } from 'obsidian';
 import { YouTubeVideo } from 'src/types';
 import { ReactModal, openReactModal } from './ReactModal';
+import { VideoTagChips } from './VideoTags';
 
 interface VideoInfoModalProps {
     videoInfo: YouTubeVideo;
@@ -122,7 +123,7 @@ const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategor
         return key.replace(/([A-Z])/g, ' $1').trim();
     };
 
-    const formatValue = (key: string, value: any): string => {
+    const formatValue = (key: string, value: any): React.ReactNode => {
         if (key === 'categoryId' && getCategoryDisplay) {
             return getCategoryDisplay(value as string);
         }
@@ -132,7 +133,7 @@ const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategor
         }
 
         if (key === 'tags' && Array.isArray(value)) {
-            return value.join(', ');
+            return <VideoTagChips tags={value.filter((tag): tag is string => typeof tag === 'string')} />;
         }
 
         if (typeof value === 'object') {
@@ -156,7 +157,7 @@ const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategor
                             <div className="video-info-item__key">
                                 {formatKey(key)}:
                             </div>
-                            <div className="video-info-item__value">
+                            <div className={`video-info-item__value ${key === 'tags' ? 'video-info-item__value--tags' : ''}`}>
                                 {formatValue(key, value)}
                             </div>
                         </div>

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import { localStorageService } from 'src/storage';
+import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
 import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, ObsidianGoogleLikedVideoSettings } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
@@ -35,11 +36,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        const refreshToken = localStorageService.getRefreshToken();
+        const refreshToken = googleTokenStorageService.getRefreshToken();
         const isLoggedIn = refreshToken !== null && refreshToken !== '';
 
         this.renderQuotaSection(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
+        this.renderVideoTagsSetting(containerEl);
 
         if (isLoggedIn) {
             this.renderVideoNotesSection(containerEl);
@@ -131,6 +133,20 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.openInObsidianWebViewer)
                 .onChange(async (value) => {
                     await this.saveSetting('openInObsidianWebViewer', value);
+                }));
+    }
+
+    private renderVideoTagsSetting(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setName('Show video tags')
+            .setDesc('Display responsive YouTube tag chips on video cards.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showVideoTags)
+                .onChange(async (value) => {
+                    await this.saveSetting('showVideoTags', value, {
+                        listPane: true,
+                        playlistPane: true,
+                    });
                 }));
     }
 

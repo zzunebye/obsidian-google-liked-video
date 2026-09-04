@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { IncomingMessage, Server, ServerResponse } from 'http';
 import { localStorageService } from 'src/storage';
+import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { Platform, Notice } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
@@ -18,8 +19,8 @@ export async function handleGoogleLogin(
         return;
     }
 
-    localStorageService.setRefreshToken("");
-    localStorageService.setAccessToken("");
+    googleTokenStorageService.setRefreshToken("");
+    googleTokenStorageService.setAccessToken("");
     localStorageService.setAccessTokenExpirationTime(0);
 
     const userClientID = pluginSettings.googleClientId;
@@ -66,8 +67,8 @@ export async function handleGoogleLogin(
             const token = await response.json();
 
             if (token?.refresh_token) {
-                localStorageService.setRefreshToken(token.refresh_token);
-                localStorageService.setAccessToken(token.access_token);
+                googleTokenStorageService.setRefreshToken(token.refresh_token);
+                googleTokenStorageService.setAccessToken(token.access_token);
                 localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
             }
 
@@ -98,11 +99,11 @@ export async function handleGoogleLogout(
         return;
     }
 
-    const accessToken = localStorageService.getAccessToken();
+    const accessToken = googleTokenStorageService.getAccessToken();
     if (accessToken) {
         const success = await revokeGoogleToken(accessToken);
-        localStorageService.setRefreshToken("");
-        localStorageService.setAccessToken("");
+        googleTokenStorageService.setRefreshToken("");
+        googleTokenStorageService.setAccessToken("");
         localStorageService.setAccessTokenExpirationTime(0);
         localStorageService.setLikedVideos([]);
         if (success) {
@@ -132,7 +133,7 @@ export async function revokeGoogleToken(token: string) {
 
 export async function refreshAccessToken(userClientId: string, userClientSecret: string)
     : Promise<{ access_token: string, expires_in: number }> {
-    const refreshToken = localStorageService.getRefreshToken();
+    const refreshToken = googleTokenStorageService.getRefreshToken();
 
     if (!refreshToken || refreshToken == "") {
         new Notice("Refresh token for Google API is missing or expired");
@@ -157,7 +158,7 @@ export async function refreshAccessToken(userClientId: string, userClientSecret:
 
     const token: { access_token: string, expires_in: number } = await response.json();
 
-    localStorageService.setAccessToken(token.access_token);
+    googleTokenStorageService.setAccessToken(token.access_token);
     localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
 
 
@@ -173,7 +174,7 @@ export async function getValidAccessToken(userClientId: string, userClientSecret
         return token.access_token;
     }
 
-    const accessToken = localStorageService.getAccessToken();
+    const accessToken = googleTokenStorageService.getAccessToken();
     if (!accessToken) {
         const token = await refreshAccessToken(userClientId, userClientSecret);
         return token.access_token;
@@ -184,7 +185,7 @@ export async function getValidAccessToken(userClientId: string, userClientSecret
 
 
 export function getGoogleAccessTokenFromLocal(): string {
-    const accessToken = localStorageService.getAccessToken();
+    const accessToken = googleTokenStorageService.getAccessToken();
     /// Check if the access token is set
     if (!accessToken || accessToken == "") {
         new Notice(

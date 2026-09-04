@@ -28,6 +28,7 @@ import {
 } from "src/utils/noteUtils";
 import { TemplateService } from "src/services/templateService";
 import { SummarySection } from "./SummarySection";
+import { ResponsiveVideoTags } from "./VideoTags";
 
 interface VideoCardProps {
 	source: "liked" | "playlist";
@@ -40,6 +41,7 @@ interface VideoCardProps {
 	onLike?: () => void;
 	onAddToDailyNote: (videoData: string, file: TFile) => void;
 	onChannelClick: (channelTitle: string) => void;
+	onTagClick: (tag: string) => void;
 	onLinkClick: (url: string) => void;
 }
 
@@ -53,10 +55,12 @@ export const VideoCard = ({
 	onLike,
 	onAddToDailyNote,
 	onChannelClick,
+	onTagClick,
 	onLinkClick,
 }: VideoCardProps) => {
 	const plugin = usePlugin();
 	const isAIEnabled = plugin.settings?.enableAISummary ?? false;
+	const showVideoTags = plugin.settings?.showVideoTags ?? true;
 	const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
 	const [hasSummary, setHasSummary] = useState(() =>
 		plugin.summaryStorage.hasVideoSummary(videoInfo.id),
@@ -433,6 +437,12 @@ export const VideoCard = ({
 							"MMM D, YYYY",
 						)}
 					</p>
+					{showVideoTags && videoInfo.snippet.tags?.length > 0 && (
+						<ResponsiveVideoTags
+							tags={videoInfo.snippet.tags}
+							onTagClick={onTagClick}
+						/>
+					)}
 				</div>
 				<div className="video-bottom-row">
 					<p className="video-pulled-at">

@@ -268,6 +268,10 @@ If your plugin does not need CSS, delete this file.
 	border-left: 3px solid var(--interactive-accent);
 }
 
+.video-info-item__value--tags {
+	padding: 8px;
+}
+
 .video-info-divider {
 	height: 1px;
 	background: var(--background-modifier-border);
@@ -934,6 +938,112 @@ If your plugin does not need CSS, delete this file.
 	gap: 4px;
 }
 
+.video-tags {
+	position: relative;
+	width: 100%;
+	min-width: 0;
+	margin-top: 4px;
+}
+
+.video-tags__row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	width: 100%;
+	min-width: 0;
+}
+
+.video-tag-chip {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	max-width: 160px;
+	height: 24px;
+	padding: 2px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	background-color: var(--background-secondary);
+	color: var(--text-muted);
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	box-sizing: border-box;
+}
+
+button.video-tag-chip {
+	appearance: none;
+	margin: 0;
+	cursor: pointer;
+}
+
+.video-tag-chip--interactive:hover,
+.video-tag-chip--interactive:focus-visible {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+.video-tag-chip--interactive:focus-visible,
+.video-tag-chip--overflow:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.video-tag-chip--overflow {
+	flex-shrink: 0;
+	max-width: none;
+	color: var(--text-accent);
+}
+
+.video-tags__popover {
+	position: fixed;
+	z-index: 30;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	width: max-content;
+	max-width: min(320px, calc(100vw - 48px));
+	max-height: 180px;
+	overflow-y: auto;
+	padding: 8px;
+	background-color: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.video-tags__measurement {
+	position: absolute;
+	left: 0;
+	top: 0;
+	display: flex;
+	gap: 4px;
+	width: max-content;
+	height: 0;
+	visibility: hidden;
+	pointer-events: none;
+	overflow: hidden;
+}
+
+.video-tag-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-width: 0;
+}
+
+.video-tag-chip--static {
+	max-width: 100%;
+	height: auto;
+	min-height: 24px;
+	white-space: normal;
+	word-break: break-word;
+}
+
 .video-bottom-row {
 	display: flex;
 	justify-content: space-between;
@@ -1068,6 +1178,54 @@ If your plugin does not need CSS, delete this file.
 }
 
 /* Search Bar */
+.active-tag-filter {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	margin: -4px 0 12px;
+}
+
+.active-tag-filter__chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+	margin: 0;
+	padding: 4px 8px;
+	border: 1px solid var(--interactive-accent);
+	border-radius: 12px;
+	background-color: var(--background-secondary);
+	color: var(--text-accent);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 12px;
+	line-height: 1;
+}
+
+.active-tag-filter__chip:hover,
+.active-tag-filter__chip:focus-visible {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.active-tag-filter__chip:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.active-tag-filter__label {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.active-tag-filter__remove {
+	flex-shrink: 0;
+	font-size: 15px;
+	line-height: 10px;
+}
+
 .search-bar-container {
 	display: flex;
 	align-items: center;

@@ -30,11 +30,13 @@ import { categoriesService } from "src/categoriesService";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { ViewHeader } from "src/ui/ViewHeader";
+import { ActiveTagFilter } from "src/ui/ActiveTagFilter";
 import { createNotesForNewVideos, fetchAndMergeLikedVideos } from "src/services/likedVideoFetchService";
 const SHORT_VIDEO_MAX_DURATION_SECONDS = 90;
 export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+	const [selectedTag, setSelectedTag] = useState<string | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageInput, setPageInput] = useState("1");
 	const [sortOption, setSortOption] = useState(
@@ -162,6 +164,12 @@ export const LikedVideoView: React.FC = () => {
 				searchMatch = titleMatch || tagsMatch || channelMatch;
 			}
 
+			const exactTagMatch =
+				selectedTag === null ||
+				(video.snippet.tags ?? []).some(
+					(tag) => tag.toLowerCase() === selectedTag.toLowerCase(),
+				);
+
 			// Category filter
 			const categoryMatch =
 				selectedCategory === "all" ||
@@ -199,12 +207,17 @@ export const LikedVideoView: React.FC = () => {
 				plugin.summaryStorage.hasVideoSummary(video.id);
 
 			return (
-				searchMatch && categoryMatch && contentTypeMatch && aiNoteMatch
+				searchMatch &&
+				exactTagMatch &&
+				categoryMatch &&
+				contentTypeMatch &&
+				aiNoteMatch
 			);
 		});
 	}, [
 		videos,
 		debouncedSearchTerm,
+		selectedTag,
 		selectedCategory,
 		contentTypeSelection,
 		videoDurations,
@@ -296,11 +309,18 @@ export const LikedVideoView: React.FC = () => {
 		setCurrentPage(1);
 	}, [
 		debouncedSearchTerm,
+		selectedTag,
 		sortOption,
 		selectedCategory,
 		contentTypeSelection,
 		showAINoteOnly,
 	]);
+
+	const handleTagClick = (tag: string) => {
+		setSelectedTag((current) =>
+			current?.toLowerCase() === tag.toLowerCase() ? null : tag,
+		);
+	};
 
 	const commitPageInput = () => {
 		const trimmedInput = pageInput.trim();
@@ -448,6 +468,12 @@ export const LikedVideoView: React.FC = () => {
 					<SlidersHorizontal size={16} />
 				</button>
 			</div>
+			{selectedTag && (
+				<ActiveTagFilter
+					tag={selectedTag}
+					onClear={() => setSelectedTag(null)}
+				/>
+			)}
 
 			<div
 				className={`filters-container ${filtersExpanded ? "filters-container--expanded" : "filters-container--collapsed"}`}
@@ -606,7 +632,9 @@ export const LikedVideoView: React.FC = () => {
 			{currentVideos.length === 0 && (
 				<div className="no-videos-found">
 					<div className="no-videos-found__text">
-						{UI_TEXT.NO_VIDEOS_FOUND}
+						{debouncedSearchTerm || selectedTag
+							? "No videos match the active filters"
+							: UI_TEXT.NO_VIDEOS_FOUND}
 					</div>
 
 					{videos.length === 0 && (
@@ -725,6 +753,7 @@ export const LikedVideoView: React.FC = () => {
 						onChannelClick={(channelTitle) => {
 							setSearchTerm(channelTitle);
 						}}
+						onTagClick={handleTagClick}
 						onLinkClick={async (videoUrl) => {
 							const leaf = plugin.app.workspace.getLeaf("split");
 							const openInObsidianWebViewer =

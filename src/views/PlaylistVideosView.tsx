@@ -16,6 +16,7 @@ import { UI_TEXT } from "src/constants/uiText";
 import { localStorageService } from "src/storage";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { ViewHeader } from "src/ui/ViewHeader";
+import { ActiveTagFilter } from "src/ui/ActiveTagFilter";
 import { usePlugin } from "../store/pluginContext";
 
 interface PlaylistVideosViewProps {
@@ -31,6 +32,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 }) => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+	const [selectedTag, setSelectedTag] = useState<string | null>(null);
 	const [allVideos, setAllVideos] = useState<YouTubeVideo[]>([]);
 	const [displayedVideos, setDisplayedVideos] = useState<YouTubeVideo[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
@@ -86,7 +88,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		const filtered = getFilteredVideos();
 		setDisplayedVideos(filtered.slice(0, videosPerBatch));
 		setHasMoreToShow(filtered.length > videosPerBatch);
-	}, [debouncedSearchTerm, allVideos, showAINoteOnly]);
+	}, [debouncedSearchTerm, selectedTag, allVideos, showAINoteOnly]);
 
 	// Load all videos when component mounts or playlist changes with abort controller
 	useEffect(() => {
@@ -188,11 +190,18 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				plugin.summaryStorage.hasVideoSummary(video.id),
 			)
 			: validVideos;
+		const exactTagFiltered = selectedTag
+			? aiFiltered.filter((video) =>
+				(video.snippet.tags ?? []).some(
+					(tag) => tag.toLowerCase() === selectedTag.toLowerCase(),
+				),
+			)
+			: aiFiltered;
 
-		if (!debouncedSearchTerm) return aiFiltered;
+		if (!debouncedSearchTerm) return exactTagFiltered;
 
 		const lowerSearchTerm = debouncedSearchTerm.toLowerCase();
-		return aiFiltered.filter((video) => {
+		return exactTagFiltered.filter((video) => {
 			const titleMatch = video.snippet.title
 				.toLowerCase()
 				.includes(lowerSearchTerm);
@@ -209,8 +218,14 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 	// Memoized filtered videos for performance
 	const filteredVideos = useMemo(
 		() => getFilteredVideos(),
-		[allVideos, debouncedSearchTerm, showAINoteOnly],
+		[allVideos, debouncedSearchTerm, selectedTag, showAINoteOnly],
 	);
+
+	const handleTagClick = (tag: string) => {
+		setSelectedTag((current) =>
+			current?.toLowerCase() === tag.toLowerCase() ? null : tag,
+		);
+	};
 
 	// Load more videos for infinite scroll
 	const loadMoreVideos = () => {
@@ -462,6 +477,12 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 					</label>
 				</div>
 			</div>
+			{selectedTag && (
+				<ActiveTagFilter
+					tag={selectedTag}
+					onClear={() => setSelectedTag(null)}
+				/>
+			)}
 
 			{filteredVideos.length === 0 ? (
 				<div className="no-videos-found">
@@ -469,14 +490,18 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 						<Search size={48} />
 					</div>
 					<div className="no-videos-found__title">
-						{debouncedSearchTerm
+						{debouncedSearchTerm || selectedTag
 							? "No matching videos"
 							: "No videos found"}
 					</div>
 					<div className="no-videos-found__text">
-						{debouncedSearchTerm
-							? `No videos match "${debouncedSearchTerm}". Try a different search term.`
-							: "This playlist appears to be empty."}
+						{debouncedSearchTerm && selectedTag
+							? `No videos match "${debouncedSearchTerm}" with the tag "${selectedTag}".`
+							: debouncedSearchTerm
+								? `No videos match "${debouncedSearchTerm}". Try a different search term.`
+								: selectedTag
+									? `No videos have the tag "${selectedTag}".`
+									: "This playlist appears to be empty."}
 					</div>
 					{debouncedSearchTerm && (
 						<button
@@ -550,6 +575,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 								onChannelClick={(channelTitle) => {
 									setSearchTerm(channelTitle);
 								}}
+								onTagClick={handleTagClick}
 							/>
 						))}
 					</div>
