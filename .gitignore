@@ -20,12 +20,14 @@ data.json
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
-AGENTS.md
-CLAUDE.md
 structure
 docs
-.claude/settings.local.json
-.claude
-.claude/settings.local.json
 summaries
 summaries.json
+
+# AI-related
+.omo
+.claude
+.claude/settings.local.json
+AGENTS.md
+CLAUDE.md

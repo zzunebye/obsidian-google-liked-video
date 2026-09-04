@@ -8,12 +8,13 @@ import {
 } from "obsidian";
 import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
+import { localStorageService } from "src/storage";
+import { PlaylistInfo } from "src/types";
+import { confirmDangerousAction } from "src/utils/confirmationUtils";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { UserPlaylistsView } from "./UserPlaylistsView";
-import { localStorageService } from "../storage";
 import { VIEW_TYPE_PLAYLIST_VIDEOS } from "./PlaylistVideosPane";
-import { PlaylistInfo } from "src/types";
 
 interface IUserPlaylistsPaneState {
 	playlists: PlaylistInfo[];
@@ -33,6 +34,7 @@ export class UserPlaylistsPane
 	isLoading = false;
 	error: string | null = null;
 	plugin: GoogleLikedVideoPlugin | null = null;
+	private isDeletingPlaylist = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: GoogleLikedVideoPlugin) {
 		super(leaf);
@@ -136,6 +138,7 @@ export class UserPlaylistsPane
 					description: saved.description,
 					itemCount: saved.itemCount,
 					thumbnailUrl: saved.thumbnailUrl,
+					isOwnedByUser: false,
 				}),
 			);
 
@@ -172,10 +175,53 @@ export class UserPlaylistsPane
 						onAddPlaylist={(playlistId: string) =>
 							this.handleAddPlaylist(playlistId)
 						}
+						onDeletePlaylist={(playlist: PlaylistInfo) =>
+							this.handleDeletePlaylist(playlist)
+						}
 					/>
 				</PluginContext.Provider>
 			</StrictMode>,
 		);
+	}
+
+	private async handleDeletePlaylist(playlist: PlaylistInfo): Promise<void> {
+		if (
+			this.isDeletingPlaylist ||
+			playlist.isOwnedByUser !== true ||
+			!this.plugin?.playlistApi
+		) {
+			return;
+		}
+
+		this.isDeletingPlaylist = true;
+
+		try {
+			const confirmed = await confirmDangerousAction(
+				this.app,
+				`"${playlist.title}"\n\nYouTube에서 영구 삭제되며 복구할 수 없음`,
+				{
+					title: "YouTube 플레이리스트 삭제",
+					confirmText: "영구 삭제",
+				},
+			);
+
+			if (!confirmed) return;
+
+			await this.plugin.playlistApi.deletePlaylist(playlist.id);
+			localStorageService.unpinPlaylist(playlist.id);
+			localStorageService.removeSavedPlaylist(playlist.id);
+			this.playlists = this.playlists.filter(
+				(item) => item.id !== playlist.id,
+			);
+			this.renderView();
+			new Notice(`Playlist "${playlist.title}" deleted from YouTube.`);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Unknown error";
+			new Notice(`Failed to delete playlist: ${message}`);
+		} finally {
+			this.isDeletingPlaylist = false;
+		}
 	}
 
 	private async handleAddPlaylist(playlistId: string): Promise<boolean> {

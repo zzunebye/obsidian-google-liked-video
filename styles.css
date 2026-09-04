@@ -499,6 +499,39 @@ If your plugin does not need CSS, delete this file.
 	flex-shrink: 0;
 }
 
+.video-view-header__actions button:not(:disabled) {
+	cursor: pointer;
+}
+
+.video-view-header__actions button:not(:disabled):hover,
+.video-view-header__actions button:not(:disabled):focus-visible {
+	background: var(--background-modifier-hover);
+}
+
+.playlist-delete-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary-alt);
+	color: var(--text-error);
+	cursor: pointer;
+}
+
+.playlist-delete-button:hover,
+.playlist-delete-button:focus-visible {
+	border-color: var(--text-error);
+	background: var(--background-modifier-hover);
+	color: var(--text-error);
+}
+
+.refresh-button:not(:disabled) {
+	cursor: pointer;
+}
+
 .video-view-header__refresh-button {
 	padding-left: 24px;
 	padding-right: 24px;
@@ -523,15 +556,29 @@ If your plugin does not need CSS, delete this file.
 	flex-wrap: wrap;
 }
 
+.video-view-sort__select-wrapper {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+}
+
 .video-view-sort__select {
 	border-radius: 4px;
-	-webkit-appearance: menulist !important;
-	appearance: menulist !important;
+	-webkit-appearance: none;
+	appearance: none;
 	background-color: var(--background-modifier-form-field);
 	border: 1px solid var(--background-modifier-border);
-	padding: 4px 8px;
+	padding: 4px 36px 4px 8px;
 	font-size: 0.9em;
 	color: var(--text-normal);
+	cursor: pointer;
+}
+
+.video-view-sort__select-icon {
+	position: absolute;
+	right: 12px;
+	pointer-events: none;
+	color: var(--text-muted);
 }
 
 .video-view-sort__order {

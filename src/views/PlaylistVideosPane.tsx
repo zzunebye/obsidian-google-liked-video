@@ -1,10 +1,12 @@
-import { ItemView, Menu, MenuItem, ViewStateResult, WorkspaceLeaf } from "obsidian";
-import { Root, createRoot } from "react-dom/client";
+import { ItemView, Menu, MenuItem, Notice, ViewStateResult, WorkspaceLeaf } from "obsidian";
 import { StrictMode } from "react";
+import { Root, createRoot } from "react-dom/client";
+import { localStorageService } from "src/storage";
+import { PlaylistSource, PlaylistInfo } from "src/types";
+import { confirmDangerousAction } from "src/utils/confirmationUtils";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { PlaylistVideosView } from "./PlaylistVideosView";
-import { PlaylistSource, PlaylistInfo } from "src/types";
 
 interface IPlaylistVideosViewPersistedState {
     playlistSource: PlaylistSource;
@@ -20,6 +22,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
     playlistSource: PlaylistSource;
     playlistInfo: PlaylistInfo;
     plugin: GoogleLikedVideoPlugin | null = null;
+    private isDeletingPlaylist = false;
 
     constructor(
         leaf: WorkspaceLeaf,
@@ -30,7 +33,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         super(leaf);
         this.plugin = plugin;
         this.playlistSource = playlistSource || { type: 'liked' };
-        this.playlistInfo = playlistInfo || { id: 'liked', title: 'Loading...', description: '', itemCount: 0 };
+        this.playlistInfo = playlistInfo || { id: 'liked', title: 'Loading...', description: '', itemCount: 0, isOwnedByUser: false };
     }
 
     onPaneMenu(menu: Menu, source: string): void {
@@ -88,10 +91,51 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
                     <PlaylistVideosView
                         playlistSource={this.playlistSource}
                         playlistInfo={this.playlistInfo}
+                        onDeletePlaylist={() => this.handleDeletePlaylist()}
                     />
                 </PluginContext.Provider>
             </StrictMode>
         );
+    }
+
+    private async handleDeletePlaylist(): Promise<void> {
+        if (
+            this.isDeletingPlaylist ||
+            this.playlistInfo.isOwnedByUser !== true ||
+            !this.plugin?.playlistApi
+        ) {
+            return;
+        }
+
+        this.isDeletingPlaylist = true;
+
+        try {
+            const confirmed = await confirmDangerousAction(
+                this.app,
+                `"${this.playlistInfo.title}"\n\nYouTube에서 영구 삭제되며 복구할 수 없음`,
+                {
+                    title: "YouTube 플레이리스트 삭제",
+                    confirmText: "영구 삭제",
+                },
+            );
+
+            if (!confirmed) return;
+
+            await this.plugin.playlistApi.deletePlaylist(this.playlistInfo.id);
+            localStorageService.unpinPlaylist(this.playlistInfo.id);
+            localStorageService.removeSavedPlaylist(this.playlistInfo.id);
+            new Notice(`Playlist "${this.playlistInfo.title}" deleted from YouTube.`);
+            this.app.workspace
+                .getLeavesOfType("user-playlists")
+                .forEach((leaf) => leaf.detach());
+            this.leaf.detach();
+            await this.plugin.activatePlaylistsView();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Unknown error";
+            new Notice(`Failed to delete playlist: ${message}`);
+        } finally {
+            this.isDeletingPlaylist = false;
+        }
     }
 
     async onClose() {

@@ -1,3 +1,4 @@
+import { Menu } from "obsidian";
 import { Calendar, Pin, Play, Video } from "lucide-react";
 import { PlaylistInfo } from "src/types";
 
@@ -5,6 +6,7 @@ interface PlaylistCardProps {
 	playlist: PlaylistInfo;
 	onPlaylistSelect: (playlist: PlaylistInfo) => void;
 	onTogglePin: (playlistId: string) => void;
+	onDeletePlaylist?: (playlist: PlaylistInfo) => Promise<void>;
 	isPinned: boolean;
 }
 
@@ -12,6 +14,7 @@ export const PlaylistCard = ({
 	playlist,
 	onPlaylistSelect,
 	onTogglePin,
+	onDeletePlaylist,
 	isPinned,
 }: PlaylistCardProps) => {
 	const formatItemCount = (count: number): string => {
@@ -35,14 +38,45 @@ export const PlaylistCard = ({
 		onTogglePin(playlist.id);
 	};
 
+	const createDeleteMenu = (): Menu => {
+		const menu = new Menu();
+		menu.addItem((item) => {
+			item.setTitle("Delete playlist");
+			item.setIcon("trash-2");
+			item.onClick(async () => {
+				await onDeletePlaylist?.(playlist);
+			});
+		});
+		return menu;
+	};
+
 	return (
 		<div
 			key={playlist.id}
 			className={`playlist-card ${isPinned ? "playlist-card--pinned" : ""}`}
 			onClick={() => onPlaylistSelect(playlist)}
+			onContextMenu={(event) => {
+				if (!onDeletePlaylist) return;
+				event.preventDefault();
+				event.stopPropagation();
+				createDeleteMenu().showAtMouseEvent(event.nativeEvent);
+			}}
 			role="button"
 			tabIndex={0}
 			onKeyDown={(e) => {
+				if (
+					onDeletePlaylist &&
+					(e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))
+				) {
+					e.preventDefault();
+					const rect = e.currentTarget.getBoundingClientRect();
+					createDeleteMenu().showAtPosition({
+						x: rect.left + 24,
+						y: rect.top + 24,
+					});
+					return;
+				}
+
 				if (e.key === "Enter" || e.key === " ") {
 					e.preventDefault();
 					onPlaylistSelect(playlist);

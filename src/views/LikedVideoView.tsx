@@ -17,6 +17,7 @@ import {
 	ArrowLeftToLine,
 	ArrowLeft,
 	Bot,
+	ChevronDown,
 	SlidersHorizontal,
 } from "lucide-react";
 import { VideoCard } from "src/ui/VideoCard";
@@ -517,38 +518,45 @@ export const LikedVideoView: React.FC = () => {
 						</label>
 						<div className="filters-divider" />
 						<div className="sort-controls-inline">
-							<select
-								id="sort-video-select"
-								className="video-view-sort__select"
-								aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
-								value={sortOption}
-								onChange={(e) => setSortOption(e.target.value)}
-							>
-								<option value="addedDate">
-									{UI_TEXT.SORT_BY_LIKED_ORDER}
-								</option>
-								<option value="viewCount">
-									{UI_TEXT.SORT_BY_VIEW_COUNT}
-								</option>
-								<option value="likeCount">
-									{UI_TEXT.SORT_BY_LIKE_COUNT}
-								</option>
-								<option value="commentCount">
-									{UI_TEXT.SORT_BY_COMMENT_COUNT}
-								</option>
-								<option value="likeViewRatio">
-									{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}
-								</option>
-								<option value="date">
-									{UI_TEXT.SORT_BY_PUBLISHED_DATE}
-								</option>
-								<option value="title">
-									{UI_TEXT.SORT_BY_TITLE}
-								</option>
-								<option value="duration">
-									{UI_TEXT.SORT_BY_DURATION}
-								</option>
-							</select>
+							<div className="video-view-sort__select-wrapper">
+								<select
+									id="sort-video-select"
+									className="video-view-sort__select"
+									aria-label={UI_TEXT.ARIA_SORT_VIDEOS}
+									value={sortOption}
+									onChange={(e) => setSortOption(e.target.value)}
+								>
+									<option value="addedDate">
+										{UI_TEXT.SORT_BY_LIKED_ORDER}
+									</option>
+									<option value="viewCount">
+										{UI_TEXT.SORT_BY_VIEW_COUNT}
+									</option>
+									<option value="likeCount">
+										{UI_TEXT.SORT_BY_LIKE_COUNT}
+									</option>
+									<option value="commentCount">
+										{UI_TEXT.SORT_BY_COMMENT_COUNT}
+									</option>
+									<option value="likeViewRatio">
+										{UI_TEXT.SORT_BY_LIKE_VIEW_RATIO}
+									</option>
+									<option value="date">
+										{UI_TEXT.SORT_BY_PUBLISHED_DATE}
+									</option>
+									<option value="title">
+										{UI_TEXT.SORT_BY_TITLE}
+									</option>
+									<option value="duration">
+										{UI_TEXT.SORT_BY_DURATION}
+									</option>
+								</select>
+								<ChevronDown
+									className="video-view-sort__select-icon"
+									size={16}
+									aria-hidden="true"
+								/>
+							</div>
 							<button
 								title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
 								onClick={() =>

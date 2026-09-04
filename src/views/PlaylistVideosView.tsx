@@ -1,5 +1,5 @@
+import { Notice } from "obsidian";
 import { useEffect, useMemo, useState, useRef } from "react";
-import { usePlugin } from "../store/pluginContext";
 import {
 	Play,
 	Search,
@@ -7,24 +7,27 @@ import {
 	AlertCircle,
 	RefreshCw,
 	Bot,
+	Trash2,
 } from "lucide-react";
 import { VideoCard } from "src/ui/VideoCard";
 import { SearchBar } from "src/ui/SearchBar";
 import { PlaylistInfo, PlaylistSource, YouTubeVideo } from "src/types";
-import { Notice } from "obsidian";
 import { UI_TEXT } from "src/constants/uiText";
 import { localStorageService } from "src/storage";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { ViewHeader } from "src/ui/ViewHeader";
+import { usePlugin } from "../store/pluginContext";
 
 interface PlaylistVideosViewProps {
 	playlistSource: PlaylistSource;
 	playlistInfo: PlaylistInfo;
+	onDeletePlaylist: () => Promise<void>;
 }
 
 export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 	playlistSource,
 	playlistInfo,
+	onDeletePlaylist,
 }) => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -371,17 +374,29 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 					allVideos.length,
 				)}
 				actions={
-					<button
-						className="refresh-button"
-						onClick={handleRefresh}
-						disabled={isLoading}
-						title="Refresh videos"
-					>
-						<RefreshCw
-							size={16}
-							className={isLoading ? "animate-spin" : ""}
-						/>
-					</button>
+					<>
+						<button
+							className="refresh-button"
+							onClick={handleRefresh}
+							disabled={isLoading}
+							title="Refresh videos"
+						>
+							<RefreshCw
+								size={16}
+								className={isLoading ? "animate-spin" : ""}
+							/>
+						</button>
+						{playlistInfo.isOwnedByUser === true && (
+							<button
+								className="playlist-delete-button"
+								onClick={onDeletePlaylist}
+								title="Delete playlist"
+								aria-label="Delete playlist"
+							>
+								<Trash2 size={16} />
+							</button>
+						)}
+					</>
 				}
 			/>
 

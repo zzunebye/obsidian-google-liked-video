@@ -180,6 +180,7 @@ export interface PlaylistInfo {
     itemCount: number;
     thumbnailUrl?: string;
     publishedAt?: string; // Playlist creation date
+    isOwnedByUser?: boolean;
 }
 
 // Type-safe YouTube API response interfaces

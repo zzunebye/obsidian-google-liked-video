@@ -23,6 +23,7 @@ interface UserPlaylistsViewProps {
 	onPlaylistSelect: (playlist: PlaylistInfo) => void;
 	onRetry: () => void;
 	onAddPlaylist: (playlistId: string) => Promise<boolean>;
+	onDeletePlaylist: (playlist: PlaylistInfo) => Promise<void>;
 }
 
 export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
@@ -32,6 +33,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 	onPlaylistSelect,
 	onRetry,
 	onAddPlaylist,
+	onDeletePlaylist,
 }) => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [showAddForm, setShowAddForm] = useState(false);
@@ -346,6 +348,11 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 								playlist={playlist}
 								onPlaylistSelect={onPlaylistSelect}
 								onTogglePin={handleTogglePin}
+								onDeletePlaylist={
+									playlist.isOwnedByUser === true
+										? onDeletePlaylist
+										: undefined
+								}
 								isPinned={localStorageService.isPlaylistPinned(
 									playlist.id,
 								)}

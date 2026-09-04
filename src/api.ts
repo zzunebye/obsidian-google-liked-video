@@ -52,7 +52,7 @@ export class PlaylistApi {
         }
     }
 
-    async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
+    async sendRequest(method: 'GET' | 'POST' | 'DELETE', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
         let accessToken = getGoogleAccessTokenFromLocal();
         debugLogger.api(`${method} request to: ${url}`);
 
@@ -251,8 +251,17 @@ export class PlaylistApi {
                 description: playlist.snippet.description || '',
                 itemCount: playlist.contentDetails.itemCount,
                 thumbnailUrl: playlist.snippet.thumbnails?.medium?.url,
-                publishedAt: playlist.snippet.publishedAt
+                publishedAt: playlist.snippet.publishedAt,
+                isOwnedByUser: true
             }));
+    }
+
+    async deletePlaylist(playlistId: string): Promise<void> {
+        const url = BASE_URL + 'playlists?'
+            + `id=${encodeURIComponent(playlistId)}`;
+
+        await this.sendRequest('DELETE', url, {});
+        this.clearCache({ type: 'playlist', playlistId });
     }
 
     async fetchPlaylistById(playlistId: string): Promise<PlaylistInfo> {
@@ -287,7 +296,8 @@ export class PlaylistApi {
             description: playlist.snippet.description || '',
             itemCount: playlist.contentDetails.itemCount,
             thumbnailUrl: playlist.snippet.thumbnails?.medium?.url,
-            publishedAt: playlist.snippet.publishedAt
+            publishedAt: playlist.snippet.publishedAt,
+            isOwnedByUser: false
         };
     }
 
@@ -668,4 +678,3 @@ export class LikedVideoApi {
         }
     }
 }
-
