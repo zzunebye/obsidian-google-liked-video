@@ -62,8 +62,7 @@ export class PlaylistApi {
 
         try {
             accessToken = await getValidAccessToken(
-                this.pluginSettings.googleClientId,
-                this.pluginSettings.googleClientSecret
+                this.pluginSettings.googleClientId
             );
             const response = await fetch(url, {
                 method: method,
@@ -547,8 +546,7 @@ export class LikedVideoApi {
 
         try {
             accessToken = await getValidAccessToken(
-                this.pluginSettings.googleClientId,
-                this.pluginSettings.googleClientSecret
+                this.pluginSettings.googleClientId
             );
             const response = await fetch(url, {
                 method: method,

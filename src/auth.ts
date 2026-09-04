@@ -24,7 +24,7 @@ export async function handleGoogleLogin(
     localStorageService.setAccessTokenExpirationTime(0);
 
     const userClientID = pluginSettings.googleClientId;
-    const userClientSecret = pluginSettings.googleClientSecret;
+    const userClientSecret = googleTokenStorageService.getClientSecret();
 
     const baseAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
     const authQuery = `?client_id=${userClientID.trim()}`
@@ -51,17 +51,20 @@ export async function handleGoogleLogin(
 
             const queryString = new url.URL(req.url, `http://127.0.0.1:${PORT}`).searchParams;
             const code = queryString.get("code");
-            const tokenUrl = `https://oauth2.googleapis.com/token`
-                + `?grant_type=authorization_code`
-                + `&client_id=${userClientID?.trim()}`
-                + `&client_secret=${userClientSecret?.trim()}`
-                + `&access_type=offline`
-                + `&code=${code}`
-                + `&redirect_uri=${AUTH_REDIRECT_URI}`;
+            const tokenUrl = 'https://oauth2.googleapis.com/token';
+            const tokenRequestBody = new URLSearchParams({
+                grant_type: 'authorization_code',
+                client_id: userClientID.trim(),
+                client_secret: userClientSecret.trim(),
+                access_type: 'offline',
+                code: code ?? '',
+                redirect_uri: AUTH_REDIRECT_URI,
+            });
 
             const response = await fetch(tokenUrl, {
                 method: 'POST',
                 headers: { 'content-type': 'application/x-www-form-urlencoded' },
+                body: tokenRequestBody.toString(),
             });
 
             const token = await response.json();
@@ -131,9 +134,10 @@ export async function revokeGoogleToken(token: string) {
 }
 
 
-export async function refreshAccessToken(userClientId: string, userClientSecret: string)
+export async function refreshAccessToken(userClientId: string)
     : Promise<{ access_token: string, expires_in: number }> {
     const refreshToken = googleTokenStorageService.getRefreshToken();
+    const userClientSecret = googleTokenStorageService.getClientSecret();
 
     if (!refreshToken || refreshToken == "") {
         new Notice("Refresh token for Google API is missing or expired");
@@ -165,18 +169,18 @@ export async function refreshAccessToken(userClientId: string, userClientSecret:
     return token;
 }
 
-export async function getValidAccessToken(userClientId: string, userClientSecret: string): Promise<string> {
+export async function getValidAccessToken(userClientId: string): Promise<string> {
     const currentTime = new Date().getTime();
     const expirationTime = localStorageService.getAccessTokenExpirationTime();
 
     if (currentTime >= expirationTime) {
-        const token = await refreshAccessToken(userClientId, userClientSecret);
+        const token = await refreshAccessToken(userClientId);
         return token.access_token;
     }
 
     const accessToken = googleTokenStorageService.getAccessToken();
     if (!accessToken) {
-        const token = await refreshAccessToken(userClientId, userClientSecret);
+        const token = await refreshAccessToken(userClientId);
         return token.access_token;
     }
 

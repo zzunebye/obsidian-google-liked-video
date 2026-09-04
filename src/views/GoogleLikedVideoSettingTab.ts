@@ -542,12 +542,24 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Client secret')
             .setDesc('Client secret for accessing the YouTube Data API v3')
-            .addText(text => text
-                .setPlaceholder('Enter your client secret')
-                .setValue(this.plugin.settings.googleClientSecret)
-                .onChange(async (value) => {
-                    await this.saveSetting('googleClientSecret', value);
-                }));
+            .addText(text => {
+                text.inputEl.type = 'password';
+                text
+                    .setPlaceholder('Enter your client secret')
+                    .setValue(googleTokenStorageService.getClientSecret())
+                    .onChange((value) => {
+                        try {
+                            googleTokenStorageService.setClientSecret(value);
+                        } catch (error) {
+                            if (error instanceof Error) {
+                                new Notice('Failed to save the Google client secret.');
+                                this.display();
+                                return;
+                            }
+                            throw error;
+                        }
+                    });
+            });
 
         new Setting(containerEl)
             .setName('Login with Google')

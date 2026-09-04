@@ -2,6 +2,7 @@ import type { SecretStorage } from 'obsidian';
 
 const ACCESS_TOKEN_SECRET_ID = 'geulo-google-access-token';
 const REFRESH_TOKEN_SECRET_ID = 'geulo-google-refresh-token';
+const CLIENT_SECRET_SECRET_ID = 'geulo-google-client-secret';
 const LEGACY_ACCESS_TOKEN_KEY = 'googleYtbLikedVideoAccessToken';
 const LEGACY_REFRESH_TOKEN_KEY = 'googleYtbLikedVideoRefreshToken';
 
@@ -29,12 +30,41 @@ export class GoogleTokenStorageService {
 		return this.getSecretStorage().getSecret(REFRESH_TOKEN_SECRET_ID) ?? '';
 	}
 
+	getClientSecret(): string {
+		return this.getSecretStorage().getSecret(CLIENT_SECRET_SECRET_ID) ?? '';
+	}
+
 	setAccessToken(value: string): void {
 		this.getSecretStorage().setSecret(ACCESS_TOKEN_SECRET_ID, value);
 	}
 
 	setRefreshToken(value: string): void {
 		this.getSecretStorage().setSecret(REFRESH_TOKEN_SECRET_ID, value);
+	}
+
+	setClientSecret(value: string): void {
+		this.getSecretStorage().setSecret(CLIENT_SECRET_SECRET_ID, value);
+	}
+
+	migrateAccessToken(legacyValue: unknown): void {
+		this.migratePluginDataSecret(ACCESS_TOKEN_SECRET_ID, legacyValue);
+	}
+
+	migrateClientSecret(legacyValue: unknown): void {
+		this.migratePluginDataSecret(CLIENT_SECRET_SECRET_ID, legacyValue);
+	}
+
+	private migratePluginDataSecret(secretId: string, legacyValue: unknown): void {
+		const secretStorage = this.getSecretStorage();
+		if (secretStorage.getSecret(secretId) !== null) {
+			return;
+		}
+
+		if (typeof legacyValue !== 'string' || legacyValue.length === 0) {
+			return;
+		}
+
+		secretStorage.setSecret(secretId, legacyValue);
 	}
 
 	private migrateLegacyToken(secretId: string, legacyKey: string): void {

@@ -18,11 +18,10 @@ import { TemplateService } from './services/templateService';
 import { createAIService, getActiveApiKey } from './services/aiServiceFactory';
 import { SummaryStorageService } from './services/summaryStorageService';
 import { googleTokenStorageService } from './services/googleTokenStorageService';
+import { migrateLegacyGoogleSecrets, splitGoogleSecretsFromPluginData } from './services/googleClientSecretMigration';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
-	accessToken: '',
 	googleClientId: '',
-	googleClientSecret: '',
 	dailyNotePath: '',
 	videoNotePath: '',
 	organizeByChannel: false,
@@ -63,8 +62,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	async onload() {
 		debugLogger.info('Plugin loading...');
-		await this.loadSettings();
 		googleTokenStorageService.initialize(this.app.secretStorage);
+		await this.loadSettings();
 		this.likedVideoApi = new LikedVideoApi(this.settings);
 		this.playlistApi = new PlaylistApi(this.settings);
 		debugLogger.debug('API clients initialized');
@@ -232,11 +231,19 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 	}
 
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	async loadSettings(): Promise<void> {
+		const storedData: unknown = await this.loadData();
+		const splitData = splitGoogleSecretsFromPluginData(storedData);
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, splitData.settingsData);
 		if (!isAIProvider(this.settings.aiProvider)) {
 			this.settings.aiProvider = DEFAULT_SETTINGS.aiProvider;
 		}
+
+		await migrateLegacyGoogleSecrets(splitData, {
+			migrateAccessToken: (value) => googleTokenStorageService.migrateAccessToken(value),
+			migrateClientSecret: (value) => googleTokenStorageService.migrateClientSecret(value),
+			persistSanitizedData: () => this.saveData(this.settings),
+		});
 	}
 
 	async saveSettings() {

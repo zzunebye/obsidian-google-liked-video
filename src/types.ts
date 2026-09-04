@@ -11,9 +11,7 @@ export function isAIProvider(value: string): value is AIProvider {
 }
 
 export interface ObsidianGoogleLikedVideoSettings {
-    accessToken: string;
     googleClientId: string;
-    googleClientSecret: string;
     dailyNotePath: string;
     videoNotePath: string;
     organizeByChannel: boolean;
