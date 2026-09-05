@@ -28,6 +28,7 @@ import {
 } from "src/utils/noteUtils";
 import { TemplateService } from "src/services/templateService";
 import { SummarySection } from "./SummarySection";
+import type { SummarySnapshot } from "./SummarySection";
 import { ResponsiveVideoTags } from "./VideoTags";
 
 interface VideoCardProps {
@@ -43,6 +44,11 @@ interface VideoCardProps {
 	onChannelClick: (channelTitle: string) => void;
 	onTagClick: (tag: string) => void;
 	onLinkClick: (url: string) => void;
+	summaryExpanded?: boolean;
+	onSummaryExpandedChange?: (expanded: boolean) => void;
+	onSummaryBusyChange?: (busy: boolean) => void;
+	summarySnapshot?: SummarySnapshot;
+	onSummarySnapshotChange?: (snapshot: SummarySnapshot) => void;
 }
 
 export const VideoCard = ({
@@ -57,11 +63,21 @@ export const VideoCard = ({
 	onChannelClick,
 	onTagClick,
 	onLinkClick,
+	summaryExpanded,
+	onSummaryExpandedChange,
+	onSummaryBusyChange,
+	summarySnapshot,
+	onSummarySnapshotChange,
 }: VideoCardProps) => {
 	const plugin = usePlugin();
 	const isAIEnabled = plugin.settings?.enableAISummary ?? false;
 	const showVideoTags = plugin.settings?.showVideoTags ?? true;
-	const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+	const [localSummaryExpanded, setLocalSummaryExpanded] = useState(false);
+	const isSummaryExpanded = summaryExpanded ?? localSummaryExpanded;
+	const setIsSummaryExpanded = (expanded: boolean) => {
+		if (onSummaryExpandedChange) onSummaryExpandedChange(expanded);
+		else setLocalSummaryExpanded(expanded);
+	};
 	const [hasSummary, setHasSummary] = useState(() =>
 		plugin.summaryStorage.hasVideoSummary(videoInfo.id),
 	);
@@ -119,7 +135,7 @@ export const VideoCard = ({
 	const handleSummaryToggle = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		setIsSummaryExpanded((prev) => !prev);
+		setIsSummaryExpanded(!isSummaryExpanded);
 	};
 
 	const handleChannelClick = (e: React.MouseEvent) => {
@@ -614,6 +630,9 @@ export const VideoCard = ({
 					onPreviewUpdated={() => setPreviewVersion((v) => v + 1)}
 					regenerateTrigger={regenerateTrigger}
 					videoDuration={videoInfo.contentDetails?.duration}
+					onBusyChange={onSummaryBusyChange}
+					initialSnapshot={summarySnapshot}
+					onSnapshotChange={onSummarySnapshotChange}
 				/>
 			</div>
 		);

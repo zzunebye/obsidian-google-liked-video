@@ -28,7 +28,7 @@ import { VideosContext } from "src/store/videoContext";
 import { UI_TEXT } from "src/constants/uiText";
 import { categoriesService } from "src/categoriesService";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
-import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
+import { LikedVideoCollection } from "src/ui/LikedVideoCollection";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { ActiveTagFilter } from "src/ui/ActiveTagFilter";
 import { createNotesForNewVideos, fetchAndMergeLikedVideos } from "src/services/likedVideoFetchService";
@@ -39,6 +39,7 @@ export const LikedVideoView: React.FC = () => {
 	const [selectedTag, setSelectedTag] = useState<string | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageInput, setPageInput] = useState("1");
+	const [displayMode, setDisplayMode] = useState(localStorageService.getLikedVideoDisplayMode);
 	const [sortOption, setSortOption] = useState(
 		localStorageService.getSortOption(),
 	);
@@ -285,14 +286,12 @@ export const LikedVideoView: React.FC = () => {
 
 	const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
 	const maximumPage = Math.max(totalPages, 1);
-	const startIndex = (currentPage - 1) * videosPerPage;
-	const endIndex = startIndex + videosPerPage;
+	const browsingKey = JSON.stringify([displayMode, debouncedSearchTerm, selectedTag, sortOption,
+		sortOrder, selectedCategory, contentTypeSelection, showAINoteOnly]);
 
-	const currentVideos = useMemo(() => {
-		return sortedVideos.slice(startIndex, endIndex);
-	}, [sortedVideos, startIndex, endIndex]);
-
-	const noteExistenceMap = useNoteExistenceMap(plugin, currentVideos);
+	useEffect(() => {
+		localStorageService.setLikedVideoDisplayMode(displayMode);
+	}, [displayMode]);
 
 	useEffect(() => {
 		setPageInput(String(currentPage));
@@ -307,14 +306,7 @@ export const LikedVideoView: React.FC = () => {
 	// Reset currentPage to 1 when debouncedSearchTerm, sortOption, or filters change
 	useEffect(() => {
 		setCurrentPage(1);
-	}, [
-		debouncedSearchTerm,
-		selectedTag,
-		sortOption,
-		selectedCategory,
-		contentTypeSelection,
-		showAINoteOnly,
-	]);
+	}, [browsingKey]);
 
 	const handleTagClick = (tag: string) => {
 		setSelectedTag((current) =>
@@ -480,6 +472,15 @@ export const LikedVideoView: React.FC = () => {
 			>
 				<div className="video-view-sort">
 					<div className="video-view-sort-left-group">
+						<label className="liked-video-display-mode">
+							<span>View Mode</span>
+							<select aria-label="View Mode" value={displayMode}
+								onChange={event => setDisplayMode(event.target.value === "infinite" ? "infinite" : "pagination")}>
+								<option value="pagination">Pagination</option>
+								<option value="infinite">Infinite scroll</option>
+							</select>
+						</label>
+						<div className="filters-divider" />
 						<div className="category-filter">
 							<Filter
 								size={14}
@@ -629,7 +630,7 @@ export const LikedVideoView: React.FC = () => {
 					</div>
 				</div>
 			</div>
-			{currentVideos.length === 0 && (
+			{sortedVideos.length === 0 && (
 				<div className="no-videos-found">
 					<div className="no-videos-found__text">
 						{debouncedSearchTerm || selectedTag
@@ -689,15 +690,16 @@ export const LikedVideoView: React.FC = () => {
 				</div>
 			)}
 			{/* Videos */}
-			<div className="video-view__video-grid">
-				{currentVideos.map((video) => (
+			<LikedVideoCollection videos={sortedVideos} mode={displayMode} currentPage={currentPage}
+				resetKey={browsingKey} renderVideo={(video, noteExists, summaryState) => (
 					<VideoCard
+						{...summaryState}
 						key={video.id}
 						source="liked"
 						id={video.id}
 						url={`https://www.youtube.com/watch?v=${video.id}`}
 						videoInfo={video}
-						noteExists={noteExistenceMap.get(video.id) ?? false}
+						noteExists={noteExists}
 						onUnlike={async () => {
 							const index = videos.findIndex((v) => v.id === video.id);
 							const previousVideoId = index > 0 ? videos[index - 1].id : null;
@@ -777,11 +779,10 @@ export const LikedVideoView: React.FC = () => {
 							}
 						}}
 					/>
-				))}
-			</div>
+				)} />
 
 			{/* Pagination */}
-			<nav className="video-view__pagination" aria-label="Pagination">
+			{displayMode === "pagination" && <nav className="video-view__pagination" aria-label="Pagination">
 				<div className="video-view__pagination__controls">
 					{currentPage > 1 && (
 						<>
@@ -853,7 +854,7 @@ export const LikedVideoView: React.FC = () => {
 						</>
 					)}
 				</div>
-			</nav>
+			</nav>}
 			<div style={{ height: "24px" }}></div>
 		</div>
 	);

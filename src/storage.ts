@@ -1,4 +1,4 @@
-import { YouTubeVideo, ContentTypeSelection, ContentTypeOption, PlaylistInfo } from "./types";
+import { YouTubeVideo, ContentTypeSelection, ContentTypeOption, PlaylistInfo, LikedVideoDisplayMode } from "./types";
 
 export interface SavedPlaylist extends PlaylistInfo {
     savedAt: string; // ISO string
@@ -6,6 +6,14 @@ export interface SavedPlaylist extends PlaylistInfo {
 }
 
 class LocalStorageService {
+	getLikedVideoDisplayMode(): LikedVideoDisplayMode {
+		return window.localStorage.getItem("likedVideoDisplayMode") === "infinite"
+			? "infinite" : "pagination";
+	}
+
+	setLikedVideoDisplayMode(mode: LikedVideoDisplayMode): void {
+		window.localStorage.setItem("likedVideoDisplayMode", mode);
+	}
     /**
      * Retrieves liked videos from local storage.
      * @returns {YouTubeVideo[]} An array of liked videos.
@@ -223,4 +231,3 @@ class LocalStorageService {
 }
 
 export const localStorageService = new LocalStorageService();
-

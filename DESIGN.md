@@ -79,6 +79,16 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 
 ## 6. Motion & Interaction
 
+### Liked-video browsing
+
+- A labelled native View Mode select inside the Filter box switches Pagination / Infinite scroll; Pagination is the default and the preference is saved locally. It collapses together with the other filters.
+- Pagination keeps ten cards per page. Infinite scroll uses measured virtual rows with three rows of overscan, the existing 500px minimum card width, and 16px gaps. Obsidian's view-content owns scrolling.
+- Infinite scroll initially exposes 50 videos, adding another 50 when the current end is within 600px below the pane. Expansion uses local data without network calls or artificial loading delays; cards outside the viewport remain virtualized. A muted footer shows the exposed count until the actual end is reached.
+- Mode, search, filter, and sort changes reset the exposed range to 50; resizing preserves it. Pending cards outside that range stay mounted invisibly without increasing the scrollable length.
+- Mode, search, filter, and sort changes return to the beginning without animation. Resizing recomputes columns and measured heights.
+- Expanded summaries retain their state by video ID. Cards with pending summary work remain mounted until that work settles, including while filtered out or switching modes.
+- The list exposes its total size and card positions. Offscreen retained work is hidden from focus and accessibility. The mode select and end-of-list message use native form styling and muted text.
+
 - Existing micro-interactions use 120-200ms easing for hover and press feedback.
 - The detail delete button is always visible for owned playlists and uses a dark secondary surface with the destructive color token.
 - Card deletion follows native context-menu interaction and does not add an inline card action.
