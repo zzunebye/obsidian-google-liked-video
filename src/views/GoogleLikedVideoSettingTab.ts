@@ -12,7 +12,7 @@ import { UI_TEXT } from '../constants/uiText';
 import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templateConstants';
 import { PlaylistVideosPane } from './PlaylistVideosPane';
 import { createNotesForNewVideos, fetchAndMergeLikedVideos, FetchAndMergeLikedVideosResult } from '../services/likedVideoFetchService';
-import { addWideTextSetting, createCollapsibleHtmlReference, createMonospaceTextarea } from '../utils/settingUiUtils';
+import { addWideTextSetting, createCollapsibleReference, createMonospaceTextarea } from '../utils/settingUiUtils';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
@@ -267,7 +267,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             },
         });
 
-        createCollapsibleHtmlReference(
+		createCollapsibleReference(
             editorEl,
             '📖 Available Variables (click to expand)',
             TEMPLATE_VARIABLES_REFERENCE

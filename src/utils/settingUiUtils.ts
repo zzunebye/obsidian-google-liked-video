@@ -32,6 +32,16 @@ export interface WideTextSettingOptions {
 	onChange: (value: string) => void | Promise<void>;
 }
 
+export interface CollapsibleReferenceItem {
+	readonly variables: readonly string[];
+	readonly description?: string;
+}
+
+export interface CollapsibleReferenceSection {
+	readonly title: string;
+	readonly items: readonly CollapsibleReferenceItem[];
+}
+
 export function addWideTextSetting(
 	containerEl: HTMLElement,
 	options: WideTextSettingOptions
@@ -53,15 +63,37 @@ export function addWideTextSetting(
 		});
 }
 
-export function createCollapsibleHtmlReference(
+export function createCollapsibleReference(
 	containerEl: HTMLElement,
 	summary: string,
-	htmlContent: string
+	sections: readonly CollapsibleReferenceSection[]
 ): HTMLDetailsElement {
 	const detailsEl = containerEl.createEl('details', {
 		cls: 'template-variables-reference',
 	});
 	detailsEl.createEl('summary', { text: summary });
-	detailsEl.createDiv().innerHTML = htmlContent;
+	const contentEl = detailsEl.createDiv();
+	contentEl.style.marginTop = '12px';
+	contentEl.style.fontSize = '12px';
+	contentEl.style.lineHeight = '1.6';
+
+	for (const section of sections) {
+		const headingEl = contentEl.createEl('h4', { text: section.title });
+		headingEl.style.margin = '12px 0 8px';
+		headingEl.style.color = 'var(--text-accent)';
+
+		for (const item of section.items) {
+			const itemEl = contentEl.createDiv();
+			item.variables.forEach((variable, index) => {
+				if (index > 0) {
+					itemEl.createSpan({ text: ', ' });
+				}
+				itemEl.createEl('code', { text: variable });
+			});
+			if (item.description) {
+				itemEl.createSpan({ text: ` → ${item.description}` });
+			}
+		}
+	}
 	return detailsEl;
 }

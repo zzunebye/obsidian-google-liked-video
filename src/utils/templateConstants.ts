@@ -1,3 +1,5 @@
+import type { CollapsibleReferenceSection } from './settingUiUtils';
+
 export const DEFAULT_TEMPLATE = `---
 title: "{{title}}"
 type: youtube-video
@@ -20,56 +22,76 @@ content-language: {{language|unknown}}
 # {{title}}
 `;
 
-export const TEMPLATE_VARIABLES_REFERENCE = `
-                <div style="margin-top: 12px; font-size: 12px; line-height: 1.6;">
-                    <h4 style="margin: 12px 0 8px 0; color: var(--text-accent);">📅 Date & Time (Obsidian Core)</h4>
-                    <code>{{date}}</code> → Current date (2024-01-31)<br>
-                    <code>{{date:YYYY-MM-DD}}</code> → Custom format<br>
-                    <code>{{time}}</code> → Current time (14:30)<br>
-                    <code>{{time:HH:mm:ss}}</code> → Custom format<br>
-
-                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">🎬 Video Info</h4>
-                    <code>{{title}}</code> → Video title<br>
-                    <code>{{video_id}}</code> → Video ID<br>
-                    <code>{{video_url}}</code> → YouTube URL<br>
-                    <code>{{channel}}</code> → Channel name<br>
-                    <code>{{channel_id}}</code> → Channel ID<br>
-                    <code>{{description}}</code> → Video description<br>
-                    <code>{{duration}}</code> → Duration (12:34)<br>
-                    <code>{{duration_seconds}}</code> → Duration in seconds<br>
-                    <code>{{category}}</code> → Category name<br>
-                    <code>{{category_id}}</code> → Category ID<br>
-                    <code>{{category_underscored}}</code> → Category with underscores<br>
-                    <code>{{published_at}}</code> → Full ISO timestamp<br>
-                    <code>{{published_date}}</code> → Publish date (YYYY-MM-DD)<br>
-                    <code>{{published_year}}</code> → Publish year<br>
-                    <code>{{created_at}}</code> → Note creation datetime<br>
-                    <code>{{created_date}}</code> → Note creation date<br>
-                    <code>{{pulled_at}}</code> → When video was fetched<br>
-
-                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">📹 Content Details</h4>
-                    <code>{{definition}}</code> → Video quality (hd/sd)<br>
-                    <code>{{caption}}</code> → Has captions (true/false)<br>
-                    <code>{{dimension}}</code> → Video dimension (2d/3d)<br>
-
-                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">📊 Statistics</h4>
-                    <code>{{view_count}}</code> → View count (raw number)<br>
-                    <code>{{view_count_formatted}}</code> → View count (e.g. 1.2M)<br>
-                    <code>{{like_count}}</code> / <code>{{like_count_formatted}}</code> → Like count<br>
-                    <code>{{comment_count}}</code> / <code>{{comment_count_formatted}}</code> → Comment count<br>
-
-                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">🏷️ Tags & Language</h4>
-                    <code>{{tags}}</code> → Tags for display<br>
-                    <code>{{tags_array}}</code> → Tags for display<br>
-                    <code>{{tags_comma_separated}}</code> → Tags for YAML array<br>
-                    <code>{{language}}</code> → Language code (en)<br>
-                    <code>{{language_name}}</code> → Language name (English)<br>
-
-                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">🖼️ Thumbnails</h4>
-                    <code>{{thumbnail_default}}</code>, <code>{{thumbnail_medium}}</code><br>
-                    <code>{{thumbnail_high}}</code>, <code>{{thumbnail_maxres}}</code><br>
-
-                    <h4 style="margin: 16px 0 8px 0; color: var(--text-accent);">💡 Fallback Syntax</h4>
-                    <code>{{variable|default}}</code> → Use default if value is empty
-                </div>
-            `;
+export const TEMPLATE_VARIABLES_REFERENCE: readonly CollapsibleReferenceSection[] = [
+	{
+		title: '📅 Date & Time (Obsidian Core)',
+		items: [
+			{ variables: ['{{date}}'], description: 'Current date (2024-01-31)' },
+			{ variables: ['{{date:YYYY-MM-DD}}'], description: 'Custom format' },
+			{ variables: ['{{time}}'], description: 'Current time (14:30)' },
+			{ variables: ['{{time:HH:mm:ss}}'], description: 'Custom format' },
+		],
+	},
+	{
+		title: '🎬 Video Info',
+		items: [
+			{ variables: ['{{title}}'], description: 'Video title' },
+			{ variables: ['{{video_id}}'], description: 'Video ID' },
+			{ variables: ['{{video_url}}'], description: 'YouTube URL' },
+			{ variables: ['{{channel}}'], description: 'Channel name' },
+			{ variables: ['{{channel_id}}'], description: 'Channel ID' },
+			{ variables: ['{{description}}'], description: 'Video description' },
+			{ variables: ['{{duration}}'], description: 'Duration (12:34)' },
+			{ variables: ['{{duration_seconds}}'], description: 'Duration in seconds' },
+			{ variables: ['{{category}}'], description: 'Category name' },
+			{ variables: ['{{category_id}}'], description: 'Category ID' },
+			{ variables: ['{{category_underscored}}'], description: 'Category with underscores' },
+			{ variables: ['{{published_at}}'], description: 'Full ISO timestamp' },
+			{ variables: ['{{published_date}}'], description: 'Publish date (YYYY-MM-DD)' },
+			{ variables: ['{{published_year}}'], description: 'Publish year' },
+			{ variables: ['{{created_at}}'], description: 'Note creation datetime' },
+			{ variables: ['{{created_date}}'], description: 'Note creation date' },
+			{ variables: ['{{pulled_at}}'], description: 'When video was fetched' },
+		],
+	},
+	{
+		title: '📹 Content Details',
+		items: [
+			{ variables: ['{{definition}}'], description: 'Video quality (hd/sd)' },
+			{ variables: ['{{caption}}'], description: 'Has captions (true/false)' },
+			{ variables: ['{{dimension}}'], description: 'Video dimension (2d/3d)' },
+		],
+	},
+	{
+		title: '📊 Statistics',
+		items: [
+			{ variables: ['{{view_count}}'], description: 'View count (raw number)' },
+			{ variables: ['{{view_count_formatted}}'], description: 'View count (e.g. 1.2M)' },
+			{ variables: ['{{like_count}}', '{{like_count_formatted}}'], description: 'Like count' },
+			{ variables: ['{{comment_count}}', '{{comment_count_formatted}}'], description: 'Comment count' },
+		],
+	},
+	{
+		title: '🏷️ Tags & Language',
+		items: [
+			{ variables: ['{{tags}}'], description: 'Tags for display' },
+			{ variables: ['{{tags_array}}'], description: 'Tags for display' },
+			{ variables: ['{{tags_comma_separated}}'], description: 'Tags for YAML array' },
+			{ variables: ['{{language}}'], description: 'Language code (en)' },
+			{ variables: ['{{language_name}}'], description: 'Language name (English)' },
+		],
+	},
+	{
+		title: '🖼️ Thumbnails',
+		items: [
+			{ variables: ['{{thumbnail_default}}', '{{thumbnail_medium}}'] },
+			{ variables: ['{{thumbnail_high}}', '{{thumbnail_maxres}}'] },
+		],
+	},
+	{
+		title: '💡 Fallback Syntax',
+		items: [
+			{ variables: ['{{variable|default}}'], description: 'Use default if value is empty' },
+		],
+	},
+];
