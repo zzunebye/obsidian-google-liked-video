@@ -30,7 +30,6 @@ jobs:
 
           gh release create "$tag" \
             --title="$tag" \
-            --draft \
             --generate-notes \
             --notes "$(date +'%Y-%m-%d')" \
             main.js manifest.json styles.css
