@@ -26,6 +26,7 @@ import {
 	getExpectedNotePath,
 	computeExpectedNotePath,
 } from "src/utils/noteUtils";
+import { ensureVideoNoteId, findVideoNote } from "src/utils/videoNoteUtils";
 import { TemplateService } from "src/services/templateService";
 import { SummarySection } from "./SummarySection";
 import type { SummarySnapshot } from "./SummarySection";
@@ -149,13 +150,14 @@ export const VideoCard = ({
 
 		try {
 			const baseFileName = sanitizeFileName(videoInfo.snippet.title);
-			const customPath = plugin.settings?.videoNotePath || "Youtube";
+			const configuredPath = plugin.settings?.videoNotePath?.trim() || "";
+			const customPath = configuredPath;
 			const organizeByChannel =
-				plugin.settings?.organizeByChannel || false;
+				configuredPath.length > 0 && (plugin.settings?.organizeByChannel || false);
 			const channelName = videoInfo.snippet.channelTitle;
 			const appInstance = plugin.app;
 
-			const expectedPath = await getExpectedNotePath(
+			const expectedPath = computeExpectedNotePath(
 				appInstance,
 				baseFileName,
 				customPath,
@@ -163,12 +165,22 @@ export const VideoCard = ({
 				channelName,
 			);
 
-			// Check if a note already exists at the expected path
-			const existingFile =
-				appInstance.vault.getAbstractFileByPath(expectedPath);
+			const legacyPaths = configuredPath
+				? [expectedPath]
+				: [
+					expectedPath,
+					computeExpectedNotePath(appInstance, baseFileName, "Youtube", organizeByChannel, channelName),
+				];
+			const existingFile = findVideoNote(appInstance, videoInfo.id, legacyPaths);
 
 			if (!existingFile) {
-				// Note doesn't exist, create it
+				const fullPath = await getExpectedNotePath(
+					appInstance,
+					baseFileName,
+					customPath,
+					organizeByChannel,
+					channelName,
+				);
 				const templateService = plugin.settings
 					? new TemplateService(appInstance, plugin.settings)
 					: undefined;
@@ -181,9 +193,10 @@ export const VideoCard = ({
 				);
 
 				const newNoteFile = await appInstance.vault.create(
-					expectedPath,
+					fullPath,
 					noteContent,
 				);
+				await ensureVideoNoteId(appInstance, newNoteFile, videoInfo.id);
 
 				await appInstance.workspace.openLinkText(
 					newNoteFile.path,
@@ -192,11 +205,12 @@ export const VideoCard = ({
 				);
 				new Notice(`Created note: ${newNoteFile.basename}`);
 			} else {
+				await ensureVideoNoteId(appInstance, existingFile, videoInfo.id);
 				new Notice(
-					`Note already exists for this video. Opening existing note: ${expectedPath}`,
+					`Note already exists for this video. Opening existing note: ${existingFile.path}`,
 				);
 				await appInstance.workspace.openLinkText(
-					expectedPath,
+					existingFile.path,
 					"",
 					true,
 				);
@@ -212,8 +226,9 @@ export const VideoCard = ({
 	const handleAddSummaryToNote = async (summaryText: string) => {
 		const appInstance = plugin.app;
 		const baseFileName = sanitizeFileName(videoInfo.snippet.title);
-		const customPath = plugin.settings?.videoNotePath || "Youtube";
-		const organizeByChannel = plugin.settings?.organizeByChannel || false;
+		const configuredPath = plugin.settings?.videoNotePath?.trim() || "";
+		const customPath = configuredPath;
+		const organizeByChannel = configuredPath.length > 0 && (plugin.settings?.organizeByChannel || false);
 		const channelName = videoInfo.snippet.channelTitle;
 
 		const expectedPath = computeExpectedNotePath(
@@ -224,9 +239,13 @@ export const VideoCard = ({
 			channelName,
 		);
 
-		let file = appInstance.vault.getAbstractFileByPath(
-			expectedPath,
-		) as TFile | null;
+		const legacyPaths = configuredPath
+			? [expectedPath]
+			: [
+				expectedPath,
+				computeExpectedNotePath(appInstance, baseFileName, "Youtube", organizeByChannel, channelName),
+			];
+		let file = findVideoNote(appInstance, videoInfo.id, legacyPaths);
 
 		if (!file) {
 			// Create the note first
@@ -251,6 +270,7 @@ export const VideoCard = ({
 
 			file = await appInstance.vault.create(fullPath, noteContent);
 		}
+		await ensureVideoNoteId(appInstance, file, videoInfo.id);
 
 		// Check frontmatter for existing AI summary (with content fallback for cache staleness)
 		const cache = appInstance.metadataCache.getFileCache(file);

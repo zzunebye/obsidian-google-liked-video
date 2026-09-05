@@ -10,8 +10,9 @@ import { localStorageService } from './storage';
 import { debugLogger } from './debug';
 import { UI_TEXT } from './constants/uiText';
 import { categoriesService } from './categoriesService';
-import { FeatureIntroModal } from './components/FeatureIntroModal';
-import { getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
+import { FEATURE_ANNOUNCEMENT, LEGACY_ANNOUNCEMENT_ID, FeatureIntroModal } from './components/FeatureIntroModal';
+import { computeExpectedNotePath, getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
+import { ensureVideoNoteId, findVideoNote } from './utils/videoNoteUtils';
 import { DEFAULT_TEMPLATE } from './utils/templateConstants';
 import { createNotesForNewVideos, fetchAndMergeLikedVideos } from './services/likedVideoFetchService';
 import { TemplateService } from './services/templateService';
@@ -62,6 +63,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	isFetching = false;
 	paneRef: LikedVideoListPane | null = null;
 	settingTabRef: GoogleLikedVideoSettingTab | null = null;
+	private featureAnnouncementModal: FeatureIntroModal | null = null;
 
 	async onload() {
 		debugLogger.info('Plugin loading...');
@@ -142,20 +144,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'show-feature-intro-modal',
-			name: 'Show Feature Introduction Modal (Dev)',
+			name: "What's new",
 			callback: () => {
-				const modal = new FeatureIntroModal(this.app);
-				modal.open();
-			}
-		});
-
-		this.addCommand({
-			id: 'reset-version-for-testing',
-			name: 'Reset Version (Dev - triggers modal on reload)',
-			callback: async () => {
-				this.settings.lastSeenVersion = '';
-				await this.saveSettings();
-				new Notice('Version reset! Reload the plugin to see the intro modal.');
+				this.showFeatureAnnouncement();
 			}
 		});
 
@@ -183,12 +174,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		// Initialize categories in the background
 		this.initializeCategories();
 
-		// Check if this is a version update and show feature intro modal
-		this.checkVersionUpdate();
+		await this.checkFeatureAnnouncement();
 	}
 
 	onunload() {
 		debugLogger.info('Plugin unloading...');
+		const announcementModal = this.featureAnnouncementModal;
+		this.featureAnnouncementModal = null;
+		announcementModal?.close();
 		this.stopAutoFetch();
 		void this.likedVideoStorage?.close().catch((error: unknown) => {
 			debugLogger.error('[LikedVideoStorage] Failed to save on unload:', error);
@@ -389,12 +382,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	async automateVideoProcessing(video: YouTubeVideo) {
 		try {
 			const baseFileName = sanitizeFileName(video.snippet.title);
-			const customPath = this.settings?.videoNotePath || '';
-			const organizeByChannel = this.settings?.organizeByChannel || false;
+			const configuredPath = this.settings?.videoNotePath?.trim() || '';
+			const customPath = configuredPath;
+			const organizeByChannel = configuredPath.length > 0 && (this.settings?.organizeByChannel || false);
 			const channelName = video.snippet.channelTitle;
 
-			// Get the expected path for this video note
-			const expectedPath = await getExpectedNotePath(
+			const expectedPath = computeExpectedNotePath(
 				this.app,
 				baseFileName,
 				customPath,
@@ -402,11 +395,22 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				channelName
 			);
 
-			// Check if a note already exists at the expected path
-			const existingFile = this.app.vault.getAbstractFileByPath(expectedPath);
+			const legacyPaths = configuredPath
+				? [expectedPath]
+				: [
+					expectedPath,
+					computeExpectedNotePath(this.app, baseFileName, 'Youtube', organizeByChannel, channelName),
+				];
+			const existingFile = findVideoNote(this.app, video.id, legacyPaths);
 
 			if (!existingFile) {
-				// Note doesn't exist, create it
+				const fullPath = await getExpectedNotePath(
+					this.app,
+					baseFileName,
+					customPath,
+					organizeByChannel,
+					channelName
+				);
 				const templateService = new TemplateService(this.app, this.settings);
 
 				const videoUrl = getVideoUrl(video.id);
@@ -417,7 +421,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					templateService
 				);
 
-				const newNoteFile = await this.app.vault.create(expectedPath, noteContent);
+				const newNoteFile = await this.app.vault.create(fullPath, noteContent);
+				await ensureVideoNoteId(this.app, newNoteFile, video.id);
 				new Notice(`Created note: ${newNoteFile.basename}`);
 
 				// Get AI Summary
@@ -433,6 +438,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				if (this.settings.linkToDailyNote) {
 					await linkToDailyNote(this.app, newNoteFile);
 				}
+			} else {
+				await ensureVideoNoteId(this.app, existingFile, video.id);
 			}
 		} catch (error) {
 			console.error('Error handling video note automation:', error);
@@ -519,56 +526,48 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		return categoriesService.getCategoryDisplay(categoryId);
 	}
 
-	/**
-	 * Check if this is a version update and show feature intro modal
-	 */
-	private async checkVersionUpdate(): Promise<void> {
-		const currentVersion = this.manifest.version;
-		const lastSeenVersion = this.settings.lastSeenVersion;
-		const lastSeenVersionFromStorage = localStorageService.getLastSeenVersion();
-
-		// Use whichever source has the most recent version seen
-		const effectiveLastSeen = lastSeenVersion && this.isNewerVersion(lastSeenVersion, lastSeenVersionFromStorage)
-			? lastSeenVersion
-			: (lastSeenVersionFromStorage || lastSeenVersion);
-
-		// Show modal if this is a new installation or version update
-		if (!effectiveLastSeen || this.isNewerVersion(currentVersion, effectiveLastSeen)) {
-			// Wait a bit for the plugin to fully load before showing the modal
-			setTimeout(() => {
-				const modal = new FeatureIntroModal(this.app);
-				modal.open();
-			}, 2000);
-
-			// Update the last seen version in both settings and localStorage
-			this.settings.lastSeenVersion = currentVersion;
-			await this.saveSettings();
-			localStorageService.setLastSeenVersion(currentVersion);
+	private async checkFeatureAnnouncement(): Promise<void> {
+		if (this.settings.lastSeenAnnouncementId === undefined) {
+			// Legacy users have already received the 3.0 announcement; new installs skip the current one.
+			const hasLegacyVersion = this.settings.lastSeenVersion || localStorageService.getLastSeenVersion();
+			const baselineId = hasLegacyVersion ? LEGACY_ANNOUNCEMENT_ID : FEATURE_ANNOUNCEMENT.id;
+			if (!await this.saveSeenAnnouncement(baselineId)) return;
 		}
+
+		if (this.settings.lastSeenAnnouncementId === FEATURE_ANNOUNCEMENT.id) return;
+
+		const timeout = window.setTimeout(() => {
+			if (this.settings.lastSeenAnnouncementId !== FEATURE_ANNOUNCEMENT.id) {
+				this.showFeatureAnnouncement();
+			}
+		}, 2000);
+		this.register(() => window.clearTimeout(timeout));
 	}
 
-	/**
-	 * Compare version strings to determine if current is newer than last seen
-	 */
-	private isNewerVersion(current: string, lastSeen: string): boolean {
-		if (!lastSeen) return true;
+	private showFeatureAnnouncement(): void {
+		if (this.featureAnnouncementModal) return;
+		const announcementId = FEATURE_ANNOUNCEMENT.id;
+		const modal = new FeatureIntroModal(this.app, () => {
+			if (this.featureAnnouncementModal !== modal) return;
+			this.featureAnnouncementModal = null;
+			void this.saveSeenAnnouncement(announcementId);
+		});
+		this.featureAnnouncementModal = modal;
+		modal.open();
+	}
 
-		const currentParts = current.split('.').map(Number);
-		const lastSeenParts = lastSeen.split('.').map(Number);
-
-		// Ensure arrays have the same length by padding with zeros
-		const maxLength = Math.max(currentParts.length, lastSeenParts.length);
-		while (currentParts.length < maxLength) currentParts.push(0);
-		while (lastSeenParts.length < maxLength) lastSeenParts.push(0);
-
-		for (let i = 0; i < maxLength; i++) {
-			if (currentParts[i] > lastSeenParts[i]) {
-				return true;
-			} else if (currentParts[i] < lastSeenParts[i]) {
-				return false;
-			}
+	private async saveSeenAnnouncement(announcementId: string): Promise<boolean> {
+		if (this.settings.lastSeenAnnouncementId === announcementId) return true;
+		const previousId = this.settings.lastSeenAnnouncementId;
+		this.settings.lastSeenAnnouncementId = announcementId;
+		try {
+			await this.saveSettings();
+			return true;
+		} catch (error) {
+			this.settings.lastSeenAnnouncementId = previousId;
+			debugLogger.error('Failed to save announcement state:', error);
+			new Notice('Geulo: Could not save announcement status. It may appear again next time.');
+			return false;
 		}
-
-		return false; // Versions are equal
 	}
 }

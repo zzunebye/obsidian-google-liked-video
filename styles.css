@@ -1868,7 +1868,7 @@ button.video-tag-chip {
 	gap: 2px;
 }
 
-.feature-card h5 {
+.feature-card h3 {
 	font-size: 16px;
 	font-weight: 600;
 	color: var(--text-normal);
@@ -2275,4 +2275,68 @@ button.video-tag-chip {
 	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
+}
+
+/* Scrollable update notes keep the close action visible. */
+.geulo-release-notes.modal {
+	width: min(720px, calc(100vw - 32px));
+	max-height: 85vh;
+}
+
+.geulo-release-notes .feature-intro-modal-container {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.geulo-release-notes .feature-intro-modal {
+	min-height: 0;
+	padding: 0;
+	gap: 16px;
+	overflow: hidden;
+}
+
+.geulo-release-notes .modal-header {
+	text-align: left;
+	margin: 0;
+}
+
+.geulo-release-notes .features-grid {
+	min-height: 0;
+	overflow-y: auto;
+	gap: 16px;
+	padding: 2px 8px 2px 2px;
+}
+
+.geulo-release-notes .feature-card {
+	padding: 16px;
+	text-align: left;
+	align-items: stretch;
+}
+
+.geulo-release-notes .release-version {
+	color: var(--text-accent);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+	margin-bottom: 4px;
+}
+
+.geulo-release-notes .feature-content ul {
+	margin: 8px 0 0;
+	padding-inline-start: 20px;
+	font-size: var(--font-ui-small);
+	line-height: 1.6;
+}
+
+.geulo-release-notes .feature-content li + li {
+	margin-top: 8px;
+}
+
+.geulo-release-notes .modal-footer {
+	flex-shrink: 0;
+}
+
+.geulo-release-notes .modal-footer p {
+	margin-bottom: 12px;
 }

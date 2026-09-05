@@ -1,6 +1,7 @@
 export const DEFAULT_TEMPLATE = `---
 title: "{{title}}"
 type: youtube-video
+video_id: "{{video_id}}"
 channel: "{{channel}}"
 channel_id: {{channel_id}}
 duration: {{duration}}

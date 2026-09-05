@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { TAbstractFile, EventRef } from "obsidian";
+import { TFile, EventRef } from "obsidian";
 import { sanitizeFileName, computeExpectedNotePath } from "src/utils/noteUtils";
+import { getVideoNoteId, indexVideoNotesById } from "src/utils/videoNoteUtils";
 import { YouTubeVideo } from "src/types";
 
 /**
@@ -27,13 +28,12 @@ export const useNoteExistenceMap = (
     plugin: any,
     videos: YouTubeVideo[]
 ): Map<string, boolean> => {
-    const videoNotePath = plugin.settings?.videoNotePath || 'Youtube';
-    const shouldGroupByChannel = plugin.settings?.organizeByChannel || false;
+    const configuredPath = plugin.settings?.videoNotePath?.trim() || '';
+    const videoNotePath = configuredPath;
+    const shouldGroupByChannel = configuredPath.length > 0 && (plugin.settings?.organizeByChannel || false);
 
-    // Build a stable lookup: expectedPath → videoId, and videoId → expectedPath
-    const { pathToId, idToPath } = useMemo(() => {
-        const pathToIdMap = new Map<string, string>();
-        const idToPathMap = new Map<string, string>();
+    const idToPaths = useMemo(() => {
+        const idToPathsMap = new Map<string, readonly string[]>();
         for (const video of videos) {
             const baseFileName = sanitizeFileName(video.snippet.title);
             const expectedPath = computeExpectedNotePath(
@@ -43,76 +43,92 @@ export const useNoteExistenceMap = (
                 shouldGroupByChannel,
                 video.snippet.channelTitle
             );
-            pathToIdMap.set(expectedPath, video.id);
-            idToPathMap.set(video.id, expectedPath);
+            const legacyPaths = configuredPath
+                ? [expectedPath]
+                : [
+                    expectedPath,
+                    computeExpectedNotePath(
+                        plugin.app,
+                        baseFileName,
+                        'Youtube',
+                        shouldGroupByChannel,
+                        video.snippet.channelTitle,
+                    ),
+                ];
+            idToPathsMap.set(video.id, legacyPaths);
         }
-        return { pathToId: pathToIdMap, idToPath: idToPathMap };
-    }, [plugin.app, videos, videoNotePath, shouldGroupByChannel]);
+        return idToPathsMap;
+    }, [plugin.app, videos, configuredPath, videoNotePath, shouldGroupByChannel]);
 
-    // Compute existence synchronously when paths change
-    const initialExistence = useMemo((): Map<string, boolean> => {
+    const computeExistence = (notesById = indexVideoNotesById(plugin.app)): Map<string, boolean> => {
         const result = new Map<string, boolean>();
-        for (const [videoId, path] of idToPath) {
-            result.set(videoId, plugin.app.vault.getAbstractFileByPath(path) !== null);
+        for (const [videoId, paths] of idToPaths) {
+            if (notesById.has(videoId)) {
+                result.set(videoId, true);
+                continue;
+            }
+            const hasLegacyNote = paths.some((path) => {
+                const noteAtLegacyPath = plugin.app.vault.getAbstractFileByPath(path);
+                if (!(noteAtLegacyPath instanceof TFile)) return false;
+                const pathVideoId = getVideoNoteId(plugin.app, noteAtLegacyPath);
+                return pathVideoId === null || pathVideoId === videoId;
+            });
+            result.set(videoId, hasLegacyNote);
         }
         return result;
-    }, [plugin.app, idToPath]);
+    };
+
+    const initialExistence = useMemo((): Map<string, boolean> => {
+        return computeExistence();
+    }, [plugin.app, idToPaths]);
 
     const [existenceMap, setExistenceMap] = useState(initialExistence);
-    const [prevIdToPath, setPrevIdToPath] = useState(idToPath);
+    const [prevIdToPaths, setPrevIdToPaths] = useState(idToPaths);
 
     // Reset state during render when videos change (React recommended pattern)
-    if (idToPath !== prevIdToPath) {
-        setPrevIdToPath(idToPath);
+    if (idToPaths !== prevIdToPaths) {
+        setPrevIdToPaths(idToPaths);
         setExistenceMap(initialExistence);
     }
 
-    // Single set of vault listeners for all videos on the current page
-    // These listeners subscribe to file creation, deletion, and rename events in the Obsidian Vault to update the [existenceMap] in real time.
     useEffect(() => {
-        const handleVaultChange = (file: TAbstractFile) => {
-            const videoId = pathToId.get(file.path);
-            if (videoId !== undefined) {
-                const exists = plugin.app.vault.getAbstractFileByPath(file.path) !== null;
-                setExistenceMap(prev => {
-                    if (prev.get(videoId) === exists) return prev;
-                    const next = new Map(prev);
-                    next.set(videoId, exists);
-                    return next;
-                });
-            }
-        };
-
-        const handleRename = (file: TAbstractFile, oldPath: string) => {
-            const newPathVideoId = pathToId.get(file.path);
-            const oldPathVideoId = pathToId.get(oldPath);
-
-            if (newPathVideoId !== undefined || oldPathVideoId !== undefined) {
-                setExistenceMap(prev => {
-                    const next = new Map(prev);
-                    if (newPathVideoId !== undefined) {
-                        next.set(newPathVideoId, plugin.app.vault.getAbstractFileByPath(file.path) !== null);
-                    }
-                    if (oldPathVideoId !== undefined && oldPathVideoId !== newPathVideoId) {
-                        next.set(oldPathVideoId, plugin.app.vault.getAbstractFileByPath(oldPath) !== null);
-                    }
-                    return next;
-                });
-            }
+        const trackedVideoIds = new Set(idToPaths.keys());
+        const expectedPaths = new Set([...idToPaths.values()].flat());
+        let trackedNotePaths = new Set(
+            [...indexVideoNotesById(plugin.app)]
+                .filter(([videoId]) => trackedVideoIds.has(videoId))
+                .map(([, file]) => file.path),
+        );
+        const refreshExistence = () => {
+            const notesById = indexVideoNotesById(plugin.app);
+            trackedNotePaths = new Set(
+                [...notesById]
+                    .filter(([videoId]) => trackedVideoIds.has(videoId))
+                    .map(([, file]) => file.path),
+            );
+            setExistenceMap(computeExistence(notesById));
         };
 
         const vault = plugin.app.vault;
-        const refs: EventRef[] = [
-            vault.on('create', handleVaultChange),
-            vault.on('delete', handleVaultChange),
-            vault.on('rename', handleRename),
+        const vaultRefs: EventRef[] = [
+            vault.on('create', refreshExistence),
+            vault.on('delete', refreshExistence),
+            vault.on('rename', refreshExistence),
         ];
+        const metadataRef = plugin.app.metadataCache.on('changed', (file: TFile) => {
+            const videoId = getVideoNoteId(plugin.app, file);
+            if (trackedNotePaths.has(file.path)
+                || (videoId !== null && trackedVideoIds.has(videoId))
+                || expectedPaths.has(file.path)) {
+                refreshExistence();
+            }
+        });
 
         return () => {
-            refs.forEach((ref) => vault.offref(ref));
+            vaultRefs.forEach((ref) => vault.offref(ref));
+            plugin.app.metadataCache.offref(metadataRef);
         };
-    }, [plugin.app, pathToId]);
+    }, [plugin.app, idToPaths]);
 
     return existenceMap;
 };
-

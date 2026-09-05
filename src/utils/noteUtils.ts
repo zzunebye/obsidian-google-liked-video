@@ -20,6 +20,8 @@ export const sanitizeChannelName = (channelName: string): string => {
         .substring(0, 50); // Shorter limit for folder names
 };
 
+const normalizeVaultFolderPath = (path: string | undefined): string => path === '/' ? '' : (path || '');
+
 /**
  * Sanitize a string for safe use in YAML frontmatter.
  * Escapes double quotes and removes newlines to prevent YAML parsing errors.
@@ -253,6 +255,7 @@ export const generateVideoNoteContent = async (
     const frontmatter = `---
 title: "${title.replace(/"/g, '\\"')}"
 type: "youtube-video"
+video_id: "${videoInfo.id}"
 channel: "${channel.replace(/"/g, '\\"')}"
 duration: "${duration}"
 published: "${published}"
@@ -317,7 +320,7 @@ export const computeExpectedNotePath = (
         targetPath = fullPath;
     } else {
         const defaultLocation = app.fileManager.getNewFileParent('');
-        const basePath = defaultLocation?.path || '';
+        const basePath = normalizeVaultFolderPath(defaultLocation?.path);
         if (organizeByChannel && channelName && basePath) {
             const sanitizedChannelName = sanitizeChannelName(channelName);
             if (sanitizedChannelName) {
@@ -373,14 +376,14 @@ export const getExpectedNotePath = async (
             } catch (fallbackError) {
                 // Fall back to Obsidian default location
                 const defaultLocation = app.fileManager.getNewFileParent('');
-                fullPath = defaultLocation?.path || '';
+                fullPath = normalizeVaultFolderPath(defaultLocation?.path);
             }
         }
         targetPath = fullPath;
     } else {
         // Use Obsidian's default new file location, optionally with channel subfolder
         const defaultLocation = app.fileManager.getNewFileParent('');
-        const basePath = defaultLocation?.path || '';
+        const basePath = normalizeVaultFolderPath(defaultLocation?.path);
 
         if (organizeByChannel && channelName && basePath) {
             const sanitizedChannelName = sanitizeChannelName(channelName);
