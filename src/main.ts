@@ -61,7 +61,6 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	likedVideoStorage?: LikedVideoStorageService;
 	autoFetchInterval: ReturnType<typeof setInterval> | null = null;
 	isFetching = false;
-	paneRef: LikedVideoListPane | null = null;
 	settingTabRef: GoogleLikedVideoSettingTab | null = null;
 	private featureAnnouncementModal: FeatureIntroModal | null = null;
 
@@ -92,10 +91,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,
-			(leaf) => {
-				this.paneRef = new LikedVideoListPane(leaf, this);
-				return this.paneRef;
-			}
+			(leaf) => new LikedVideoListPane(leaf, this)
 		);
 
 		this.registerView(
@@ -198,9 +194,16 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		debugLogger.info('Plugin unloaded successfully');
 	}
 
-	reloadView() {
-		this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onClose();
-		this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onOpen();
+	async reloadView(): Promise<void> {
+		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_LIKED_VIDEO_LIST);
+
+		for (const leaf of leaves) {
+			const view = leaf.view;
+			if (view instanceof LikedVideoListPane) {
+				await view.onClose();
+				await view.onOpen();
+			}
+		}
 	}
 
 	async activateView() {
@@ -354,10 +357,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					this.settings.lastAutoFetchTime = now;
 					await this.saveData(this.settings);
 
-					const view = this.paneRef;
-					if (view) {
-						this.reloadView();
-					}
+					await this.reloadView();
 					this.settingTabRef?.display();
 
 					await createNotesForNewVideos(

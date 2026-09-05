@@ -5,7 +5,7 @@ import { googleTokenStorageService } from 'src/services/googleTokenStorageServic
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
 import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, ObsidianGoogleLikedVideoSettings } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
-import { LikedVideoListPane } from './LikedVideoListPane';
+import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from './LikedVideoListPane';
 import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
 import { UI_TEXT } from '../constants/uiText';
@@ -22,9 +22,16 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    updateListPaneView(): void {
-        this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onClose();
-        this.app.workspace.getActiveViewOfType(LikedVideoListPane)?.onOpen();
+    async updateListPaneView(): Promise<void> {
+        const likedVideoViews = this.app.workspace
+            .getLeavesOfType(VIEW_TYPE_LIKED_VIDEO_LIST)
+            .map(leaf => leaf.view)
+            .filter((view): view is LikedVideoListPane => view instanceof LikedVideoListPane);
+
+        await Promise.all(likedVideoViews.map(async view => {
+            await view.onClose();
+            await view.onOpen();
+        }));
     }
 
     updatePlaylistVideosPaneView(): void {
@@ -42,6 +49,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         this.renderSetupSection(containerEl, refreshToken);
         this.renderSyncSection(containerEl, isLoggedIn);
         new Setting(containerEl).setHeading().setName('Video display');
+        this.renderLikedVideoViewModeSetting(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
         this.renderVideoTagsSetting(containerEl);
 
@@ -66,7 +74,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             this.display();
         }
         if (refresh.listPane) {
-            this.updateListPaneView();
+            await this.updateListPaneView();
         }
         if (refresh.playlistPane) {
             this.updatePlaylistVideosPaneView();
@@ -79,7 +87,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     ): Promise<void> {
         localStorageService.setLikedVideos(result.mergedVideos);
         this.display();
-        this.updateListPaneView();
+        await this.updateListPaneView();
         new Notice(notice);
 
         const createdCount = await createNotesForNewVideos(
@@ -151,6 +159,21 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     await this.saveSetting('openWebViewerInSplitPane', value === 'split');
                 }));
         openInSetting.settingEl.hidden = !this.plugin.settings.openInObsidianWebViewer;
+    }
+
+    private renderLikedVideoViewModeSetting(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setName('Liked video view mode')
+            .setDesc('Choose how liked videos are displayed.')
+            .addDropdown(dropdown => dropdown
+                .addOption('pagination', 'Pagination')
+                .addOption('infinite', 'Infinite scroll')
+                .setValue(localStorageService.getLikedVideoDisplayMode())
+                .onChange(async (value) => {
+                    const displayMode = value === 'infinite' ? 'infinite' : 'pagination';
+                    localStorageService.setLikedVideoDisplayMode(displayMode);
+                    await this.updateListPaneView();
+                }));
     }
 
     private renderVideoTagsSetting(containerEl: HTMLElement): void {
@@ -267,7 +290,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             },
         });
 
-		createCollapsibleReference(
+        createCollapsibleReference(
             editorEl,
             '📖 Available Variables (click to expand)',
             TEMPLATE_VARIABLES_REFERENCE
@@ -544,7 +567,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }
                     localStorageService.setLikedVideos([]);
                     this.display();
-                    this.updateListPaneView();
+                    await this.updateListPaneView();
                     new Notice('Saved liked-video list cleared. YouTube likes and existing notes were kept.');
                 }));
     }
@@ -564,9 +587,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .addButton(button => button
                 .setButtonText(isLoggedIn ? 'Disconnect' : 'Connect with Google')
                 .onClick(async (): Promise<void> => {
-                    const refreshDisplay = () => {
+                    const refreshDisplay = async () => {
                         this.display();
-                        this.updateListPaneView();
+                        await this.updateListPaneView();
                     };
                     if (isLoggedIn) {
                         await handleGoogleLogout(this.plugin.settings, refreshDisplay, refreshDisplay);

@@ -39,7 +39,7 @@ export const LikedVideoView: React.FC = () => {
 	const [selectedTag, setSelectedTag] = useState<string | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageInput, setPageInput] = useState("1");
-	const [displayMode, setDisplayMode] = useState(localStorageService.getLikedVideoDisplayMode);
+	const displayMode = localStorageService.getLikedVideoDisplayMode();
 	const [sortOption, setSortOption] = useState(
 		localStorageService.getSortOption(),
 	);
@@ -290,10 +290,6 @@ export const LikedVideoView: React.FC = () => {
 		sortOrder, selectedCategory, contentTypeSelection, showAINoteOnly]);
 
 	useEffect(() => {
-		localStorageService.setLikedVideoDisplayMode(displayMode);
-	}, [displayMode]);
-
-	useEffect(() => {
 		setPageInput(String(currentPage));
 	}, [currentPage]);
 
@@ -472,15 +468,6 @@ export const LikedVideoView: React.FC = () => {
 			>
 				<div className="video-view-sort">
 					<div className="video-view-sort-left-group">
-						<label className="liked-video-display-mode">
-							<span>View Mode</span>
-							<select aria-label="View Mode" value={displayMode}
-								onChange={event => setDisplayMode(event.target.value === "infinite" ? "infinite" : "pagination")}>
-								<option value="pagination">Pagination</option>
-								<option value="infinite">Infinite scroll</option>
-							</select>
-						</label>
-						<div className="filters-divider" />
 						<div className="category-filter">
 							<Filter
 								size={14}

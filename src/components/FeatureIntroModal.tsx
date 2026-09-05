@@ -35,7 +35,7 @@ export const FEATURE_ANNOUNCEMENT = {
 			notes: [
 				'Liked videos and playlists now show video tags. Click a tag to show videos with that exact tag; select another to replace the filter, or clear it to return to the full list.',
 				'Cards show a compact selection of tags. Click +N to view the rest. You can hide tag chips in Settings → Show video tags.',
-				'In liked videos, use View Mode → Pagination to navigate by page instead of scrolling.',
+				'In Settings → Video display, choose Pagination to navigate liked videos by page instead of scrolling.',
 				'Requires Obsidian 1.11.4 or later.'
 			]
 		},
