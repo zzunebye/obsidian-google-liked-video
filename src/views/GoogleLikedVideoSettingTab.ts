@@ -587,6 +587,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setButtonText(isLoggedIn ? 'Disconnect' : 'Connect with Google')
                 .onClick(async (): Promise<void> => {
                     const refreshDisplay = async () => {
+						this.plugin.commentService.resetIdentityCache();
                         this.display();
                         await this.updateListPaneView();
                     };

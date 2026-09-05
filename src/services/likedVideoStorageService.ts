@@ -1,3 +1,4 @@
+import { normalizePath } from 'obsidian';
 import type { DataAdapter } from 'obsidian';
 import type { YouTubeVideo } from 'src/types';
 
@@ -49,7 +50,7 @@ export class LikedVideoStorageService {
 	readonly filePath: string;
 
 	constructor(private readonly adapter: StorageAdapter, manifestDir: string) {
-		this.filePath = `${manifestDir}/liked-videos.json`;
+		this.filePath = normalizePath(`${manifestDir}/liked-videos.json`);
 	}
 
 	async initialize(legacyStorage: Pick<Storage, 'getItem' | 'removeItem'>): Promise<void> {
@@ -121,7 +122,7 @@ export class LikedVideoStorageService {
 			const data: unknown = JSON.parse(previous);
 			if (!isRecord(data) || data.schemaVersion !== 1) throw new Error('Unsupported liked video file. Save cancelled.');
 			parseVideos(data.videos);
-			await this.adapter.write(`${this.filePath}.bak`, previous);
+			await this.adapter.write(normalizePath(`${this.filePath}.bak`), previous);
 		}
 		await this.adapter.write(this.filePath, json);
 	}

@@ -1,4 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { usePlugin } from "../store/pluginContext";
 import { localStorageService } from "src/storage";
 import {
@@ -32,6 +33,7 @@ import { LikedVideoCollection } from "src/ui/LikedVideoCollection";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { ActiveTagFilter } from "src/ui/ActiveTagFilter";
 import { createNotesForNewVideos, fetchAndMergeLikedVideos } from "src/services/likedVideoFetchService";
+import { appendNoteContent } from "src/utils/noteEditingUtils";
 const SHORT_VIDEO_MAX_DURATION_SECONDS = 90;
 export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -310,6 +312,20 @@ export const LikedVideoView: React.FC = () => {
 		);
 	};
 
+	const handleViewKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+		if (
+			event.key !== "Escape" ||
+			event.defaultPrevented ||
+			searchTerm.length === 0
+		) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		setSearchTerm("");
+	};
+
 	const commitPageInput = () => {
 		const trimmedInput = pageInput.trim();
 		const requestedPage = Number(trimmedInput);
@@ -355,7 +371,7 @@ export const LikedVideoView: React.FC = () => {
 	};
 
 	return (
-		<div className="liked-video-view">
+		<div className="liked-video-view" onKeyDown={handleViewKeyDown}>
 			<ViewHeader
 				icon={<Youtube className="video-view-header__icon" />}
 				title={
@@ -442,6 +458,7 @@ export const LikedVideoView: React.FC = () => {
 					<SearchBar
 						searchTerm={searchTerm}
 						onSearchTermChange={setSearchTerm}
+						escapeClearsSearch
 					/>
 				</div>
 				<button
@@ -724,9 +741,8 @@ export const LikedVideoView: React.FC = () => {
 						}}
 						onAddToDailyNote={async (videoData, file) => {
 							const contentToAppend = `\n${videoData}`;
-							// Append content to the daily note
-							await plugin.app.vault.process(file, (data) => {
-								return data + contentToAppend;
+							await appendNoteContent(plugin.app, file, {
+								text: contentToAppend,
 							});
 							// Open the daily note in the main panel
 							await plugin.app.workspace.openLinkText(

@@ -18,6 +18,7 @@ import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { ActiveTagFilter } from "src/ui/ActiveTagFilter";
 import { usePlugin } from "../store/pluginContext";
+import { appendNoteContent } from "src/utils/noteEditingUtils";
 
 interface PlaylistVideosViewProps {
 	playlistSource: PlaylistSource;
@@ -543,9 +544,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 								onAddToDailyNote={async (videoData, file) => {
 									const contentToAppend = `\n${videoData}`;
 
-									// Append content to the daily note
-									plugin.app.vault.process(file, (data) => {
-										return data + contentToAppend;
+									await appendNoteContent(plugin.app, file, {
+										text: contentToAppend,
 									});
 
 									// Open the daily note in the main panel

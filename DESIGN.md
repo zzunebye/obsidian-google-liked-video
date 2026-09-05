@@ -77,6 +77,14 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 - **Accessibility:** icon-only actions and the page field expose explicit accessible names; the field supports Enter to commit and Escape to cancel.
 - **Layout:** controls keep the existing centered, compact arrangement and use Obsidian form-control styling.
 
+### VideoCommentsModal
+
+- **Structure:** video context, related-scope note, optional `Your activity` group, and the remaining `Most relevant` comments.
+- **States:** loading, loaded, empty, recoverable error, and identity-partial success. The modal owns every request and display state.
+- **Activity:** comments liked by the connected viewer and comments authored by the viewer receive compact accent badges. A comment matching both states renders once with both badges.
+- **Accessibility:** the comment count is a labelled button, errors announce through an alert, loading announces through a status, and closing restores focus without scrolling the underlying pane.
+- **Layout:** a theme-token modal with its own vertical scroll. Opening and closing never resets the liked-video view, pagination, filters, summaries, or scroll position.
+
 ## 6. Motion & Interaction
 
 ### Liked-video browsing

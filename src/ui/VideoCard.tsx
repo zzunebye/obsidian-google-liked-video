@@ -27,10 +27,13 @@ import {
 	computeExpectedNotePath,
 } from "src/utils/noteUtils";
 import { ensureVideoNoteId, findVideoNote } from "src/utils/videoNoteUtils";
+import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { TemplateService } from "src/services/templateService";
 import { SummarySection } from "./SummarySection";
 import type { SummarySnapshot } from "./SummarySection";
 import { ResponsiveVideoTags } from "./VideoTags";
+import { debugLogger } from "../debug";
+import { VideoCommentsModal } from "./VideoCommentsModal";
 
 interface VideoCardProps {
 	source: "liked" | "playlist";
@@ -41,7 +44,7 @@ interface VideoCardProps {
 	isLiked?: boolean;
 	onUnlike: () => void;
 	onLike?: () => void;
-	onAddToDailyNote: (videoData: string, file: TFile) => void;
+	onAddToDailyNote: (videoData: string, file: TFile) => Promise<void>;
 	onChannelClick: (channelTitle: string) => void;
 	onTagClick: (tag: string) => void;
 	onLinkClick: (url: string) => void;
@@ -272,33 +275,34 @@ export const VideoCard = ({
 		}
 		await ensureVideoNoteId(appInstance, file, videoInfo.id);
 
-		// Check frontmatter for existing AI summary (with content fallback for cache staleness)
-		const cache = appInstance.metadataCache.getFileCache(file);
-		if (cache?.frontmatter?.ai_summary) {
+		const summaryWasAppended = await appendNoteContent(appInstance, file, {
+			text: "\n\n## AI Summary\n" + summaryText,
+			skipIfContains: "## AI Summary",
+		});
+
+		try {
+			await appInstance.fileManager.processFrontMatter(
+				file,
+				(fm: Record<string, unknown>) => {
+					fm.ai_summary = true;
+				},
+			);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			debugLogger.error("Failed to update AI summary frontmatter:", message);
+			new Notice(
+				summaryWasAppended
+					? "AI summary was added, but its metadata could not be updated. Try again to repair it."
+					: "AI summary exists, but its metadata could not be updated. Try again to repair it.",
+			);
+			return;
+		}
+
+		if (!summaryWasAppended) {
 			new Notice("AI Summary already exists in this note");
 			await appInstance.workspace.openLinkText(file.path, "", true);
 			return;
 		}
-		const content = await appInstance.vault.read(file);
-		if (content.includes("## AI Summary")) {
-			new Notice("AI Summary already exists in this note");
-			await appInstance.workspace.openLinkText(file.path, "", true);
-			return;
-		}
-
-		// Set frontmatter first so duplicate detection works even if append fails
-		await appInstance.fileManager.processFrontMatter(
-			file,
-			(fm: Record<string, unknown>) => {
-				fm.ai_summary = true;
-			},
-		);
-
-		// Append the summary
-		await appInstance.vault.append(
-			file,
-			"\n\n## AI Summary\n" + summaryText,
-		);
 
 		new Notice("Summary added to video note");
 		await appInstance.workspace.openLinkText(file.path, "", true);
@@ -361,8 +365,12 @@ export const VideoCard = ({
 						dailyNote = await createDailyNote(today);
 					}
 
+					const dailyNoteFile = plugin.app.vault.getFileByPath(dailyNote.path);
+					if (dailyNoteFile === null) {
+						throw new Error(`Daily note is unavailable in the current vault: ${dailyNote.path}`);
+					}
 					const dataToAdd = `[${videoInfo.snippet.title} - ${videoInfo.snippet.channelTitle}](${url})`;
-					onAddToDailyNote(dataToAdd, dailyNote as TFile);
+					await onAddToDailyNote(dataToAdd, dailyNoteFile);
 				} catch (error) {
 					console.error("Error adding to daily note:", error);
 					new Notice(
@@ -374,9 +382,10 @@ export const VideoCard = ({
 
 		menu.addItem((item) => {
 			item.setTitle("Add to current note");
-			item.onClick(() => {
-				const activeFile = plugin.app.workspace.getActiveFile();
-				if (!activeFile) {
+			item.onClick(async () => {
+				const activeFile = plugin.app.workspace.getActiveFile()
+					?? plugin.app.workspace.activeEditor?.file;
+				if (!activeFile || activeFile.extension !== "md") {
 					new Notice(
 						"No active note found. Please open a note first.",
 					);
@@ -385,13 +394,16 @@ export const VideoCard = ({
 
 				const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
 
-				plugin.app.vault
-					.process(activeFile, (data) => {
-						return data + "\n" + videoData;
-					})
-					.then(() => {
-						new Notice(`Added video to ${activeFile.basename}`);
+				try {
+					await appendNoteContent(plugin.app, activeFile, {
+						text: "\n" + videoData,
 					});
+					new Notice(`Added video to ${activeFile.basename}`);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					debugLogger.error("Failed to add video to the active note:", message);
+					new Notice("Failed to add video to the active note");
+				}
 			});
 		});
 
@@ -492,8 +504,9 @@ export const VideoCard = ({
 								{formatCount(videoInfo.statistics.viewCount)}
 							</span>
 						</div>
-						<div
-							className="video-stat video-stat--clickable"
+						<button
+							type="button"
+							className="video-stat video-stat--clickable video-stat--button"
 							aria-label={
 								source === "liked"
 									? "Unlike"
@@ -535,8 +548,28 @@ export const VideoCard = ({
 							<span className="video-stat-count">
 								{formatCount(videoInfo.statistics.likeCount)}
 							</span>
-						</div>
-						<div className="video-stat">
+						</button>
+						<button
+							type="button"
+							className="video-stat video-stat--clickable video-stat--button video-stat--comment"
+							aria-label={`Show comments for ${videoInfo.snippet.title}`}
+							title="Show comments"
+							onClick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								const trigger = e.currentTarget;
+								const modal = new VideoCommentsModal(
+									plugin.app,
+									videoInfo.id,
+									videoInfo.snippet.title,
+									plugin.commentService,
+									() => {
+										if (trigger.isConnected) trigger.focus({ preventScroll: true });
+									},
+								);
+								modal.open();
+							}}
+						>
 							<MessageCircle
 								size={16}
 								className="video-stat-icon"
@@ -544,7 +577,7 @@ export const VideoCard = ({
 							<span className="video-stat-count">
 								{formatCount(videoInfo.statistics.commentCount)}
 							</span>
-						</div>
+						</button>
 					</div>
 				</div>
 			</div>

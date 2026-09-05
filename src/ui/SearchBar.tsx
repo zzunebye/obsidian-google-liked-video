@@ -1,4 +1,8 @@
-export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (searchTerm: string) => void }> = ({ searchTerm, onSearchTermChange }) => {
+export const SearchBar: React.FC<{
+    searchTerm: string,
+    onSearchTermChange: (searchTerm: string) => void,
+    escapeClearsSearch?: boolean,
+}> = ({ searchTerm, onSearchTermChange, escapeClearsSearch = false }) => {
     return (
         <div className="search-bar">
             <input
@@ -9,8 +13,12 @@ export const SearchBar: React.FC<{ searchTerm: string, onSearchTermChange: (sear
             />
             {searchTerm && (
                 <button
+                    type="button"
                     onClick={() => onSearchTermChange('')}
-                    className="search-bar__button" 
+                    className="search-bar__button"
+                    title={escapeClearsSearch ? "Clear search (Esc)" : "Clear search"}
+                    aria-label="Clear search"
+                    aria-keyshortcuts={escapeClearsSearch ? "Escape" : undefined}
                 >
                     &#x2715;
                 </button>

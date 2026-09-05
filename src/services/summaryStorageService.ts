@@ -1,4 +1,5 @@
-import { DataAdapter } from "obsidian";
+import { normalizePath } from "obsidian";
+import type { DataAdapter } from "obsidian";
 import { SummaryFileData, SummaryStorageFile, VideoMetadata, CachedLLMSummary } from "../types";
 import { debugLogger } from "../debug";
 
@@ -11,7 +12,7 @@ export class SummaryStorageService {
 
 	constructor(adapter: DataAdapter, manifestDir: string, maxEntries = 500) {
 		this.adapter = adapter;
-		this.filePath = `${manifestDir}/summaries.json`;
+		this.filePath = normalizePath(`${manifestDir}/summaries.json`);
 		this.maxEntries = maxEntries;
 	}
 

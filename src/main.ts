@@ -20,6 +20,7 @@ import { SummaryStorageService } from './services/summaryStorageService';
 import { LikedVideoStorageService } from './services/likedVideoStorageService';
 import { googleTokenStorageService } from './services/googleTokenStorageService';
 import { migrateLegacyGoogleSecrets, splitGoogleSecretsFromPluginData } from './services/googleClientSecretMigration';
+import { CommentService } from './services/commentService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -56,6 +57,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	vault = this.app.vault;
 	likedVideoApi!: LikedVideoApi;
 	playlistApi!: PlaylistApi;
+	commentService!: CommentService;
 	summaryStorage!: SummaryStorageService;
 	likedVideoStorage?: LikedVideoStorageService;
 	autoFetchInterval: ReturnType<typeof setInterval> | null = null;
@@ -83,6 +85,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		});
 		this.likedVideoApi = new LikedVideoApi(this.settings);
 		this.playlistApi = new PlaylistApi(this.settings);
+		this.commentService = new CommentService(this.settings);
 		debugLogger.debug('API clients initialized');
 
 		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, this.manifest.dir!, 500);
@@ -186,6 +189,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		// Cleanup API resources
 		this.likedVideoApi?.cleanup();
 		this.playlistApi?.cleanup();
+		this.commentService?.cleanup();
 
 		// Cleanup summary storage
 		this.summaryStorage?.cleanup();

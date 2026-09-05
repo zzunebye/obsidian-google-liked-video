@@ -1,8 +1,10 @@
-import { moment, TFile, Notice } from "obsidian";
+import { moment, TFile, Notice, normalizePath } from "obsidian";
+import type { App } from "obsidian";
 import { YouTubeVideo } from "src/types";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { getAllDailyNotes, getDailyNote, createDailyNote } from "obsidian-daily-notes-interface";
 import { TemplateService } from "src/services/templateService";
+import { appendNoteContent } from "src/utils/noteEditingUtils";
 
 export const sanitizeFileName = (title: string): string => {
     return title
@@ -20,7 +22,32 @@ export const sanitizeChannelName = (channelName: string): string => {
         .substring(0, 50); // Shorter limit for folder names
 };
 
-const normalizeVaultFolderPath = (path: string | undefined): string => path === '/' ? '' : (path || '');
+const normalizeVaultFolderPath = (path: string | undefined): string => normalizePath(path ?? '');
+
+const joinVaultPath = (...segments: readonly string[]): string => {
+    return normalizePath(segments.filter(segment => segment.length > 0).join('/'));
+};
+
+class VaultFolderPathConflictError extends Error {
+    constructor(readonly path: string) {
+        super(`A file already exists at the requested folder path: ${path}`);
+        this.name = 'VaultFolderPathConflictError';
+    }
+}
+
+const ensureVaultFolder = async (app: App, path: string): Promise<void> => {
+    if (path.length === 0 || app.vault.getFolderByPath(path) !== null) return;
+    if (app.vault.getAbstractFileByPath(path) !== null) {
+        throw new VaultFolderPathConflictError(path);
+    }
+
+    try {
+        await app.vault.createFolder(path);
+    } catch (error) {
+        if (app.vault.getFolderByPath(path) !== null) return;
+        throw error;
+    }
+};
 
 /**
  * Sanitize a string for safe use in YAML frontmatter.
@@ -274,7 +301,7 @@ content-language: "${videoInfo.snippet.defaultAudioLanguage || 'unknown'}"
 
 export const getVideoUrl = (videoId: string): string => `https://www.youtube.com/watch?v=${videoId}`;
 
-export const linkToDailyNote = async (app: any, file: TFile) => {
+export const linkToDailyNote = async (app: App, file: TFile): Promise<void> => {
     try {
         const today = moment().startOf('day');
         const dailyNotes = getAllDailyNotes();
@@ -284,8 +311,12 @@ export const linkToDailyNote = async (app: any, file: TFile) => {
             dailyNote = await createDailyNote(today);
         }
 
+        const dailyNoteFile = app.vault.getFileByPath(dailyNote.path);
+        if (dailyNoteFile === null) {
+            throw new Error(`Daily note is unavailable in the current vault: ${dailyNote.path}`);
+        }
         const dataToAdd = `\n- [[${file.basename}]]`;
-        await app.vault.append(dailyNote, dataToAdd);
+        await appendNoteContent(app, dailyNoteFile, { text: dataToAdd });
         new Notice(`Linked ${file.basename} to daily note.`);
     } catch (error) {
         console.error('Error linking to daily note:', error);
@@ -299,7 +330,7 @@ export const linkToDailyNote = async (app: any, file: TFile) => {
  * without creating folders. Used for checking if a note already exists.
  */
 export const computeExpectedNotePath = (
-    app: any,
+    app: App,
     baseFileName: string,
     customPath?: string,
     organizeByChannel?: boolean,
@@ -307,14 +338,15 @@ export const computeExpectedNotePath = (
     extension = 'md'
 ): string => {
     let targetPath = '';
+    const hasCustomPath = customPath !== undefined && customPath.trim().length > 0;
 
-    if (customPath && customPath.trim()) {
-        const cleanPath = customPath.trim();
+    if (hasCustomPath) {
+        const cleanPath = normalizeVaultFolderPath(customPath);
         let fullPath = cleanPath;
         if (organizeByChannel && channelName) {
             const sanitizedChannelName = sanitizeChannelName(channelName);
             if (sanitizedChannelName) {
-                fullPath = `${cleanPath}/${sanitizedChannelName}`;
+                fullPath = joinVaultPath(cleanPath, sanitizedChannelName);
             }
         }
         targetPath = fullPath;
@@ -324,7 +356,7 @@ export const computeExpectedNotePath = (
         if (organizeByChannel && channelName && basePath) {
             const sanitizedChannelName = sanitizeChannelName(channelName);
             if (sanitizedChannelName) {
-                targetPath = `${basePath}/${sanitizedChannelName}`;
+                targetPath = joinVaultPath(basePath, sanitizedChannelName);
             } else {
                 targetPath = basePath;
             }
@@ -334,11 +366,11 @@ export const computeExpectedNotePath = (
     }
 
     const fileName = `${baseFileName}.${extension}`;
-    return targetPath ? `${targetPath}/${fileName}` : fileName;
+    return joinVaultPath(targetPath, fileName);
 };
 
 export const getExpectedNotePath = async (
-    app: any,
+    app: App,
     baseFileName: string,
     customPath?: string,
     organizeByChannel?: boolean,
@@ -346,31 +378,28 @@ export const getExpectedNotePath = async (
     extension = 'md'
 ): Promise<string> => {
     let targetPath = '';
+    const hasCustomPath = customPath !== undefined && customPath.trim().length > 0;
 
-    if (customPath && customPath.trim()) {
+    if (hasCustomPath) {
         // Use custom path if provided
-        const cleanPath = customPath.trim();
+        const cleanPath = normalizeVaultFolderPath(customPath);
 
         // Add channel subfolder if organizing by channel
         let fullPath = cleanPath;
         if (organizeByChannel && channelName) {
             const sanitizedChannelName = sanitizeChannelName(channelName);
             if (sanitizedChannelName) {
-                fullPath = `${cleanPath}/${sanitizedChannelName}`;
+                fullPath = joinVaultPath(cleanPath, sanitizedChannelName);
             }
         }
 
         // Ensure the folder exists or create it
         try {
-            if (!(await app.vault.adapter.exists(fullPath))) {
-                await app.vault.createFolder(fullPath);
-            }
+            await ensureVaultFolder(app, fullPath);
         } catch {
             // Fall back to base custom path without channel organization
             try {
-                if (!(await app.vault.adapter.exists(cleanPath))) {
-                    await app.vault.createFolder(cleanPath);
-                }
+                await ensureVaultFolder(app, cleanPath);
                 fullPath = cleanPath;
             } catch {
                 // Fall back to Obsidian default location
@@ -387,11 +416,9 @@ export const getExpectedNotePath = async (
         if (organizeByChannel && channelName && basePath) {
             const sanitizedChannelName = sanitizeChannelName(channelName);
             if (sanitizedChannelName) {
-                const channelPath = `${basePath}/${sanitizedChannelName}`;
+                const channelPath = joinVaultPath(basePath, sanitizedChannelName);
                 try {
-                    if (!(await app.vault.adapter.exists(channelPath))) {
-                        await app.vault.createFolder(channelPath);
-                    }
+                    await ensureVaultFolder(app, channelPath);
                     targetPath = channelPath;
                 } catch {
                     targetPath = basePath;
@@ -406,5 +433,5 @@ export const getExpectedNotePath = async (
 
     // Build the expected file path (without checking for duplicates)
     const fileName = `${baseFileName}.${extension}`;
-    return targetPath ? `${targetPath}/${fileName}` : fileName;
+    return joinVaultPath(targetPath, fileName);
 };
