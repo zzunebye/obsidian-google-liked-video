@@ -1,4 +1,5 @@
 import { YouTubeVideo, ContentTypeSelection, ContentTypeOption, PlaylistInfo, LikedVideoDisplayMode } from "./types";
+import type { LikedVideoStorageService } from './services/likedVideoStorageService';
 
 export interface SavedPlaylist extends PlaylistInfo {
     savedAt: string; // ISO string
@@ -6,6 +7,18 @@ export interface SavedPlaylist extends PlaylistInfo {
 }
 
 class LocalStorageService {
+	private likedVideoStorage: LikedVideoStorageService | null = null;
+	private reportWriteError: (error: unknown) => void = () => {};
+
+	initializeLikedVideos(storage: LikedVideoStorageService, reportError: (error: unknown) => void): void {
+		this.likedVideoStorage = storage;
+		this.reportWriteError = reportError;
+	}
+
+	private getLikedVideoStorage(): LikedVideoStorageService {
+		if (!this.likedVideoStorage) throw new Error('Liked video storage has not been initialized.');
+		return this.likedVideoStorage;
+	}
 	getLikedVideoDisplayMode(): LikedVideoDisplayMode {
 		return window.localStorage.getItem("likedVideoDisplayMode") === "infinite"
 			? "infinite" : "pagination";
@@ -19,8 +32,7 @@ class LocalStorageService {
      * @returns {YouTubeVideo[]} An array of liked videos.
      */
     getLikedVideos(): YouTubeVideo[] {
-        const likedVideos = window.localStorage.getItem("googleYtbLikedVideoLikedVideos");
-        return likedVideos ? JSON.parse(likedVideos) : [];
+		return this.getLikedVideoStorage().getVideos();
     }
 
     getWatchLaterVideos(): YouTubeVideo[] {
@@ -149,7 +161,9 @@ class LocalStorageService {
     }
 
     setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
-        window.localStorage.setItem("googleYtbLikedVideoLikedVideos", JSON.stringify(likedVideos));
+		const storage = this.getLikedVideoStorage();
+		storage.setVideos(likedVideos);
+		void storage.flush().catch(this.reportWriteError);
     };
 
     setWatchLaterVideos = (watchLaterVideos: YouTubeVideo[]): void => {

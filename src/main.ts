@@ -17,6 +17,7 @@ import { createNotesForNewVideos, fetchAndMergeLikedVideos } from './services/li
 import { TemplateService } from './services/templateService';
 import { createAIService, getActiveApiKey } from './services/aiServiceFactory';
 import { SummaryStorageService } from './services/summaryStorageService';
+import { LikedVideoStorageService } from './services/likedVideoStorageService';
 import { googleTokenStorageService } from './services/googleTokenStorageService';
 import { migrateLegacyGoogleSecrets, splitGoogleSecretsFromPluginData } from './services/googleClientSecretMigration';
 
@@ -55,6 +56,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	likedVideoApi!: LikedVideoApi;
 	playlistApi!: PlaylistApi;
 	summaryStorage!: SummaryStorageService;
+	likedVideoStorage?: LikedVideoStorageService;
 	autoFetchInterval: ReturnType<typeof setInterval> | null = null;
 	isFetching = false;
 	paneRef: LikedVideoListPane | null = null;
@@ -64,6 +66,20 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		debugLogger.info('Plugin loading...');
 		googleTokenStorageService.initialize(this.app.secretStorage);
 		await this.loadSettings();
+		const manifestDir = this.manifest.dir;
+		if (!manifestDir) throw new Error('Plugin directory is unavailable.');
+		const likedVideoStorage = new LikedVideoStorageService(this.app.vault.adapter, manifestDir);
+		try {
+			await likedVideoStorage.initialize(window.localStorage);
+		} catch (error) {
+			new Notice('Geulo: Could not load liked-videos.json. Existing data was preserved. Check the file and reload the plugin.', 10000);
+			throw error;
+		}
+		this.likedVideoStorage = likedVideoStorage;
+		localStorageService.initializeLikedVideos(likedVideoStorage, (error) => {
+			debugLogger.error('[LikedVideoStorage] Failed to save liked-videos.json:', error);
+			new Notice('Geulo: Could not save the liked video list. Recent changes are only in memory. Check disk access before closing Obsidian.', 10000);
+		});
 		this.likedVideoApi = new LikedVideoApi(this.settings);
 		this.playlistApi = new PlaylistApi(this.settings);
 		debugLogger.debug('API clients initialized');
@@ -173,6 +189,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	onunload() {
 		debugLogger.info('Plugin unloading...');
 		this.stopAutoFetch();
+		void this.likedVideoStorage?.close().catch((error: unknown) => {
+			debugLogger.error('[LikedVideoStorage] Failed to save on unload:', error);
+			new Notice('Geulo: Could not save the liked video list before unloading.', 10000);
+		});
 
 		// Cleanup API resources
 		this.likedVideoApi?.cleanup();
