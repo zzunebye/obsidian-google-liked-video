@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	enableTemplateSystem: false,
 	customTemplate: DEFAULT_TEMPLATE,
 	openInObsidianWebViewer: false,
+	openWebViewerInSplitPane: false,
 	showVideoTags: true,
 	enableAISummary: false,
 	geminiApiKey: '',

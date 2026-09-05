@@ -132,6 +132,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     await this.saveSetting('openInObsidianWebViewer', value);
                 }));
+
+        new Setting(containerEl)
+            .setName('Open Web Viewer in Split Pane')
+            .setDesc('If enabled, videos open in a new split pane. If disabled, they open in a new tab in the current pane.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.openWebViewerInSplitPane)
+                .onChange(async (value) => {
+                    await this.saveSetting('openWebViewerInSplitPane', value);
+                }));
     }
 
     private renderVideoTagsSetting(containerEl: HTMLElement): void {
@@ -156,9 +165,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Video note location')
-            .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path. Default is \'Youtube\'.')
+            .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path.')
             .addText(text => text
-                .setPlaceholder('e.g. Youtube, Youtube/Videos (Default is \'Youtube\')')
+                .setPlaceholder('e.g. Youtube, Youtube/Videos')
                 .setValue(this.plugin.settings.videoNotePath)
                 .onChange(async (value) => {
                     await this.saveSetting('videoNotePath', value.trim());

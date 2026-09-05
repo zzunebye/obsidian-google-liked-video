@@ -757,7 +757,6 @@ export const LikedVideoView: React.FC = () => {
 						}}
 						onTagClick={handleTagClick}
 						onLinkClick={async (videoUrl) => {
-							const leaf = plugin.app.workspace.getLeaf("split");
 							const openInObsidianWebViewer =
 								plugin.settings?.openInObsidianWebViewer;
 
@@ -766,6 +765,10 @@ export const LikedVideoView: React.FC = () => {
 								openInObsidianWebViewer,
 							);
 							if (openInObsidianWebViewer) {
+								const leafType = plugin.settings.openWebViewerInSplitPane
+									? "split"
+									: "tab";
+								const leaf = plugin.app.workspace.getLeaf(leafType);
 								await leaf.setViewState({
 									type: "webviewer",
 									state: {
