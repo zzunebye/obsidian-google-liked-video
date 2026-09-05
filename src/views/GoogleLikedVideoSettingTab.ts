@@ -39,6 +39,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         const refreshToken = googleTokenStorageService.getRefreshToken();
         const isLoggedIn = refreshToken !== null && refreshToken !== '';
 
+        this.renderSetupSection(containerEl, refreshToken);
         this.renderQuotaSection(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
         this.renderVideoTagsSetting(containerEl);
@@ -51,7 +52,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
 
         this.renderFunctionsSection(containerEl, isLoggedIn);
-        this.renderSetupSection(containerEl, refreshToken);
         this.renderDebugSection(containerEl);
     }
 
@@ -102,14 +102,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         const progressValue = likedVideosCount / maxVideos;
         const fetchLimit = this.plugin.settings.fetchLimit;
 
-        new Setting(containerEl)
+        const quotaSetting = new Setting(containerEl)
             .setName('Quota')
             .setDesc('Displays the quota of liked videos fetched from the YouTube Data API v3, indicating how many videos you can store (up to 5000).')
             .addProgressBar(progressBar => progressBar
-                .setValue(progressValue * 100))
-            .addText(text => text
-                .setDisabled(true)
-                .setValue(`${likedVideosCount} / ${maxVideos} (${(progressValue * 100).toFixed(2)}%)`));
+                .setValue(progressValue * 100));
+        quotaSetting.controlEl.createSpan({
+            cls: 'geulo-quota-value',
+            text: `${likedVideosCount} / ${maxVideos} (${(progressValue * 100).toFixed(2)}%)`,
+        });
 
         new Setting(containerEl)
             .setName('Fetch Limit')
@@ -118,11 +119,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setValue(fetchLimit)
                 .setLimits(10, 50, 10)
                 .onChange(async (value) => {
-                    await this.saveSetting('fetchLimit', value, { display: true });
-                }))
-            .addText(text => text
-                .setValue(`${fetchLimit}`)
-                .setDisabled(true));
+                    await this.saveSetting('fetchLimit', value);
+                }));
     }
 
     private renderOpenInWebViewerSetting(containerEl: HTMLElement): void {
@@ -515,12 +513,38 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     private renderSetupSection(containerEl: HTMLElement, refreshToken: string | null): void {
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Setup')
-            .setDesc('Setup the plugin');
+        const isLoggedIn = Boolean(refreshToken);
 
         new Setting(containerEl)
+            .setHeading()
+            .setName('Google connection');
+
+        new Setting(containerEl)
+            .setName(isLoggedIn ? 'Connected to Google' : 'Not connected to Google')
+            .setDesc(isLoggedIn
+                ? 'Your Google account is connected. You can fetch your liked videos.'
+                : 'Enter your Google API credentials below, then connect your account.')
+            .addButton(button => button
+                .setButtonText(isLoggedIn ? 'Disconnect' : 'Connect with Google')
+                .onClick(async (): Promise<void> => {
+                    const refreshDisplay = () => {
+                        this.display();
+                        this.updateListPaneView();
+                    };
+                    if (isLoggedIn) {
+                        await handleGoogleLogout(this.plugin.settings, refreshDisplay, refreshDisplay);
+                    } else {
+                        await handleGoogleLogin(this.plugin.settings, refreshDisplay);
+                    }
+                }));
+
+        const credentialsEl = containerEl.createEl('details', {
+            cls: 'geulo-google-credentials',
+        });
+        credentialsEl.open = !isLoggedIn;
+        credentialsEl.createEl('summary', { text: 'Google API credentials' });
+
+        new Setting(credentialsEl)
             .setName('Open Youtube Data API Console')
             .setDesc('Click the button below to open the Google Developer Console, where you can manage your Google APIs and credentials.')
             .addButton(button => button
@@ -529,7 +553,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     window.open('https://console.cloud.google.com/apis/api/youtube.googleapis.com', '_blank');
                 }));
 
-        new Setting(containerEl)
+        new Setting(credentialsEl)
             .setName('Client ID')
             .setDesc('Client ID required to authenticate your Google account and access the YouTube Data API v3.')
             .addText(text => text
@@ -539,7 +563,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     await this.saveSetting('googleClientId', value);
                 }));
 
-        new Setting(containerEl)
+        new Setting(credentialsEl)
             .setName('Client secret')
             .setDesc('Client secret for accessing the YouTube Data API v3')
             .addText(text => {
@@ -561,22 +585,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     });
             });
 
-        new Setting(containerEl)
-            .setName('Login with Google')
-            .setDesc('Login to your Google account')
-            .addButton(button => button
-                .setButtonText(refreshToken ? 'Logout' : 'Login')
-                .onClick(async (): Promise<void> => {
-                    const refreshDisplay = () => {
-                        this.display();
-                        this.updateListPaneView();
-                    };
-                    if (refreshToken) {
-                        await handleGoogleLogout(this.plugin.settings, refreshDisplay, refreshDisplay);
-                    } else {
-                        await handleGoogleLogin(this.plugin.settings, refreshDisplay);
-                    }
-                }));
     }
 
     private renderDebugSection(containerEl: HTMLElement): void {

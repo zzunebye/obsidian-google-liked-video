@@ -2255,3 +2255,24 @@ button.video-tag-chip {
 .geulo-setting-full-width-input {
 	width: 100%;
 }
+
+.geulo-google-credentials {
+	margin-bottom: var(--size-4-6);
+}
+
+.geulo-google-credentials > summary {
+	padding: var(--size-4-2) 0;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.geulo-google-credentials > summary:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+.geulo-quota-value {
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
