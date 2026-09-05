@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { IncomingMessage, Server, ServerResponse } from 'http';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
@@ -41,8 +40,10 @@ export async function handleGoogleLogin(
         return;
     }
 
-    const http = require("http");
-    const url = require("url");
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const http = require("http");
+	// eslint-disable-next-line @typescript-eslint/no-var-requires
+	const url = require("url");
 
 
     serverSession = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {

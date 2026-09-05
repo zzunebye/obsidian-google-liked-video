@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { Notice, Plugin, WorkspaceLeaf } from 'obsidian';
 import { isAIProvider, ObsidianGoogleLikedVideoSettings, YouTubeVideo } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
