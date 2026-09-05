@@ -1,22 +1,63 @@
-import { IncomingMessage, Server, ServerResponse } from 'http';
+import type { IncomingMessage, Server, ServerResponse } from 'http';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { Platform, Notice } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
-let serverSession: Server;
+let serverSession: Server | undefined;
+let serverSessionClose = Promise.resolve();
 
 const PORT = 42813;
 const AUTH_REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`;
 
+type GoogleOAuthTokenResponse = {
+	readonly access_token: string;
+	readonly refresh_token: string;
+	readonly expires_in: number;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isGoogleOAuthTokenResponse(value: unknown): value is GoogleOAuthTokenResponse {
+	return isRecord(value)
+		&& typeof value.access_token === 'string'
+		&& typeof value.refresh_token === 'string'
+		&& typeof value.expires_in === 'number';
+}
+
+function closeServerSession(): Promise<void> {
+	const currentServerSession = serverSession;
+	serverSession = undefined;
+	if (!currentServerSession) {
+		return serverSessionClose;
+	}
+
+	serverSessionClose = new Promise<void>((resolve) => {
+		currentServerSession.close(() => resolve());
+	});
+	return serverSessionClose;
+}
+
+async function finishGoogleLoginFailure(response: ServerResponse): Promise<void> {
+	new Notice("Auth failed");
+	response.statusCode = 400;
+	response.setHeader('Connection', 'close');
+	response.end("Authentication failed. Please return to Obsidian.");
+	await closeServerSession();
+}
+
 export async function handleGoogleLogin(
     pluginSettings: ObsidianGoogleLikedVideoSettings,
     onSuccess: () => void,
-) {
+): Promise<void> {
     if (!Platform.isDesktop) {
         new Notice("Can't use this OAuth method on this device");
         return;
     }
+
+	await serverSessionClose;
 
     googleTokenStorageService.setRefreshToken("");
     googleTokenStorageService.setAccessToken("");
@@ -68,25 +109,30 @@ export async function handleGoogleLogin(
                 body: tokenRequestBody.toString(),
             });
 
-            const token = await response.json();
-
-            if (token?.refresh_token) {
-                googleTokenStorageService.setRefreshToken(token.refresh_token);
-                googleTokenStorageService.setAccessToken(token.access_token);
-                localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
+            if (!response.ok) {
+				await finishGoogleLoginFailure(res);
+				return;
             }
 
-            new Notice("Tokens acquired.");
-            onSuccess();
+			const token: unknown = await response.json();
+			if (!isGoogleOAuthTokenResponse(token)) {
+				await finishGoogleLoginFailure(res);
+				return;
+			}
 
-            res.end("Authentication successful! Please return to Obsidian.");
+			googleTokenStorageService.setRefreshToken(token.refresh_token);
+			googleTokenStorageService.setAccessToken(token.access_token);
+			localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
 
-            serverSession.close(() => { });
+			res.setHeader('Connection', 'close');
+			res.end("Authentication successful! Please return to Obsidian.");
+			await closeServerSession();
 
-        } catch (e) {
-            new Notice("Auth failed");
+			new Notice("Tokens acquired.");
+			onSuccess();
 
-            serverSession.close(() => { });
+        } catch {
+			await finishGoogleLoginFailure(res);
         }
     }).listen(PORT, async () => {
         window.open(requestAuthUrl);

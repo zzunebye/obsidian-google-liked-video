@@ -77,12 +77,33 @@ const localStorage = new FakeLocalStorage();
 globalThis.window = { localStorage, open() {} };
 
 let oauthCallback;
+let createServerCount = 0;
 let loginRequestUrl = '';
 let loginRequestBody = '';
 let refreshRequestBody = '';
+let loginResponse = {
+	ok: true,
+	status: 200,
+	json: async () => ({ refresh_token: 'new-refresh', access_token: 'new-access', expires_in: 3600 }),
+};
+
+function createCallbackResponse() {
+	return {
+		statusCode: 200,
+		ended: false,
+		headers: new Map(),
+		setHeader(name, value) {
+			this.headers.set(name, value);
+		},
+		end() {
+			this.ended = true;
+		},
+	};
+}
 
 const httpVerification = {
 	createServer(callback) {
+		createServerCount += 1;
 		oauthCallback = callback;
 		return {
 			listen(_port, onListen) {
@@ -102,7 +123,7 @@ globalThis.fetch = async (url, init = {}) => {
 	if (requestBody.includes('grant_type=authorization_code')) {
 		loginRequestUrl = String(url);
 		loginRequestBody = requestBody;
-		return { json: async () => ({ refresh_token: 'new-refresh', access_token: 'new-access', expires_in: 3600 }) };
+		return loginResponse;
 	}
 	refreshRequestBody = requestBody;
 	return { json: async () => ({ access_token: 'refreshed-access', expires_in: 3600 }) };
@@ -121,9 +142,16 @@ nodeModule._load = function(request, parent, isMain) {
 try {
 	const { handleGoogleLogin, refreshAccessToken, googleTokenStorageService } = require(outputPath);
 	googleTokenStorageService.initialize(new FakeSecretStorage(secrets));
-	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, () => {});
+	let loginSuccessCount = 0;
+	const handleLoginSuccess = () => {
+		loginSuccessCount += 1;
+	};
+	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, handleLoginSuccess);
 	assert.equal(typeof oauthCallback, 'function');
-	await oauthCallback({ url: '/callback?code=auth-code' }, { end() {} });
+	const firstCallbackResponse = createCallbackResponse();
+	await oauthCallback({ url: '/callback?code=auth-code' }, firstCallbackResponse);
+	assert.equal(loginSuccessCount, 1);
+	assert.equal(firstCallbackResponse.headers.get('Connection'), 'close');
 	assert.equal(loginRequestUrl, 'https://oauth2.googleapis.com/token');
 	assert.doesNotMatch(loginRequestUrl, /client_secret/);
 	const parsedLoginBody = new URLSearchParams(loginRequestBody);
@@ -132,10 +160,30 @@ try {
 	assert.equal(parsedLoginBody.get('client_secret'), 'secret-from-storage');
 	assert.equal(parsedLoginBody.get('code'), 'auth-code');
 
+	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, handleLoginSuccess);
+	assert.equal(createServerCount, 2);
+	await oauthCallback({ url: '/callback?code=second-auth-code' }, createCallbackResponse());
+	assert.equal(loginSuccessCount, 2);
+
 	await refreshAccessToken('client-id');
 	const parsedBody = JSON.parse(refreshRequestBody);
 	assert.equal(parsedBody.client_secret, 'secret-from-storage');
 	assert.notEqual(parsedBody.client_secret, 'settings-secret');
+
+	loginResponse = {
+		ok: false,
+		status: 400,
+		json: async () => ({ error: 'invalid_grant' }),
+	};
+	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, handleLoginSuccess);
+	const failedCallbackResponse = createCallbackResponse();
+	await oauthCallback({ url: '/callback?code=expired-auth-code' }, failedCallbackResponse);
+	assert.equal(loginSuccessCount, 2);
+	assert.equal(googleTokenStorageService.getRefreshToken(), '');
+	assert.equal(googleTokenStorageService.getAccessToken(), '');
+	assert.equal(failedCallbackResponse.statusCode, 400);
+	assert.equal(failedCallbackResponse.ended, true);
+	assert.equal(failedCallbackResponse.headers.get('Connection'), 'close');
 } finally {
 	nodeModule._load = originalLoad;
 	globalThis.fetch = originalFetch;
