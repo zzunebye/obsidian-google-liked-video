@@ -3,7 +3,7 @@
 	"name": "Geulo",
 	"version": "3.4.1",
 	"minAppVersion": "1.11.4",
-	"description": "Organize and search your liked YouTube videos and playlists, generate AI summaries, and save videos as Obsidian notes",
+	"description": "Organize and search your liked YouTube videos and playlists, generate AI summaries, and save videos as notes.",
 	"author": "Junyoung Bang",
 	"authorUrl": "https://github.com/zzunebye",
 	"isDesktopOnly": false,
