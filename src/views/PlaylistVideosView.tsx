@@ -123,7 +123,6 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 
 		// Prevent duplicate calls
 		if (loadingRef.current && !forceRefresh) {
-			console.log("Already loading videos, skipping duplicate call");
 			return;
 		}
 
@@ -132,9 +131,6 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 			const cachedVideos =
 				plugin.playlistApi.getCachedVideos(playlistSource);
 			if (cachedVideos && cachedVideos.length > 0) {
-				console.log(
-					`Using ${cachedVideos.length} cached videos for playlist: ${playlistInfo.title}`,
-				);
 				setAllVideos(cachedVideos);
 				setError(null);
 				return;
@@ -146,19 +142,12 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		setError(null);
 
 		try {
-			console.log(
-				`${forceRefresh ? "Force refreshing" : "Loading"} all videos for playlist: ${playlistInfo.title} (${playlistInfo.itemCount} videos)`,
-			);
-
 			const allFetchedVideos =
 				await plugin.playlistApi.fetchAllPlaylistVideos(
 					playlistSource,
 					forceRefresh,
 				);
 
-			console.log(
-				`Finished loading playlist videos: ${allFetchedVideos.length} total`,
-			);
 			setAllVideos(allFetchedVideos);
 			setError(null);
 		} catch (error) {
@@ -530,10 +519,6 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 										plugin.settings
 											?.openInObsidianWebViewer;
 
-									console.log(
-										"openInObsidianWebViewer:",
-										openInObsidianWebViewer,
-									);
 									if (openInObsidianWebViewer) {
 										const leafType = plugin.settings.openWebViewerInSplitPane
 											? "split"

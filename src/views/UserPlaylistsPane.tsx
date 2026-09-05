@@ -98,7 +98,6 @@ export class UserPlaylistsPane
 			// Load both user playlists from YouTube and saved playlists from local storage
 			const [userPlaylists, savedPlaylists] = await Promise.all([
 				this.plugin.playlistApi.fetchUserPlaylists().catch((error) => {
-					console.warn("Failed to load user playlists:", error);
 					// Show user-friendly error message for authentication issues
 					if (
 						error.message.includes("403") ||
@@ -299,8 +298,6 @@ export class UserPlaylistsPane
 					playlistInfo: playlist,
 				},
 			};
-
-			console.log("UserPlaylistsPane setting view state:", viewState);
 
 			await leaf.setViewState(viewState);
 

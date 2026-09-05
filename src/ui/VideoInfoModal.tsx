@@ -25,7 +25,6 @@ export const parseDurationToSeconds = (duration: string): number | null => {
         // Format: P[n]W[n]DT[n]H[n]M[n]S
         const match = duration.match(/^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
         if (!match) {
-            console.warn(`Invalid duration format: ${duration}`);
             return null;
         }
         

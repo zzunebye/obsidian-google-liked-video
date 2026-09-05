@@ -760,10 +760,6 @@ export const LikedVideoView: React.FC = () => {
 							const openInObsidianWebViewer =
 								plugin.settings?.openInObsidianWebViewer;
 
-							console.log(
-								"openInObsidianWebViewer:",
-								openInObsidianWebViewer,
-							);
 							if (openInObsidianWebViewer) {
 								const leafType = plugin.settings.openWebViewerInSplitPane
 									? "split"

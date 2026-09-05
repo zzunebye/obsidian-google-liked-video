@@ -40,7 +40,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         const isLoggedIn = refreshToken !== null && refreshToken !== '';
 
         this.renderSetupSection(containerEl, refreshToken);
-        this.renderQuotaSection(containerEl);
+        this.renderSyncSection(containerEl, isLoggedIn);
+        new Setting(containerEl).setHeading().setName('Video display');
         this.renderOpenInWebViewerSetting(containerEl);
         this.renderVideoTagsSetting(containerEl);
 
@@ -48,10 +49,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             this.renderVideoNotesSection(containerEl);
             this.renderTemplateSection(containerEl);
             this.renderAISection(containerEl);
-            this.renderAutoFetchSection(containerEl);
         }
 
-        this.renderFunctionsSection(containerEl, isLoggedIn);
+        this.renderDataManagementSection(containerEl);
         this.renderDebugSection(containerEl);
     }
 
@@ -96,25 +96,30 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         new Modal(this.app).setTitle(UI_TEXT.ERROR_TITLE).setContent(UI_TEXT.ERROR_MESSAGE(error)).open();
     }
 
-    private renderQuotaSection(containerEl: HTMLElement): void {
+    private renderSyncSection(containerEl: HTMLElement, isLoggedIn: boolean): void {
+        new Setting(containerEl).setHeading().setName('Sync');
+        this.renderStoredVideosAndFetchLimit(containerEl);
+        if (isLoggedIn) {
+            this.renderAutoFetchSection(containerEl);
+        }
+        this.renderManualFetchSettings(containerEl, isLoggedIn);
+    }
+
+    private renderStoredVideosAndFetchLimit(containerEl: HTMLElement): void {
         const likedVideosCount = localStorageService.getLikedVideos().length;
-        const maxVideos = 5000;
-        const progressValue = likedVideosCount / maxVideos;
         const fetchLimit = this.plugin.settings.fetchLimit;
 
-        const quotaSetting = new Setting(containerEl)
-            .setName('Quota')
-            .setDesc('Displays the quota of liked videos fetched from the YouTube Data API v3, indicating how many videos you can store (up to 5000).')
-            .addProgressBar(progressBar => progressBar
-                .setValue(progressValue * 100));
-        quotaSetting.controlEl.createSpan({
-            cls: 'geulo-quota-value',
-            text: `${likedVideosCount} / ${maxVideos} (${(progressValue * 100).toFixed(2)}%)`,
+        const storedVideosSetting = new Setting(containerEl)
+            .setName('Stored videos')
+            .setDesc('Liked videos saved in this vault.');
+        storedVideosSetting.controlEl.createSpan({
+            cls: 'geulo-stored-video-count',
+            text: likedVideosCount.toLocaleString(),
         });
 
         new Setting(containerEl)
             .setName('Fetch Limit')
-            .setDesc('Numbers of liked videos to fetch at each time of API request. Set this up to your rate of your video consumption pattern.')
+            .setDesc('Maximum number of recent videos to check per fetch. Full scans ignore this limit.')
             .addSlider(slider => slider
                 .setValue(fetchLimit)
                 .setLimits(10, 50, 10)
@@ -124,23 +129,28 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     private renderOpenInWebViewerSetting(containerEl: HTMLElement): void {
-        new Setting(containerEl)
-            .setName('Open Videos in Obsidian Web Viewer')
-            .setDesc('If enabled, videos will be opened in the Obsidian web viewer instead of the OS\'s default browser even when its \'Open external links\' option is turned off. You need to ENABLE THE "WEB VIEWER" CORE PLUGIN for this to work.')
+        const viewerEl = containerEl.createDiv();
+        new Setting(viewerEl)
+            .setName('Open videos in Obsidian Web Viewer')
+            .setDesc('Open videos inside Obsidian. Requires the Web Viewer core plugin.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.openInObsidianWebViewer)
                 .onChange(async (value) => {
+                    openInSetting.settingEl.hidden = !value;
                     await this.saveSetting('openInObsidianWebViewer', value);
                 }));
 
-        new Setting(containerEl)
-            .setName('Open Web Viewer in Split Pane')
-            .setDesc('If enabled, videos open in a new split pane. If disabled, they open in a new tab in the current pane.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.openWebViewerInSplitPane)
+        const openInSetting = new Setting(viewerEl)
+            .setName('Open in')
+            .setClass('geulo-web-viewer-option')
+            .addDropdown(dropdown => dropdown
+                .addOption('tab', 'New tab')
+                .addOption('split', 'Split pane')
+                .setValue(this.plugin.settings.openWebViewerInSplitPane ? 'split' : 'tab')
                 .onChange(async (value) => {
-                    await this.saveSetting('openWebViewerInSplitPane', value);
+                    await this.saveSetting('openWebViewerInSplitPane', value === 'split');
                 }));
+        openInSetting.settingEl.hidden = !this.plugin.settings.openInObsidianWebViewer;
     }
 
     private renderVideoTagsSetting(containerEl: HTMLElement): void {
@@ -223,7 +233,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             return;
         }
 
-        new Setting(containerEl)
+        const editorEl = containerEl.createEl('details', { cls: 'geulo-settings-details' });
+        editorEl.createEl('summary', { text: 'Edit template' });
+
+        new Setting(editorEl)
             .setName('Custom template')
             .setDesc('Edit your video note template directly. Use {{variable}} syntax for dynamic content.')
             .addButton(button => button
@@ -245,7 +258,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }
                 }));
 
-        createMonospaceTextarea(containerEl, {
+        createMonospaceTextarea(editorEl, {
             className: 'template-textarea',
             value: this.plugin.settings.customTemplate,
             rows: 20,
@@ -255,7 +268,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         });
 
         createCollapsibleHtmlReference(
-            containerEl,
+            editorEl,
             '📖 Available Variables (click to expand)',
             TEMPLATE_VARIABLES_REFERENCE
         );
@@ -269,7 +282,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Enable AI Summary')
-            .setDesc('Use Google Gemini to generate AI summaries of YouTube videos. Requires a Gemini API key.')
+            .setDesc('Generate video summaries with your selected AI provider. Requires an API key for that provider.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAISummary)
                 .onChange(async (value) => {
@@ -302,7 +315,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         if (this.plugin.settings.aiProvider === 'gemini') {
             addWideTextSetting(containerEl, {
                 name: 'Gemini API Key',
-                desc: 'Your Google Gemini API key. Get one from [Google AI Studio] (https://aistudio.google.com/app/apikey). Only Google AI Studio support video_url at this time. Vertex AI does not support video_url yet.',
+                desc: 'Use a Google AI Studio API key for the Google Gemini provider. Get a key at aistudio.google.com/app/apikey.',
                 placeholder: 'Enter your Gemini API key',
                 value: this.plugin.settings.geminiApiKey,
                 secret: true,
@@ -313,7 +326,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         } else {
             addWideTextSetting(containerEl, {
                 name: 'OpenRouter API Key',
-                desc: 'Your OpenRouter API key. Get one from openrouter.ai/keys.',
+                desc: 'Use an OpenRouter API key for the OpenRouter provider. Get a key at openrouter.ai/keys.',
                 placeholder: 'sk-or-...',
                 value: this.plugin.settings.openRouterApiKey,
                 secret: true,
@@ -335,7 +348,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Summary Prompt')
-            .setDesc('Customize the prompt sent to Gemini when generating video summaries.');
+            .setDesc('Customize the instructions sent to your selected AI provider when generating video summaries.');
 
         createMonospaceTextarea(containerEl, {
             className: 'summary-prompt-textarea',
@@ -348,11 +361,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     private renderAutoFetchSection(containerEl: HTMLElement): void {
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Automatic Fetch')
-            .setDesc('Configure automatic fetching of liked videos');
-
         new Setting(containerEl)
             .setName('Enable automatic fetch')
             .setDesc('Automatically fetch liked videos at regular intervals')
@@ -455,15 +463,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
     }
 
-    private renderFunctionsSection(containerEl: HTMLElement, isLoggedIn: boolean): void {
-        new Setting(containerEl)
-            .setHeading()
-            .setName('Functions')
-            .setDesc('Functions to fetch and update liked videos');
+    private renderManualFetchSettings(containerEl: HTMLElement, isLoggedIn: boolean): void {
 
         if (isLoggedIn) {
             new Setting(containerEl)
-                .setName('Fetch all liked videos so far and add to local storage. This will override all the liked videos in local storage.')
+                .setName('Full scan')
+                .setDesc('Check all liked videos and replace the saved list with the results. Videos no longer returned by YouTube are removed from this list.')
                 .addButton(button => button
                     .setButtonText('Full scan')
                     .onClick(async () => {
@@ -487,9 +492,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }));
 
             new Setting(containerEl)
-                .setName('Fetch all liked videos so far, compare to the stored videos and filter/add the new videos to local storage')
+                .setName('Fetch recent videos')
+                .setDesc('Check recent liked videos up to the Fetch Limit above. Add new videos and update matching saved videos, keeping the rest of your saved list.')
                 .addButton(button => button
-                    .setButtonText('Fetch')
+                    .setButtonText('Fetch recent videos')
                     .onClick(async () => {
                         try {
                             const result = await fetchAndMergeLikedVideos(this.plugin.likedVideoApi, {
@@ -509,15 +515,37 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }));
         }
 
+    }
+
+    private renderDataManagementSection(containerEl: HTMLElement): void {
+        const storedCount = localStorageService.getLikedVideos().length;
+        new Setting(containerEl).setHeading().setName('Data management');
         new Setting(containerEl)
-            .setName('Clear local storage')
+            .setName('Clear saved liked videos')
+            .setDesc('Remove the saved liked-video list from this vault. YouTube likes, existing video notes, playlists, and saved summaries are kept.')
             .addButton(button => button
-                .setButtonText('Clear stored liked videos in local storage')
+                .setButtonText('Clear saved videos')
+                .setWarning()
+                .setDisabled(storedCount === 0)
                 .onClick(async () => {
+                    const result = await confirmAction(
+                        this.app,
+                        `Remove all ${localStorageService.getLikedVideos().length} saved liked videos from this vault?\n\nThis does not unlike videos on YouTube or delete existing video notes, playlists, or saved summaries.\n\nTo repopulate the list, run a Full scan. Videos no longer available from YouTube may not be restored.`,
+                        {
+                            title: 'Clear saved liked videos?',
+                            confirmText: 'Clear saved videos',
+                            cancelText: 'Cancel',
+                            type: 'danger',
+                            showRememberChoice: false,
+                        }
+                    );
+                    if (!result.confirmed) {
+                        return;
+                    }
                     localStorageService.setLikedVideos([]);
                     this.display();
                     this.updateListPaneView();
-                    new Notice('Liked videos have been cleared');
+                    new Notice('Saved liked-video list cleared. YouTube likes and existing notes were kept.');
                 }));
     }
 

@@ -365,15 +365,14 @@ export const getExpectedNotePath = async (
             if (!(await app.vault.adapter.exists(fullPath))) {
                 await app.vault.createFolder(fullPath);
             }
-        } catch (error) {
-            console.warn('Could not create custom folder, using default location:', error);
+        } catch {
             // Fall back to base custom path without channel organization
             try {
                 if (!(await app.vault.adapter.exists(cleanPath))) {
                     await app.vault.createFolder(cleanPath);
                 }
                 fullPath = cleanPath;
-            } catch (fallbackError) {
+            } catch {
                 // Fall back to Obsidian default location
                 const defaultLocation = app.fileManager.getNewFileParent('');
                 fullPath = normalizeVaultFolderPath(defaultLocation?.path);
@@ -394,8 +393,7 @@ export const getExpectedNotePath = async (
                         await app.vault.createFolder(channelPath);
                     }
                     targetPath = channelPath;
-                } catch (error) {
-                    console.warn('Could not create channel folder in default location:', error);
+                } catch {
                     targetPath = basePath;
                 }
             } else {

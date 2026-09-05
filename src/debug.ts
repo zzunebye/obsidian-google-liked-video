@@ -20,31 +20,20 @@ const DEFAULT_DEBUG_CONFIG: DebugConfig = {
 };
 
 class DebugLogger {
-    private config: DebugConfig;
-    private isDevelopment: boolean;
+	private config: DebugConfig;
 
-    constructor() {
-        this.isDevelopment = this.checkIsDevelopment();
-        this.config = this.loadDebugConfig();
-        
-        if (this.isDevelopment) {
-            console.log('%c🔧 Geulo Debug Mode Enabled', 'color: #00ff00; font-weight: bold');
-            console.log('Debug config:', this.config);
-        }
-    }
+	constructor() {
+		this.config = this.loadDebugConfig();
+	}
 
-    private checkIsDevelopment(): boolean {
-        // Check if running in development mode
-        // You can also check for a specific file or environment variable
-        return process.env.NODE_ENV === 'development' || 
-               window.location.hostname === 'localhost' ||
-               localStorage.getItem('GEULO_DEBUG') === 'true';
-    }
+	private isDebugEnabled(): boolean {
+		return localStorage.getItem('GEULO_DEBUG') === 'true';
+	}
 
-    private loadDebugConfig(): DebugConfig {
-        if (!this.isDevelopment) {
-            return DEFAULT_DEBUG_CONFIG;
-        }
+	private loadDebugConfig(): DebugConfig {
+		if (!this.isDebugEnabled()) {
+			return DEFAULT_DEBUG_CONFIG;
+		}
 
         const stored = localStorage.getItem('GEULO_DEBUG_CONFIG');
         if (stored) {
@@ -55,8 +44,8 @@ class DebugLogger {
             }
         }
         
-        return { ...DEFAULT_DEBUG_CONFIG, enabled: this.isDevelopment };
-    }
+		return { ...DEFAULT_DEBUG_CONFIG, enabled: true };
+	}
 
     updateConfig(config: Partial<DebugConfig>) {
         this.config = { ...this.config, ...config };

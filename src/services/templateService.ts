@@ -20,7 +20,6 @@ export class TemplateService {
 		const template = this.settings.customTemplate;
 
 		if (!template || template.trim() === '') {
-			console.warn('Custom template is empty, using built-in format');
 			return null;
 		}
 

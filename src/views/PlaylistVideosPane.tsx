@@ -143,15 +143,11 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
     }
 
     async setState(state: IPlaylistVideosViewPersistedState & any, result: ViewStateResult): Promise<void> {
-        console.log('PlaylistVideosPane setState called with:', state);
-
         if (state.playlistSource) {
             this.playlistSource = state.playlistSource;
-            console.log('Updated playlistSource to:', this.playlistSource);
         }
         if (state.playlistInfo) {
             this.playlistInfo = state.playlistInfo;
-            console.log('Updated playlistInfo to:', this.playlistInfo);
         }
 
         // Re-render with new state
