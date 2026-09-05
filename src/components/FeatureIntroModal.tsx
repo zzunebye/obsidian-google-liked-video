@@ -10,13 +10,15 @@ export const FEATURE_ANNOUNCEMENT = {
 	releases: [
 		{
 			version: '3.4',
-			title: 'Faster browsing and safer local data',
+			title: 'Smoother browsing and more dependable notes',
 			notes: [
-				'Liked videos: infinite scroll renders the visible portion of the list and loads more as you scroll, reducing the rendering work for large collections.',
-				'Settings: the Google connection section now shows “Connected to Google” or “Not connected to Google”, with controls that match your connection state.',
-				'Liked videos are now stored in liked-videos.json, separately from plugin settings. Existing browser-stored data moves automatically only after the new file is written and verified.',
-				'Before replacing the list, Geulo backs up the previous valid file as liked-videos.json.bak. If the main file is invalid, Geulo preserves it and stops loading instead of overwriting it with an empty list.',
-				'When a synced liked-videos.json changes on another device, reload the plugin to refresh the in-memory list. This release does not merge conflicting file changes.'
+				'Scroll through large liked-video collections more smoothly. Infinite scroll now renders only the videos around your current position and loads more as you continue.',
+				'Choose how videos open inside Obsidian. Enable “Open Videos in Obsidian Web Viewer”, then use “Open Web Viewer in Split Pane” to open videos beside your notes instead of in a new tab.',
+				'Rename or move a video note without losing its connection to the video. Geulo now identifies notes by their YouTube video ID, so opening a note or adding a summary continues to use the same file instead of creating a duplicate.',
+				'Existing video notes remain supported. Geulo adds the video ID when you next open an older note from a video card or add a summary to it. Leaving “Video note location” empty now uses Obsidian’s default new-file location.',
+				'Check your Google connection at a glance in Settings. Geulo clearly shows whether you are connected and presents the actions available for your current status.',
+				'Your liked-video list now moves automatically from browser storage to a dedicated file in the Geulo plugin folder. Geulo keeps a backup before saving changes and preserves an unreadable file instead of replacing your videos with an empty list.',
+				'If your sync includes plugin data, reload Geulo after syncing to see list changes from another device. Avoid changing the list on two devices at the same time, because 3.4 does not merge competing changes.'
 			]
 		},
 		{
