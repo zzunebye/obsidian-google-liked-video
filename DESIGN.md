@@ -79,10 +79,10 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 
 ### VideoCommentsModal
 
-- **Structure:** video context, related-scope note, optional `Your activity` group, and the remaining `Most relevant` comments.
-- **States:** loading, loaded, empty, recoverable error, and identity-partial success. The modal owns every request and display state.
+- **Structure:** video context, a scope note for up to 30 relevance-ranked top-level comments, optional `Your activity` group, and the remaining `Most relevant` comments.
+- **States:** loading, loaded, empty, recoverable error, identity-partial success, and per-comment collapsed or expanded text. The modal owns every request and display state.
 - **Activity:** comments liked by the connected viewer and comments authored by the viewer receive compact accent badges. A comment matching both states renders once with both badges.
-- **Accessibility:** the comment count is a labelled button, errors announce through an alert, loading announces through a status, and closing restores focus without scrolling the underlying pane.
+- **Accessibility:** the comment count is a labelled button, comment text is selectable, disclosure buttons expose their expanded state, errors announce through an alert, loading announces through a status, and closing restores focus without scrolling the underlying pane.
 - **Layout:** a theme-token modal with its own vertical scroll. Opening and closing never resets the liked-video view, pagination, filters, summaries, or scroll position.
 
 ## 6. Motion & Interaction
