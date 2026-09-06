@@ -487,20 +487,20 @@ export const VideoCard = ({
 				<div className="video-details-inner">
 					<h2 className="video-title">{videoInfo.snippet.title}</h2>
 					<p className="video-channel">
-						Channel:{" "}
-							<button
-								type="button"
-								className="video-channel-link"
-								onClick={handleChannelClick}
-							>
-								{videoInfo.snippet.channelTitle}
-							</button>
+						<span className="video-metadata-label">Channel:</span>{" "}
+						<button
+							type="button"
+							className="video-channel-link"
+							onClick={handleChannelClick}
+						>
+							{videoInfo.snippet.channelTitle}
+						</button>
 					</p>
 					<p className="video-date">
-						Published:{" "}
-						{moment(videoInfo.snippet.publishedAt).format(
-							"MMM D, YYYY",
-						)}
+						<span className="video-metadata-label">Published:</span>{" "}
+						<span className="video-metadata-value">
+							{moment(videoInfo.snippet.publishedAt).format("ll")}
+						</span>
 					</p>
 					{showVideoTags && videoInfo.snippet.tags?.length > 0 && (
 						<ResponsiveVideoTags
@@ -512,7 +512,7 @@ export const VideoCard = ({
 				<div className="video-bottom-row">
 					<p className="video-pulled-at">
 						Pulled at{" "}
-						{new Date(videoInfo.pulled_at).toLocaleDateString()}
+						{moment(videoInfo.pulled_at).format("ll")}
 					</p>
 					<div className="video-statistics">
 						<div className="video-stat">

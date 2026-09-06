@@ -1552,6 +1552,14 @@ button.geulo-undo-btn:focus-visible {
 	text-overflow: ellipsis;
 }
 
+.video-card__container .video-metadata-label {
+	color: var(--text-muted);
+}
+
+.video-card__container .video-metadata-value {
+	color: var(--text-normal);
+}
+
 .video-pulled-at {
 	margin-block-start: 0px;
 	margin-block-end: 0px;
@@ -1983,7 +1991,7 @@ button.video-channel-link {
 	background-image: none;
 	box-shadow: none;
 	font: inherit;
-	color: inherit;
+	color: var(--text-normal);
 	cursor: pointer;
 	text-decoration: underline;
 	text-decoration-color: transparent;
@@ -1998,7 +2006,7 @@ button.video-channel-link:hover {
 	background-image: none;
 	box-shadow: none;
 	text-decoration-color: currentColor;
-	color: inherit;
+	color: var(--text-normal);
 }
 
 button.video-channel-link:focus-visible {
