@@ -7,6 +7,7 @@ export const SearchBar: React.FC<{
         <div className="search-bar">
             <input
                 type="text"
+				aria-label="Search liked videos"
                 placeholder="Search by title, tags, or channel..."
                 value={searchTerm}
                 onChange={(e) => onSearchTermChange(e.target.value)}

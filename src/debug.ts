@@ -1,5 +1,3 @@
-/* eslint-disable no-console -- Console output is the explicit opt-in interface of this debug logger. */
-
 import { vaultLocalStorageService } from './services/vaultLocalStorageService';
 
 export interface DebugConfig {
