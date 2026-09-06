@@ -71,12 +71,12 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 
 	// Debounce search term with proper cleanup
 	useEffect(() => {
-		const timer = setTimeout(() => {
+		const timer = window.setTimeout(() => {
 			setDebouncedSearchTerm(searchTerm);
 		}, 300);
 
 		return () => {
-			clearTimeout(timer);
+			window.clearTimeout(timer);
 		};
 	}, [searchTerm]);
 
@@ -231,7 +231,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		);
 
 		// Simulate slight delay for better UX
-		setTimeout(() => {
+		window.setTimeout(() => {
 			setDisplayedVideos((prev) => [...prev, ...nextBatch]);
 			setHasMoreToShow(currentCount + nextBatch.length < filtered.length);
 			setIsLoadingMore(false);

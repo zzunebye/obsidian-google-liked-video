@@ -1,3 +1,4 @@
+import { requestUrl } from 'obsidian';
 import { debugLogger } from '../debug';
 import { AIService, AIServiceResult, AIServiceError, StreamOptions, StreamCallback } from './geminiService';
 
@@ -35,7 +36,7 @@ export abstract class BaseAIService implements AIService {
 	protected abstract getModel(): string;
 	protected abstract buildStreamUrl(): string;
 	protected abstract buildRequestBody(videoId: string, prompt: string): object;
-	protected abstract executeRequest(url: string, body: object, signal?: AbortSignal): Promise<Response>;
+	protected abstract buildRequestHeaders(): Record<string, string>;
 	protected abstract parseChunk(jsonStr: string): string | null;
 	protected abstract mapHttpStatusToError(status: number, message: string): AIServiceError;
 	protected abstract buildTextCompletionUrl(): string;
@@ -45,7 +46,7 @@ export abstract class BaseAIService implements AIService {
 	async generateVideoSummary(videoId: string, prompt: string): Promise<AIServiceResult> {
 		return new Promise((resolve, reject) => {
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => {
+			const timeoutId = window.setTimeout(() => {
 				debugLogger.warn(`[AI Summary] Request timed out after ${REQUEST_TIMEOUT_MS}ms for video: ${videoId}`);
 				controller.abort();
 			}, REQUEST_TIMEOUT_MS);
@@ -53,16 +54,16 @@ export abstract class BaseAIService implements AIService {
 			this.generateVideoSummaryStream(videoId, prompt, {
 				onChunk: () => {},
 				onComplete: (result) => {
-					clearTimeout(timeoutId);
+					window.clearTimeout(timeoutId);
 					resolve(result);
 				},
 				onError: (error) => {
-					clearTimeout(timeoutId);
+					window.clearTimeout(timeoutId);
 					reject(error);
 				},
 				signal: controller.signal,
 			}).catch((error) => {
-				clearTimeout(timeoutId);
+				window.clearTimeout(timeoutId);
 				reject(error);
 			});
 		});
@@ -106,11 +107,11 @@ export abstract class BaseAIService implements AIService {
 		const url = this.buildTextCompletionUrl();
 		const body = this.buildTextCompletionBody(prompt);
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), TEXT_COMPLETION_TIMEOUT_MS);
+		const timeoutId = window.setTimeout(() => controller.abort(), TEXT_COMPLETION_TIMEOUT_MS);
 
 		try {
 			const response = await this.executeRequest(url, body, controller.signal);
-			clearTimeout(timeoutId);
+			window.clearTimeout(timeoutId);
 
 			if (!response.ok) {
 				const errorData: unknown = await response.json().catch(() => ({}));
@@ -121,7 +122,7 @@ export abstract class BaseAIService implements AIService {
 			const data: unknown = await response.json();
 			return this.parseTextCompletionResponse(data);
 		} catch (error: unknown) {
-			clearTimeout(timeoutId);
+			window.clearTimeout(timeoutId);
 			if (isAbortError(error)) {
 				const timeoutError: AIServiceError = {
 					type: 'network_error',
@@ -131,6 +132,37 @@ export abstract class BaseAIService implements AIService {
 			}
 			throw error;
 		}
+	}
+
+	protected executeRequest(url: string, body: object, signal?: AbortSignal): Promise<Response> {
+		const request = requestUrl({
+			url,
+			method: 'POST',
+			headers: this.buildRequestHeaders(),
+			body: JSON.stringify(body),
+			throw: false,
+		}).then((response) => new Response(response.text, {
+			status: response.status,
+			headers: response.headers,
+		}));
+
+		if (!signal) return request;
+		if (signal.aborted) return Promise.reject(new DOMException('Request aborted', 'AbortError'));
+
+		return new Promise((resolve, reject) => {
+			const abort = () => reject(new DOMException('Request aborted', 'AbortError'));
+			signal.addEventListener('abort', abort, { once: true });
+			void request.then(
+				(response) => {
+					signal.removeEventListener('abort', abort);
+					resolve(response);
+				},
+				(error: unknown) => {
+					signal.removeEventListener('abort', abort);
+					reject(error);
+				}
+			);
+		});
 	}
 
 	protected validateApiKey(onError?: (e: AIServiceError) => void): void {

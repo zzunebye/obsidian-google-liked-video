@@ -76,16 +76,11 @@ export class GeminiService extends BaseAIService {
 		};
 	}
 
-	protected async executeRequest(url: string, body: object, signal?: AbortSignal): Promise<Response> {
-		return fetch(url, {
-			method: 'POST',
-			headers: {
+	protected buildRequestHeaders(): Record<string, string> {
+		return {
 				'Content-Type': 'application/json',
 				'x-goog-api-key': this.apiKey
-			},
-			body: JSON.stringify(body),
-			signal
-		});
+		};
 	}
 
 	protected parseChunk(jsonStr: string): string | null {

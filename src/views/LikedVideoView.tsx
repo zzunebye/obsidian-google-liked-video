@@ -140,11 +140,11 @@ export const LikedVideoView: React.FC = () => {
 
 	// Debounce search term
 	useEffect(() => {
-		const timer = setTimeout(() => {
+		const timer = window.setTimeout(() => {
 			setDebouncedSearchTerm(searchTerm);
 		}, 300);
 
-		return () => clearTimeout(timer);
+		return () => window.clearTimeout(timer);
 	}, [searchTerm]);
 
 	const filteredVideos = useMemo(() => {

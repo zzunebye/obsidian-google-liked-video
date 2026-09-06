@@ -85,7 +85,7 @@ export const SummarySection = ({
 	const contentRef = useRef<HTMLDivElement>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const requestPendingRef = useRef(false);
-	const renderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const renderTimeoutRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		const el = contentRef.current;
@@ -94,11 +94,11 @@ export const SummarySection = ({
 
 		// Debounce rendering during streaming to reduce flicker
 		if (renderTimeoutRef.current) {
-			clearTimeout(renderTimeoutRef.current);
+			window.clearTimeout(renderTimeoutRef.current);
 		}
 
 		const delay = isStreaming ? 100 : 0;
-		renderTimeoutRef.current = setTimeout(() => {
+		renderTimeoutRef.current = window.setTimeout(() => {
 			el.empty();
 			void MarkdownRenderer.render(
 				plugin.app,
@@ -116,7 +116,7 @@ export const SummarySection = ({
 
 		return () => {
 			if (renderTimeoutRef.current) {
-				clearTimeout(renderTimeoutRef.current);
+				window.clearTimeout(renderTimeoutRef.current);
 			}
 		};
 	}, [summary, streamingContent, plugin, isExpanded, isStreaming]);
@@ -124,12 +124,12 @@ export const SummarySection = ({
 	// Measure content overflow after markdown rendering completes
 	useEffect(() => {
 		if (!summary || isStreaming || !contentRef.current) return;
-		const timer = setTimeout(() => {
+		const timer = window.setTimeout(() => {
 			if (contentRef.current) {
 				setIsOverflowing(contentRef.current.scrollHeight > 300);
 			}
 		}, 50);
-		return () => clearTimeout(timer);
+		return () => window.clearTimeout(timer);
 	}, [summary, isStreaming]);
 
 	const generateOneLiner = useCallback(

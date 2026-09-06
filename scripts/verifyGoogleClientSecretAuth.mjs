@@ -30,6 +30,7 @@ await build({
 				contents: `
 					export const Platform = { isDesktop: true };
 					export class Notice { constructor() {} }
+					export const requestUrl = (request) => globalThis.requestUrl(request);
 				`,
 				loader: 'js',
 			}));
@@ -82,9 +83,8 @@ let loginRequestUrl = '';
 let loginRequestBody = '';
 let refreshRequestBody = '';
 let loginResponse = {
-	ok: true,
 	status: 200,
-	json: async () => ({ refresh_token: 'new-refresh', access_token: 'new-access', expires_in: 3600 }),
+	json: { refresh_token: 'new-refresh', access_token: 'new-access', expires_in: 3600 },
 };
 
 function createCallbackResponse() {
@@ -117,16 +117,16 @@ const httpVerification = {
 	},
 };
 
-const originalFetch = globalThis.fetch;
-globalThis.fetch = async (url, init = {}) => {
-	const requestBody = String(init.body);
+const originalRequestUrl = globalThis.requestUrl;
+globalThis.requestUrl = async (request) => {
+	const requestBody = String(request.body);
 	if (requestBody.includes('grant_type=authorization_code')) {
-		loginRequestUrl = String(url);
+		loginRequestUrl = String(request.url);
 		loginRequestBody = requestBody;
 		return loginResponse;
 	}
 	refreshRequestBody = requestBody;
-	return { json: async () => ({ access_token: 'refreshed-access', expires_in: 3600 }) };
+	return { status: 200, json: { access_token: 'refreshed-access', expires_in: 3600 } };
 };
 
 const require = createRequire(import.meta.url);
@@ -171,9 +171,8 @@ try {
 	assert.notEqual(parsedBody.client_secret, 'settings-secret');
 
 	loginResponse = {
-		ok: false,
 		status: 400,
-		json: async () => ({ error: 'invalid_grant' }),
+		json: { error: 'invalid_grant' },
 	};
 	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, handleLoginSuccess);
 	const failedCallbackResponse = createCallbackResponse();
@@ -186,7 +185,7 @@ try {
 	assert.equal(failedCallbackResponse.headers.get('Connection'), 'close');
 } finally {
 	nodeModule._load = originalLoad;
-	globalThis.fetch = originalFetch;
+	globalThis.requestUrl = originalRequestUrl;
 }
 
 console.log('google-client-secret auth verification passed');

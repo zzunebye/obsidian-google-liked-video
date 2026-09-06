@@ -162,7 +162,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		if (this.settings.fetchOnStartup && googleTokenStorageService.getAccessToken()) {
 			debugLogger.info('Fetch on startup enabled, scheduling fetch in 5 seconds');
-			setTimeout(() => {
+			window.setTimeout(() => {
 				void this.performAutoFetch();
 			}, 5000);
 		}
@@ -501,7 +501,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	private async initializeCategories(): Promise<void> {
 		try {
 			// Load categories asynchronously without blocking plugin startup
-			setTimeout(async () => {
+			window.setTimeout(async () => {
 				if (this.likedVideoApi && googleTokenStorageService.getAccessToken()) {
 					debugLogger.info('Initializing video categories...');
 					await categoriesService.loadCategories(this.likedVideoApi);

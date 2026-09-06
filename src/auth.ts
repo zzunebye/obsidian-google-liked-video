@@ -1,7 +1,7 @@
 import type { IncomingMessage, Server, ServerResponse } from 'http';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
-import { Platform, Notice } from 'obsidian';
+import { Platform, Notice, requestUrl } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
 let serverSession: Server | undefined;
@@ -103,18 +103,20 @@ export async function handleGoogleLogin(
                 redirect_uri: AUTH_REDIRECT_URI,
             });
 
-            const response = await fetch(tokenUrl, {
+            const response = await requestUrl({
+                url: tokenUrl,
                 method: 'POST',
                 headers: { 'content-type': 'application/x-www-form-urlencoded' },
                 body: tokenRequestBody.toString(),
+                throw: false,
             });
 
-            if (!response.ok) {
+			if (response.status >= 400) {
 				await finishGoogleLoginFailure(res);
 				return;
             }
 
-			const token: unknown = await response.json();
+			const token: unknown = response.json;
 			if (!isGoogleOAuthTokenResponse(token)) {
 				await finishGoogleLoginFailure(res);
 				return;
@@ -166,12 +168,14 @@ export async function handleGoogleLogout(
 
 export async function revokeGoogleToken(token: string) {
     const revokeUrl = `https://oauth2.googleapis.com/revoke?token=${token}`;
-    const response = await fetch(revokeUrl, {
+    const response = await requestUrl({
+        url: revokeUrl,
         method: 'POST',
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        throw: false,
     });
 
-    if (response.ok) {
+    if (response.status < 400) {
         new Notice("Token revoked successfully.");
         return true;
     } else {
@@ -198,16 +202,14 @@ export async function refreshAccessToken(userClientId: string)
         client_secret: userClientSecret,
     }
 
-    const response: Response = await fetch(
-        'https://oauth2.googleapis.com/token',
-        {
+    const response = await requestUrl({
+        url: 'https://oauth2.googleapis.com/token',
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(refreshTokenRequestBody),
-        }
-    )
+    });
 
-    const token: { access_token: string, expires_in: number } = await response.json();
+    const token: { access_token: string, expires_in: number } = response.json;
 
     googleTokenStorageService.setAccessToken(token.access_token);
     localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);

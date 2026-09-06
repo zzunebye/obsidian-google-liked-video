@@ -1,10 +1,13 @@
-import { Notice } from "obsidian";
+import { Notice, requestUrl } from "obsidian";
+import type { RequestUrlParam, RequestUrlResponse } from "obsidian";
 import { getGoogleAccessTokenFromLocal, getValidAccessToken } from "./auth";
 import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse, YouTubeCategory, YoutubeCategoriesResponse, PlaylistCache, YouTubePlaylistResponse, PlaylistSource, PaginatedResult, PlaylistInfo } from "./types";
 import { debugLogger } from "./debug";
 
 const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
 const REQUEST_TIMEOUT_MS = 90000;
+
+type RequestOptions = Pick<RequestUrlParam, 'body' | 'contentType'>;
 
 type PlaylistItemResponse = {
     snippet: {
@@ -24,6 +27,23 @@ function isAbortError(error: unknown): boolean {
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
+}
+
+async function requestUrlWithTimeout(request: RequestUrlParam): Promise<RequestUrlResponse> {
+    let timeoutId: number | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+            reject(new DOMException('Request timed out', 'AbortError'));
+        }, REQUEST_TIMEOUT_MS);
+    });
+
+    try {
+        return await Promise.race([requestUrl(request), timeout]);
+    } finally {
+        if (timeoutId !== undefined) {
+            window.clearTimeout(timeoutId);
+        }
+    }
 }
 
 // Generic Playlist API that can handle different playlist sources
@@ -74,33 +94,30 @@ export class PlaylistApi {
         }
     }
 
-    async sendRequest(method: 'GET' | 'POST' | 'DELETE', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
+    async sendRequest(method: 'GET' | 'POST' | 'DELETE', url: string, headers: Record<string, string>, options: RequestOptions = {}): Promise<RequestUrlResponse> {
         let accessToken = getGoogleAccessTokenFromLocal();
         debugLogger.api(`${method} request to: ${url}`);
-
-        // Add request timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
         try {
             accessToken = await getValidAccessToken(
                 this.pluginSettings.googleClientId
             );
-            const response = await fetch(url, {
+            const response = await requestUrlWithTimeout({
+                url,
                 method: method,
                 headers: {
                     ...headers,
                     'Authorization': `Bearer ${accessToken}`,
                 },
-                signal: controller.signal,
-                ...options
+                throw: false,
+                ...options,
             });
 
             debugLogger.api(`Response status: ${response.status}`);
 
             // Handle different HTTP error types
-            if (!response.ok) {
-                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            if (response.status >= 400) {
+                let errorMessage = `HTTP ${response.status}`;
 
                 if (response.status === 403) {
                     errorMessage = 'API quota exceeded or insufficient permissions';
@@ -123,8 +140,6 @@ export class PlaylistApi {
             debugLogger.error('API request failed:', error);
             new Notice("API request failed: " + getErrorMessage(error));
             throw error;
-        } finally {
-            clearTimeout(timeoutId);
         }
     }
 
@@ -561,7 +576,7 @@ export class LikedVideoApi {
     // 1. It will get the access token from the plugin settings
     // 2. If the access token is expired, it will refresh the access token with the refresh token
     // 3. It will add the access token to the request headers
-    async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestInit = {}): Promise<Response> {
+    async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestOptions = {}): Promise<RequestUrlResponse> {
         let accessToken = getGoogleAccessTokenFromLocal();
         debugLogger.api(`${method} request to: ${url}`);
 
@@ -569,12 +584,14 @@ export class LikedVideoApi {
             accessToken = await getValidAccessToken(
                 this.pluginSettings.googleClientId
             );
-            const response = await fetch(url, {
+            const response = await requestUrl({
+                url,
                 method: method,
                 headers: {
                     ...headers,
                     'Authorization': `Bearer ${accessToken}`,
                 },
+                throw: false,
                 ...options
             });
             debugLogger.api(`Response status: ${response.status}`);
