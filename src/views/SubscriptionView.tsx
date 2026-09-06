@@ -1,6 +1,17 @@
 import { Modal, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, Loader2, RefreshCw, Rss, Search, Settings, X } from "lucide-react";
+import {
+	AlertCircle,
+	ArrowDownWideNarrow,
+	ArrowUpNarrowWide,
+	Loader2,
+	RefreshCw,
+	Rss,
+	Search,
+	Settings,
+	SlidersHorizontal,
+	X,
+} from "lucide-react";
 import { SearchBar } from "src/ui/SearchBar";
 import { VideoCard } from "src/ui/VideoCard";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
@@ -19,12 +30,15 @@ import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { usePlugin } from "../store/pluginContext";
 
 export type SubscriptionPeriod = "all" | "day" | "week" | "month";
+export type SubscriptionSortOrder = "ASC" | "DESC";
 
 export interface SubscriptionViewState {
 	searchTerm: string;
 	channelId: string;
 	period: SubscriptionPeriod;
 	contentTypes: ContentTypeSelection;
+	sortOrder: SubscriptionSortOrder;
+	filtersExpanded: boolean;
 	dismissedFailureUpdatedAt: number | null;
 }
 
@@ -71,6 +85,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const [channelId, setChannelId] = useState(initialState.channelId);
 	const [period, setPeriod] = useState<SubscriptionPeriod>(initialState.period);
 	const [contentTypes, setContentTypes] = useState<ContentTypeSelection>(initialState.contentTypes);
+	const [sortOrder, setSortOrder] = useState<SubscriptionSortOrder>(initialState.sortOrder);
+	const [filtersExpanded, setFiltersExpanded] = useState(initialState.filtersExpanded);
 	const [dismissedFailureUpdatedAt, setDismissedFailureUpdatedAt] = useState(
 		initialState.dismissedFailureUpdatedAt,
 	);
@@ -103,9 +119,29 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	);
 
 	useEffect(() => {
-		onStateChange({ searchTerm, channelId, period, contentTypes, dismissedFailureUpdatedAt });
+		onStateChange({
+			searchTerm,
+			channelId,
+			period,
+			contentTypes,
+			sortOrder,
+			filtersExpanded,
+			dismissedFailureUpdatedAt,
+		});
+	}, [
+		searchTerm,
+		channelId,
+		period,
+		contentTypes,
+		sortOrder,
+		filtersExpanded,
+		dismissedFailureUpdatedAt,
+		onStateChange,
+	]);
+
+	useEffect(() => {
 		setVisibleCount(VIDEOS_PER_BATCH);
-	}, [searchTerm, channelId, period, contentTypes, dismissedFailureUpdatedAt, onStateChange]);
+	}, [searchTerm, channelId, period, contentTypes, sortOrder]);
 
 	const runFetch = async (stageResult: boolean): Promise<void> => {
 		abortControllerRef.current?.abort();
@@ -166,10 +202,18 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				|| video.snippet.tags?.some((tag) => tag.toLowerCase().includes(normalizedSearch));
 		});
 	}, [snapshot, searchTerm, channelId, period, contentTypes, shortVideoMaxDurationSeconds]);
+	const sortedVideos = useMemo(
+		() => [...filteredVideos].sort((left, right) => (
+			sortOrder === "ASC"
+				? left.snippet.publishedAt.localeCompare(right.snippet.publishedAt)
+				: right.snippet.publishedAt.localeCompare(left.snippet.publishedAt)
+		)),
+		[filteredVideos, sortOrder],
+	);
 
 	const displayedVideos = useMemo(
-		() => filteredVideos.slice(0, visibleCount),
-		[filteredVideos, visibleCount],
+		() => sortedVideos.slice(0, visibleCount),
+		[sortedVideos, visibleCount],
 	);
 
 	useEffect(() => {
@@ -197,6 +241,9 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const hasRetryableFailures = snapshot?.failedChannels.some(
 		(channel) => snapshot.failureDetails[channel.id]?.retryable !== false,
 	) ?? false;
+	const hasContentTypeFilter = contentTypes.length > 0 && contentTypes.length < 3;
+	const activeFilterCount = Number(period !== "all") + Number(hasContentTypeFilter);
+	const sortDirectionLabel = sortOrder === "DESC" ? "newest first" : "oldest first";
 
 	const handleLikeVideo = async (video: YouTubeVideo): Promise<void> => {
 		try {
@@ -281,16 +328,23 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		);
 	};
 
-	const unsubscribeFailedChannels = async (channels: SubscriptionChannel[]): Promise<void> => {
+	const unsubscribeChannels = async (channels: SubscriptionChannel[]): Promise<void> => {
 		setIsUnsubscribing(true);
 		try {
 			const result = await plugin.subscriptionService.unsubscribeChannels(channels);
 			setSnapshot(result.snapshot);
 			setPendingSnapshot(null);
-			if (result.succeededChannels.length > 0) {
+			if (result.succeededChannels.some((channel) => channel.id === channelId)) {
+				setChannelId("all");
+			}
+			if (result.succeededChannels.length === 1) {
+				new Notice(`Unsubscribed from ${result.succeededChannels[0].title}.`);
+			} else if (result.succeededChannels.length > 1) {
 				new Notice(`Unsubscribed from ${result.succeededChannels.length} channel(s).`);
 			}
-			if (result.failedChannels.length > 0) {
+			if (result.failedChannels.length === 1) {
+				new Notice(`Could not unsubscribe from ${result.failedChannels[0].channel.title}.`, 8000);
+			} else if (result.failedChannels.length > 1) {
 				new Notice(`Could not unsubscribe from ${result.failedChannels.length} channel(s).`, 8000);
 			}
 		} catch (unsubscribeError) {
@@ -305,16 +359,23 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		}
 	};
 
-	const confirmUnsubscribeFailedChannels = (channels: SubscriptionChannel[]): void => {
+	const confirmUnsubscribeChannels = (channels: SubscriptionChannel[]): void => {
 		const subscriptionLookupCount = channels.filter((channel) => !channel.subscriptionId).length;
 		const quotaUnits = channels.length * 50 + subscriptionLookupCount;
+		const singleChannel = channels.length === 1 ? channels[0] : null;
 		const modal = new Modal(plugin.app);
-		modal.setTitle(`Unsubscribe from ${channels.length} channel(s)?`);
+		modal.setTitle(
+			singleChannel
+				? `Unsubscribe from ${singleChannel.title}?`
+				: `Unsubscribe from ${channels.length} channels?`,
+		);
 		modal.contentEl.createEl("p", {
 			text: "This removes the subscriptions from your YouTube account and removes their cached videos from this view.",
 		});
-		const channelList = modal.contentEl.createEl("ul");
-		channels.forEach((channel) => channelList.createEl("li", { text: channel.title }));
+		if (!singleChannel) {
+			const channelList = modal.contentEl.createEl("ul");
+			channels.forEach((channel) => channelList.createEl("li", { text: channel.title }));
+		}
 		modal.contentEl.createEl("p", {
 			text: `YouTube API quota: ${quotaUnits} units.`,
 			cls: "subscription-unsubscribe__quota",
@@ -328,7 +389,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		});
 		unsubscribeButton.addEventListener("click", () => {
 			modal.close();
-			void unsubscribeFailedChannels(channels);
+			void unsubscribeChannels(channels);
 		});
 		modal.open();
 	};
@@ -461,7 +522,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 						<button
 							type="button"
 							className="subscription-unsubscribe"
-							onClick={() => confirmUnsubscribeFailedChannels(snapshot.failedChannels)}
+							onClick={() => confirmUnsubscribeChannels(snapshot.failedChannels)}
 							disabled={isLoading || isUnsubscribing}
 						>
 							{isUnsubscribing ? "Unsubscribing…" : "Unsubscribe the channel(s)"}
@@ -472,8 +533,23 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 			{error && snapshot && <div className="subscription-warning">{error}</div>}
 
-			<div className="subscription-search">
-				<SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
+			<div className="subscription-search search-bar-container">
+				<div className="search-bar-wrapper">
+					<SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
+				</div>
+				<button
+					type="button"
+					className={`filter-toggle-button ${activeFilterCount > 0 ? "filter-toggle-button--active" : ""}`}
+					title={filtersExpanded ? UI_TEXT.FILTERS_HIDE : UI_TEXT.FILTERS_SHOW}
+					aria-expanded={filtersExpanded}
+					aria-controls="subscription-filter-options"
+					onClick={() => setFiltersExpanded((current) => !current)}
+				>
+					<SlidersHorizontal size={16} />
+					{activeFilterCount > 0 && (
+						<span className="filter-toggle-button__count">{activeFilterCount}</span>
+					)}
+				</button>
 			</div>
 			<div className="subscription-filters">
 				<select value={channelId} onChange={(event) => setChannelId(event.target.value)} aria-label="Filter by channel">
@@ -482,32 +558,57 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 						<option key={channel.id} value={channel.id}>{channel.title}</option>
 					))}
 				</select>
-				<select value={period} onChange={(event) => setPeriod(event.target.value as SubscriptionPeriod)} aria-label="Filter by published date">
-					<option value="all">All collected videos</option>
-					<option value="day">Last 24 hours</option>
-					<option value="week">Last 7 days</option>
-					<option value="month">Last 30 days</option>
-				</select>
 				<span>{filteredVideos.length} videos</span>
 			</div>
-			<div className="content-type-filter" role="group" aria-label="Filter by content type">
-				{(["videos", "shorts", "music"] as ContentTypeOption[]).map((option) => (
-					<label
-						key={option}
-						className={`content-type-filter__option ${contentTypes.includes(option) ? "content-type-filter__option--selected" : ""}`}
-					>
-						<input
-							type="checkbox"
-							checked={contentTypes.includes(option)}
-							onChange={() => toggleContentType(option)}
-							className="content-type-filter__input"
-						/>
-						<span className="content-type-filter__text">
-							{option === "videos" ? "Videos" : option === "shorts" ? "Shorts" : "Music"}
-						</span>
-					</label>
-				))}
-			</div>
+			{filtersExpanded && (
+				<div
+					id="subscription-filter-options"
+					className="filters-container filters-container--expanded"
+				>
+					<div className="video-view-sort-left-group subscription-filter-options">
+						<select
+							value={period}
+							onChange={(event) => setPeriod(event.target.value as SubscriptionPeriod)}
+							aria-label="Filter by published date"
+						>
+							<option value="all">All collected videos</option>
+							<option value="day">Last 24 hours</option>
+							<option value="week">Last 7 days</option>
+							<option value="month">Last 30 days</option>
+						</select>
+						<div className="content-type-filter" role="group" aria-label="Filter by content type">
+							{(["videos", "shorts", "music"] as ContentTypeOption[]).map((option) => (
+								<label
+									key={option}
+									className={`content-type-filter__option ${contentTypes.includes(option) ? "content-type-filter__option--selected" : ""}`}
+								>
+									<input
+										type="checkbox"
+										checked={contentTypes.includes(option)}
+										onChange={() => toggleContentType(option)}
+										className="content-type-filter__input"
+									/>
+									<span className="content-type-filter__text">
+										{option === "videos" ? "Videos" : option === "shorts" ? "Shorts" : "Music"}
+									</span>
+								</label>
+							))}
+						</div>
+						<div className="filters-divider" />
+						<button
+							type="button"
+							title={`Current order: ${sortDirectionLabel}`}
+							aria-label={`Change sort order. Current order: ${sortDirectionLabel}`}
+							className="video-view-sort__order"
+							onClick={() => setSortOrder((current) => current === "ASC" ? "DESC" : "ASC")}
+						>
+							{sortOrder === "DESC"
+								? <ArrowDownWideNarrow size={16} />
+								: <ArrowUpNarrowWide size={16} />}
+						</button>
+					</div>
+				</div>
+			)}
 
 			{snapshot?.channels.length === 0 ? (
 				<div className="no-videos-found">
@@ -524,8 +625,12 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			) : (
 				<>
 					<div className="videos-grid">
-						{displayedVideos.map((video) => (
-							<VideoCard
+						{displayedVideos.map((video) => {
+							const channel = snapshot?.channels.find(
+								(candidate) => candidate.id === video.snippet.channelId,
+							);
+							return (
+								<VideoCard
 								key={video.id}
 								source="subscription"
 								videoInfo={video}
@@ -539,6 +644,10 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 								onUnlike={() => {
 									void handleUnlikeVideo(video);
 								}}
+								unsubscribeActionPending={isUnsubscribing}
+								onUnsubscribeChannel={channel
+									? () => confirmUnsubscribeChannels([channel])
+									: undefined}
 								onChannelClick={() => setChannelId(video.snippet.channelId)}
 								onTagClick={(tag) => setSearchTerm(tag)}
 								onLinkClick={(url) => void openVideo(url)}
@@ -547,8 +656,9 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 									await plugin.app.workspace.openLinkText(file.path, "", false);
 									new Notice(`Added video to ${file.basename} and opened the note`);
 								}}
-							/>
-						))}
+								/>
+							);
+						})}
 					</div>
 					<p ref={endRef} className="liked-video-list-end">
 						{visibleCount < filteredVideos.length

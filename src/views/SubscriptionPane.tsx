@@ -12,6 +12,8 @@ const DEFAULT_VIEW_STATE: SubscriptionViewState = {
 	channelId: "all",
 	period: "all",
 	contentTypes: ["videos", "shorts", "music"],
+	sortOrder: "DESC",
+	filtersExpanded: false,
 	dismissedFailureUpdatedAt: null,
 };
 

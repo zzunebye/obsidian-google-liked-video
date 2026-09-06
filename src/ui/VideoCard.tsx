@@ -45,6 +45,8 @@ interface VideoCardProps {
 	isLiked?: boolean;
 	onUnlike: () => void;
 	onLike?: () => void;
+	unsubscribeActionPending?: boolean;
+	onUnsubscribeChannel?: () => void;
 	onAddToDailyNote: (videoData: string, file: TFile) => Promise<void>;
 	onChannelClick: (channelTitle: string, channelId: string) => void;
 	onTagClick: (tag: string) => void;
@@ -65,6 +67,8 @@ export const VideoCard = ({
 	isLiked,
 	onUnlike,
 	onLike,
+	unsubscribeActionPending = false,
+	onUnsubscribeChannel,
 	onAddToDailyNote,
 	onChannelClick,
 	onTagClick,
@@ -355,6 +359,15 @@ export const VideoCard = ({
 					});
 				});
 			}
+		}
+
+		if (source === "subscription" && onUnsubscribeChannel) {
+			menu.addItem((item) => {
+				item.setTitle("Unsubscribe channel");
+				item.setIcon("user-minus");
+				item.setDisabled(unsubscribeActionPending);
+				item.onClick(onUnsubscribeChannel);
+			});
 		}
 
 		menu.addItem((item) => {
