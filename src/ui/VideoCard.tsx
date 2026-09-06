@@ -41,11 +41,12 @@ interface VideoCardProps {
 	id: string;
 	url: string;
 	noteExists: boolean;
+	likeActionPending?: boolean;
 	isLiked?: boolean;
 	onUnlike: () => void;
 	onLike?: () => void;
 	onAddToDailyNote: (videoData: string, file: TFile) => Promise<void>;
-	onChannelClick: (channelTitle: string) => void;
+	onChannelClick: (channelTitle: string, channelId: string) => void;
 	onTagClick: (tag: string) => void;
 	onLinkClick: (url: string) => void;
 	summaryExpanded?: boolean;
@@ -60,6 +61,7 @@ export const VideoCard = ({
 	videoInfo,
 	url,
 	noteExists,
+	likeActionPending = false,
 	isLiked,
 	onUnlike,
 	onLike,
@@ -145,7 +147,7 @@ export const VideoCard = ({
 	const handleChannelClick = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		onChannelClick(videoInfo.snippet.channelTitle);
+		onChannelClick(videoInfo.snippet.channelTitle, videoInfo.snippet.channelId);
 	};
 	const handleCreateVideoNote = async (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -324,6 +326,7 @@ export const VideoCard = ({
 			menu.addItem((item) => {
 				item.setTitle("Unlike");
 				item.setIcon("heart-off");
+				item.setDisabled(likeActionPending);
 				item.onClick(() => {
 					onUnlike();
 				});
@@ -472,12 +475,13 @@ export const VideoCard = ({
 					<h2 className="video-title">{videoInfo.snippet.title}</h2>
 					<p className="video-channel">
 						Channel:{" "}
-						<span
-							className="video-channel-link"
-							onClick={handleChannelClick}
-						>
-							{videoInfo.snippet.channelTitle}
-						</span>
+							<button
+								type="button"
+								className="video-channel-link"
+								onClick={handleChannelClick}
+							>
+								{videoInfo.snippet.channelTitle}
+							</button>
 					</p>
 					<p className="video-date">
 						Published:{" "}
@@ -507,6 +511,7 @@ export const VideoCard = ({
 						<button
 							type="button"
 							className="video-stat video-stat--clickable video-stat--button"
+							disabled={likeActionPending}
 							aria-label={
 								source === "liked"
 									? "Unlike"
@@ -633,6 +638,14 @@ export const VideoCard = ({
 			<div
 				className={`video-card__container video-card__container--ai ${isSummaryExpanded ? "video-card__container--expanded" : ""}`}
 				onClick={handleCardClick}
+				tabIndex={0}
+				aria-label={`Open ${videoInfo.snippet.title}`}
+				onKeyDown={(event) => {
+					if ((event.key === "Enter" || event.key === " ") && event.target === event.currentTarget) {
+						event.preventDefault();
+						handleCardClick();
+					}
+				}}
 				onContextMenu={handleContextMenu}
 				draggable
 				onDragStart={handleDragStart}
@@ -659,7 +672,8 @@ export const VideoCard = ({
 					</div>
 				</div>
 				{hasSummary && !isSummaryExpanded && (
-					<div
+					<button
+						type="button"
 						className="summary-preview"
 						onClick={handleSummaryToggle}
 					>
@@ -673,7 +687,7 @@ export const VideoCard = ({
 							size={12}
 							className="summary-preview__chevron"
 						/>
-					</div>
+					</button>
 				)}
 				<SummarySection
 					videoId={videoInfo.id}
@@ -699,6 +713,14 @@ export const VideoCard = ({
 		<div
 			className="video-card__container"
 			onClick={() => onLinkClick(url)}
+			tabIndex={0}
+			aria-label={`Open ${videoInfo.snippet.title}`}
+			onKeyDown={(event) => {
+				if ((event.key === "Enter" || event.key === " ") && event.target === event.currentTarget) {
+					event.preventDefault();
+					onLinkClick(url);
+				}
+			}}
 			onContextMenu={handleContextMenu}
 			draggable
 			onDragStart={handleDragStart}

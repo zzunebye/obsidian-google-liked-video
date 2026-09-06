@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import type { Range } from "@tanstack/react-virtual";
 import type { LikedVideoPaginationMode, YouTubeVideo } from "src/types";
-import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
-import { usePlugin } from "src/store/pluginContext";
 import type { SummarySnapshot } from "./SummarySection";
 
 export interface SummaryCardState {
@@ -20,6 +18,7 @@ interface Props {
 	readonly mode: LikedVideoPaginationMode;
 	readonly currentPage: number;
 	readonly resetKey: string;
+	readonly noteExistenceMap: ReadonlyMap<string, boolean>;
 	readonly renderVideo: (video: YouTubeVideo, noteExists: boolean, summary: SummaryCardState) => ReactNode;
 }
 
@@ -27,7 +26,7 @@ const GAP = 16;
 const PAGE_SIZE = 10;
 const INFINITE_BATCH_SIZE = 50;
 
-export function LikedVideoCollection({ videos, mode, currentPage, resetKey, renderVideo }: Props) {
+export function LikedVideoCollection({ videos, mode, currentPage, resetKey, noteExistenceMap, renderVideo }: Props) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const endRef = useRef<HTMLParagraphElement>(null);
 	const [batch, setBatch] = useState({ key: resetKey, count: INFINITE_BATCH_SIZE });
@@ -38,6 +37,8 @@ export function LikedVideoCollection({ videos, mode, currentPage, resetKey, rend
 	const [busyVideos, setBusyVideos] = useState<ReadonlyMap<string, YouTubeVideo>>(new Map());
 	const [focusedId, setFocusedId] = useState<string | null>(null);
 	const heights = useRef(new Map<string, number>());
+	const scrollAnchor = useRef<{ id: string; offset: number; key: string } | null>(null);
+	const previousPage = useRef(currentPage);
 	const columns = Math.max(1, Math.min(videos.length || 1, Math.floor((geometry.width + GAP) / (500 + GAP))));
 	const infinite = mode === "infinite";
 	const exposedCount = Math.min(videos.length, batch.key === resetKey ? batch.count : INFINITE_BATCH_SIZE);
@@ -105,6 +106,51 @@ export function LikedVideoCollection({ videos, mode, currentPage, resetKey, rend
 		setFocusedId(null);
 	}, [resetKey, scrollElement, infinite, virtualizer]);
 
+	useLayoutEffect(() => {
+		const anchor = scrollAnchor.current;
+		const ownerWindow = containerRef.current?.ownerDocument.defaultView;
+		if (infinite && anchor?.key === resetKey && scrollElement && ownerWindow) {
+			const index = videos.findIndex((video) => video.id === anchor.id);
+			if (index >= 0) {
+				virtualizer.scrollToIndex(Math.floor(index / columns), { align: "start" });
+				ownerWindow.requestAnimationFrame(() => {
+					const element = Array.from(containerRef.current?.querySelectorAll<HTMLElement>("[data-video-id]") ?? [])
+						.find((card) => card.dataset.videoId === anchor.id);
+					if (!element || !scrollElement) return;
+					const currentOffset = element.getBoundingClientRect().top - scrollElement.getBoundingClientRect().top;
+					scrollElement.scrollTop += currentOffset - anchor.offset;
+				});
+			}
+		}
+		scrollAnchor.current = null;
+
+		return () => {
+			if (!infinite || !scrollElement) return;
+			const scrollerTop = scrollElement.getBoundingClientRect().top;
+			const cards = Array.from(containerRef.current?.querySelectorAll<HTMLElement>("[data-video-id]") ?? [])
+				.filter((card) => card.getBoundingClientRect().bottom > scrollerTop)
+				.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+			const firstCard = cards[0];
+			if (firstCard?.dataset.videoId) {
+				scrollAnchor.current = {
+					id: firstCard.dataset.videoId,
+					offset: firstCard.getBoundingClientRect().top - scrollerTop,
+					key: resetKey,
+				};
+			}
+		};
+	}, [videos, resetKey, infinite, scrollElement, columns, virtualizer]);
+
+	useLayoutEffect(() => {
+		if (infinite || previousPage.current === currentPage || !scrollElement) return;
+		previousPage.current = currentPage;
+		scrollElement.scrollTo({ top: 0, behavior: "auto" });
+		const ownerWindow = containerRef.current?.ownerDocument.defaultView;
+		ownerWindow?.requestAnimationFrame(() => {
+			containerRef.current?.querySelector<HTMLElement>(".video-card__container")?.focus();
+		});
+	}, [currentPage, infinite, scrollElement]);
+
 	useEffect(() => {
 		const end = endRef.current;
 		const ownerWindow = end?.ownerDocument.defaultView;
@@ -134,8 +180,6 @@ export function LikedVideoCollection({ videos, mode, currentPage, resetKey, rend
 	const visibleVideos = [...placements.keys()].map(index => videos[index]);
 	const mountedVideos = [...visibleVideos, ...[...busyVideos.values()].filter(video => !visibleVideos.some(item => item.id === video.id))];
 	const placementKey = [...placements.keys()].join(",");
-	const trackedVideos = useMemo(() => mountedVideos, [videos, placementKey, busyVideos]);
-	const noteExistenceMap = useNoteExistenceMap(usePlugin(), trackedVideos);
 
 	useLayoutEffect(() => {
 		const container = containerRef.current;
@@ -171,7 +215,7 @@ export function LikedVideoCollection({ videos, mode, currentPage, resetKey, rend
 				const shown = placements.has(index);
 				return (
 					<div key={video.id} role="listitem" aria-setsize={videos.length} aria-posinset={shown ? index + 1 : undefined}
-						tabIndex={shown ? 0 : -1}
+							tabIndex={-1}
 						aria-hidden={shown ? undefined : true} data-video-id={video.id} data-video-index={shown ? index : undefined}
 						className={infinite || !shown ? "liked-video-virtual-card" : "liked-video-page-card"}
 						style={infinite || !shown ? {

@@ -9,6 +9,8 @@ export interface SavedPlaylist extends PlaylistInfo {
 class LocalStorageService {
 	private likedVideoStorage: LikedVideoStorageService | null = null;
 	private reportWriteError: (error: unknown) => void = () => {};
+	private likedVideoListeners = new Set<(videos: YouTubeVideo[]) => void>();
+	private temporarilyUnlikedVideos = new Map<string, number>();
 
 	initializeLikedVideos(storage: LikedVideoStorageService, reportError: (error: unknown) => void): void {
 		this.likedVideoStorage = storage;
@@ -31,9 +33,35 @@ class LocalStorageService {
      * Retrieves liked videos from local storage.
      * @returns {YouTubeVideo[]} An array of liked videos.
      */
-    getLikedVideos(): YouTubeVideo[] {
+	getLikedVideos(): YouTubeVideo[] {
 		return this.getLikedVideoStorage().getVideos();
-    }
+	}
+
+	subscribeLikedVideos(listener: (videos: YouTubeVideo[]) => void): () => void {
+		this.likedVideoListeners.add(listener);
+		return () => this.likedVideoListeners.delete(listener);
+	}
+
+	updateLikedVideos(update: (videos: YouTubeVideo[]) => YouTubeVideo[]): YouTubeVideo[] {
+		const updatedVideos = update(this.getLikedVideos());
+		this.setLikedVideos(updatedVideos);
+		return updatedVideos;
+	}
+
+	removeLikedVideo(videoId: string): YouTubeVideo[] {
+		this.temporarilyUnlikedVideos.set(videoId, Date.now() + 60_000);
+		return this.updateLikedVideos((videos) => videos.filter((video) => video.id !== videoId));
+	}
+
+	restoreLikedVideo(video: YouTubeVideo, insertIndex = 0): YouTubeVideo[] {
+		this.temporarilyUnlikedVideos.delete(video.id);
+		return this.updateLikedVideos((videos) => {
+			const withoutDuplicate = videos.filter((item) => item.id !== video.id);
+			const restored = [...withoutDuplicate];
+			restored.splice(Math.min(Math.max(insertIndex, 0), restored.length), 0, video);
+			return restored;
+		});
+	}
 
     getWatchLaterVideos(): YouTubeVideo[] {
         const watchLaterVideos = window.localStorage.getItem("googleYtbLikedVideoWatchLaterVideos");
@@ -65,9 +93,14 @@ class LocalStorageService {
         return window.localStorage.getItem("likedVideoViewSelectedCategory") ?? "all";
     }
 
-    getAINoteFilter(): boolean {
-        return window.localStorage.getItem("likedVideoViewAINoteFilter") === "true";
-    }
+	getAINoteFilter(): boolean {
+		return window.localStorage.getItem("likedVideoViewAINoteFilter") === "true";
+	}
+
+	getVideoNoteFilter(): "all" | "with" | "without" {
+		const stored = window.localStorage.getItem("likedVideoViewVideoNoteFilter");
+		return stored === "with" || stored === "without" ? stored : "all";
+	}
 
     getFiltersExpanded(): boolean {
         const stored = window.localStorage.getItem("likedVideoViewFiltersExpanded");
@@ -111,9 +144,13 @@ class LocalStorageService {
         window.localStorage.setItem("likedVideoViewSelectedCategory", categoryId);
     }
 
-    setAINoteFilter(enabled: boolean): void {
-        window.localStorage.setItem("likedVideoViewAINoteFilter", String(enabled));
-    }
+	setAINoteFilter(enabled: boolean): void {
+		window.localStorage.setItem("likedVideoViewAINoteFilter", String(enabled));
+	}
+
+	setVideoNoteFilter(filter: "all" | "with" | "without"): void {
+		window.localStorage.setItem("likedVideoViewVideoNoteFilter", filter);
+	}
 
     setFiltersExpanded(expanded: boolean): void {
         window.localStorage.setItem("likedVideoViewFiltersExpanded", String(expanded));
@@ -160,11 +197,19 @@ class LocalStorageService {
         return pinnedIds.includes(playlistId);
     }
 
-    setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
+	setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
+		const now = Date.now();
+		for (const [videoId, expiresAt] of this.temporarilyUnlikedVideos) {
+			if (expiresAt <= now) this.temporarilyUnlikedVideos.delete(videoId);
+		}
+		const nextVideos = this.temporarilyUnlikedVideos.size === 0
+			? likedVideos
+			: likedVideos.filter((video) => !this.temporarilyUnlikedVideos.has(video.id));
 		const storage = this.getLikedVideoStorage();
-		storage.setVideos(likedVideos);
+		storage.setVideos(nextVideos);
 		void storage.flush().catch(this.reportWriteError);
-    };
+		this.likedVideoListeners.forEach((listener) => listener(nextVideos));
+	};
 
     setWatchLaterVideos = (watchLaterVideos: YouTubeVideo[]): void => {
         window.localStorage.setItem("googleYtbLikedVideoWatchLaterVideos", JSON.stringify(watchLaterVideos));

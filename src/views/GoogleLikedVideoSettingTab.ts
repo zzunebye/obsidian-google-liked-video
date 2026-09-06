@@ -1,18 +1,16 @@
-import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
 import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, SHORT_VIDEO_MAX_DURATION_OPTIONS } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
-import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from './LikedVideoListPane';
 import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
 import { UI_TEXT } from '../constants/uiText';
 import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templateConstants';
 import { PlaylistVideosPane } from './PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from './SubscriptionPane';
-import { createNotesForNewVideos, fetchAndMergeLikedVideos, FetchAndMergeLikedVideosResult } from '../services/likedVideoFetchService';
 import { addWideTextSetting, createCollapsibleReference, createMonospaceTextarea } from '../utils/settingUiUtils';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
@@ -102,15 +100,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     async updateListPaneView(): Promise<void> {
-        const likedVideoViews = this.app.workspace
-            .getLeavesOfType(VIEW_TYPE_LIKED_VIDEO_LIST)
-            .map(leaf => leaf.view)
-            .filter((view): view is LikedVideoListPane => view instanceof LikedVideoListPane);
-
-        await Promise.all(likedVideoViews.map(async view => {
-            await view.onClose();
-            await view.onOpen();
-        }));
+		localStorageService.setLikedVideos(localStorageService.getLikedVideos());
     }
 
     updatePlaylistVideosPaneView(): void {
@@ -128,27 +118,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             await view.onClose();
             await view.onOpen();
         }));
-    }
-
-    display(): void {
-        const { containerEl } = this;
-        containerEl.empty();
-
-        const refreshToken = googleTokenStorageService.getRefreshToken();
-        const isLoggedIn = refreshToken !== null && refreshToken !== '';
-
-        this.renderSetupSection(containerEl, refreshToken);
-        this.renderSyncSection(containerEl, isLoggedIn);
-        this.renderVideoDisplaySection(containerEl);
-
-        if (isLoggedIn) {
-            this.renderVideoNotesSection(containerEl);
-            this.renderTemplateSection(containerEl);
-            this.renderAISection(containerEl);
-        }
-
-        this.renderDataManagementSection(containerEl);
-        this.renderDebugSection(containerEl);
     }
 
     private renderVideoDisplaySection(containerEl: HTMLElement): void {
@@ -178,29 +147,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         if (refresh.subscriptionPane) {
             await this.updateSubscriptionPaneView();
         }
-    }
-
-    private async applyManualFetchResult(
-        result: FetchAndMergeLikedVideosResult,
-        notice: string
-    ): Promise<void> {
-        localStorageService.setLikedVideos(result.mergedVideos);
-        this.update();
-        await this.updateListPaneView();
-        new Notice(notice);
-
-        const createdCount = await createNotesForNewVideos(
-            result.newVideos,
-            this.plugin.settings.autoCreateNoteEnabled,
-            (video) => this.plugin.automateVideoProcessing(video)
-        );
-        if (createdCount > 0) {
-            new Notice(`Created ${createdCount} new video notes`);
-        }
-    }
-
-    private showError(error: unknown): void {
-        new Modal(this.app).setTitle(UI_TEXT.ERROR_TITLE).setContent(UI_TEXT.ERROR_MESSAGE(error)).open();
     }
 
     private renderSyncSection(containerEl: HTMLElement, isLoggedIn: boolean): void {
@@ -602,47 +548,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setName('Full scan')
                 .setDesc('Check all liked videos and replace the saved list with the results. Videos no longer returned by YouTube are removed from this list.')
                 .addButton(button => button
-                    .setButtonText('Full scan')
-                    .onClick(async () => {
-                        try {
-                            const totalLikedVideos = await this.plugin.likedVideoApi.fetchTotalLikedVideoCount();
-                            new Notice(`${totalLikedVideos} videos in total`);
-
-                            const result = await fetchAndMergeLikedVideos(this.plugin.likedVideoApi, {
-                                mode: 'full',
-                                keepUnfetched: false,
-                            });
-
-                            await this.applyManualFetchResult(
-                                result,
-                                `All liked videos have been fetched and saved to LocalStorage - ${result.mergedVideos.length} videos`
-                            );
-                        } catch (error) {
-                            this.showError(error);
-                        }
-                    }));
+					.setButtonText('Full scan')
+					.onClick(async () => {
+						await this.plugin.performAutoFetch(true, false);
+					}));
 
             new Setting(containerEl)
                 .setName('Fetch recent videos')
                 .setDesc('Check the 50 most recent liked videos. Add new videos and update matching saved videos, keeping the rest of your saved list.')
                 .addButton(button => button
-                    .setButtonText('Fetch recent videos')
-                    .onClick(async () => {
-                        try {
-                            const result = await fetchAndMergeLikedVideos(this.plugin.likedVideoApi, {
-                                mode: 'partial',
-                                keepUnfetched: true,
-                            });
-
-                            await this.applyManualFetchResult(
-                                result,
-                                UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(result.newVideos.length)
-                            );
-                        } catch (error) {
-                            console.error(error);
-                            this.showError(error);
-                        }
-                    }));
+					.setButtonText('Fetch recent videos')
+					.onClick(async () => {
+						await this.plugin.performAutoFetch(false, false);
+					}));
         }
 
     }
@@ -674,7 +592,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }
                     localStorageService.setLikedVideos([]);
                     this.update();
-                    await this.updateListPaneView();
                     new Notice('Saved liked-video list cleared. YouTube likes and existing notes were kept.');
                 }));
     }

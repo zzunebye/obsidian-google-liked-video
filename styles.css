@@ -665,11 +665,6 @@ If your plugin does not need CSS, delete this file.
 	cursor: pointer;
 }
 
-.video-view-header__refresh-button {
-	padding-left: 24px;
-	padding-right: 24px;
-}
-
 .video-view-sort-left-group {
 	display: flex;
 	align-items: center;
@@ -741,6 +736,7 @@ If your plugin does not need CSS, delete this file.
 
 /* Filter toggle button */
 .filter-toggle-button {
+	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -754,6 +750,21 @@ If your plugin does not need CSS, delete this file.
 	cursor: pointer;
 	flex-shrink: 0;
 	transition: all 0.15s ease;
+}
+
+.filter-toggle-button__count {
+	position: absolute;
+	top: -6px;
+	right: -6px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	border-radius: 9px;
+	background: var(--text-error);
+	color: var(--text-on-accent);
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 18px;
 }
 
 .filter-toggle-button:hover {
@@ -779,7 +790,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 .filters-container--expanded {
-	max-height: 200px;
+	max-height: none;
 	opacity: 1;
 }
 
@@ -1187,21 +1198,28 @@ button.video-tag-chip {
 
 .video-statistics {
 	display: flex;
-	gap: 14px;
+	gap: 2px;
 	align-items: center;
 	flex-shrink: 1;
 	min-width: 0;
 }
 
 .video-stat {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	gap: 4px;
+	height: 28px;
+	padding: 4px 6px;
+	box-sizing: border-box;
 	font-size: 13px;
+	line-height: 1;
 	color: var(--text-muted);
 }
 
 .video-stat-icon {
+	width: 16px;
+	height: 16px;
+	flex: 0 0 16px;
 	color: var(--text-faint);
 	opacity: 0.7;
 }
@@ -1209,8 +1227,6 @@ button.video-tag-chip {
 .video-stat--clickable {
 	cursor: pointer;
 	border-radius: 4px;
-	padding: 4px 6px;
-	margin: -4px -6px;
 	transition: background-color 0.12s ease;
 }
 
@@ -1219,12 +1235,15 @@ button.video-tag-chip {
 }
 
 button.video-stat--button {
-	font: inherit;
-	line-height: inherit;
+	appearance: none;
+	font-family: inherit;
+	font-size: 13px;
+	line-height: 1;
 	border: 0;
 	box-shadow: none;
 	background: transparent;
-	height: auto;
+	height: 28px;
+	min-width: 0;
 }
 
 button.video-stat--comment {
@@ -1473,20 +1492,42 @@ button.video-comment__toggle:focus-visible {
 
 .video-stat--clickable:hover .video-stat-icon--liked {
 	filter: brightness(1.15);
-	transform: rotate(180deg);
+	transform: scale(0.875) rotate(180deg);
 }
 
 .video-stat-icon--liked {
 	color: var(--interactive-accent);
 	opacity: 1;
+	transform: scale(0.875);
 }
 
-.geulo-undo-btn {
+button.geulo-undo-btn {
+	appearance: none;
+	padding: 0;
+	border: 0;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 	cursor: pointer;
+	font: inherit;
 	font-weight: 600;
 	color: var(--interactive-accent);
 	text-decoration: underline;
 	margin-left: 4px;
+}
+
+button.geulo-undo-btn:hover {
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+}
+
+button.geulo-undo-btn:focus-visible {
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
 }
 
 .video-stat-count {
@@ -1562,6 +1603,26 @@ button.video-comment__toggle:focus-visible {
 	margin: -4px 0 12px;
 }
 
+.active-filter-list {
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.active-filter-list__clear {
+	padding: 4px 8px;
+	border: 0;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 12px;
+}
+
+.active-filter-list__clear:hover,
+.active-filter-list__clear:focus-visible {
+	color: var(--text-normal);
+	text-decoration: underline;
+}
+
 .active-tag-filter__chip {
 	display: inline-flex;
 	align-items: center;
@@ -1610,6 +1671,17 @@ button.video-comment__toggle:focus-visible {
 	gap: 8px;
 	margin-bottom: 12px;
 	margin-top: 16px;
+}
+
+.liked-video-sync-status {
+	min-height: 16px;
+	margin-top: 6px;
+	color: var(--text-muted);
+	font-size: 11px;
+}
+
+.liked-video-sync-status:empty {
+	display: none;
 }
 
 .search-bar-wrapper {
@@ -1841,6 +1913,11 @@ button.video-comment__toggle:focus-visible {
 .liked-video-virtual-card:focus-visible, .liked-video-page-card:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
 .liked-video-virtual-card:focus-within .video-card-options, .liked-video-page-card:focus-within .video-card-options { visibility: visible; opacity: 1; }
 
+.video-card__container:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
 .video-view__pagination {
 	display: flex;
 	justify-content: center;
@@ -1889,8 +1966,13 @@ button.video-comment__toggle:focus-visible {
 }
 
 /* Channel link styles */
-.video-channel-link {
-	color: var(--text-accent);
+button.video-channel-link {
+	border: 0;
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	font: inherit;
+	color: inherit;
 	cursor: pointer;
 	text-decoration: underline;
 	text-decoration-color: transparent;
@@ -1900,10 +1982,18 @@ button.video-comment__toggle:focus-visible {
 	margin: -2px -4px;
 }
 
-.video-channel-link:hover {
-	background-color: var(--background-modifier-hover);
-	text-decoration-color: var(--text-accent);
-	color: var(--text-accent-hover);
+button.video-channel-link:hover {
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
+	text-decoration-color: currentColor;
+	color: inherit;
+}
+
+button.video-channel-link:focus-visible {
+	background-color: transparent;
+	background-image: none;
+	box-shadow: none;
 }
 
 /* Add Playlist Form */
@@ -2362,6 +2452,11 @@ button.video-comment__toggle:focus-visible {
 	border-radius: 4px;
 	cursor: pointer;
 	transition: background-color 0.15s ease;
+	width: 100%;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
 }
 
 .summary-preview:hover {

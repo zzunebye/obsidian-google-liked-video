@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LikedVideoView } from "../views/LikedVideoView";
 import { YouTubeVideo } from "../types";
 import * as React from "react";
+import { localStorageService } from "../storage";
 
 const VideosProvider: React.FC<{ videos: YouTubeVideo[] }> = ({ videos }) => {
     const [videoList, setVideoList] = useState<YouTubeVideo[]>(videos);
+
+	useEffect(() => localStorageService.subscribeLikedVideos(setVideoList), []);
+
     return (
         <VideosContext.Provider value={[videoList, setVideoList]}>
             <LikedVideoView />

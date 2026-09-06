@@ -9,6 +9,7 @@ export class SummaryStorageService {
 	private maxEntries: number;
 	private cache: Map<string, SummaryFileData> = new Map();
 	private writeQueue: Promise<void> = Promise.resolve();
+	private listeners = new Set<() => void>();
 
 	constructor(adapter: DataAdapter, manifestDir: string, maxEntries = 500) {
 		this.adapter = adapter;
@@ -38,6 +39,11 @@ export class SummaryStorageService {
 
 	hasVideoSummary(videoId: string): boolean {
 		return this.cache.has(videoId);
+	}
+
+	subscribe(listener: () => void): () => void {
+		this.listeners.add(listener);
+		return () => this.listeners.delete(listener);
 	}
 
 	getOneLineSummary(videoId: string): string | null {
@@ -75,12 +81,14 @@ export class SummaryStorageService {
 		this.evictIfNeeded();
 
 		await this.persist();
+		this.listeners.forEach((listener) => listener());
 		debugLogger.debug(`[SummaryStorage] Wrote summary for ${videoId}`);
 	}
 
 	async deleteVideoSummary(videoId: string): Promise<void> {
 		this.cache.delete(videoId);
 		await this.persist();
+		this.listeners.forEach((listener) => listener());
 	}
 
 	async setOneLinerSummary(videoId: string, oneLiner: string): Promise<void> {
@@ -120,6 +128,7 @@ export class SummaryStorageService {
 		this.writeQueue = Promise.resolve();
 		// Clear in-memory cache
 		this.cache.clear();
+		this.listeners.clear();
 		debugLogger.info("[SummaryStorage] Resources cleaned up");
 	}
 }

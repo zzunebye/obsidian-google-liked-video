@@ -82,7 +82,7 @@ export class LikedVideoListPane
 
     getState(): Record<string, unknown> {
         return {
-            videos: this.videos,
+			videos: localStorageService.getLikedVideos(),
         };
     }
 }

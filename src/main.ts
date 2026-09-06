@@ -25,6 +25,7 @@ import { CommentService } from './services/commentService';
 import { SubscriptionService } from './services/subscriptionService';
 import { SubscriptionStorageService } from './services/subscriptionStorageService';
 import { vaultLocalStorageService } from './services/vaultLocalStorageService';
+import { VideoNoteIndexService } from './services/videoNoteIndexService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -54,6 +55,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 }
 
 export const APP_ID = 'geulo-youtube-liked-video';
+export type LikedVideoFetchStatus = 'idle' | 'recent' | 'full' | 'creating-notes';
 
 export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings = { ...DEFAULT_SETTINGS };
@@ -63,9 +65,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	commentService!: CommentService;
 	subscriptionService!: SubscriptionService;
 	summaryStorage!: SummaryStorageService;
+	videoNoteIndex!: VideoNoteIndexService;
 	likedVideoStorage?: LikedVideoStorageService;
 	autoFetchInterval: number | null = null;
 	isFetching = false;
+	private fetchStatus: LikedVideoFetchStatus = 'idle';
+	private fetchStatusListeners = new Set<(status: LikedVideoFetchStatus) => void>();
 	settingTabRef: GoogleLikedVideoSettingTab | null = null;
 	private featureAnnouncementModal: FeatureIntroModal | null = null;
 
@@ -104,6 +109,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, manifestDir, 500);
 		await this.summaryStorage.initialize();
+		this.videoNoteIndex = new VideoNoteIndexService(this.app);
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,
@@ -212,6 +218,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.featureAnnouncementModal = null;
 		announcementModal?.close();
 		this.stopAutoFetch();
+		this.videoNoteIndex?.destroy();
+		this.fetchStatusListeners.clear();
 		void this.likedVideoStorage?.close().catch((error: unknown) => {
 			debugLogger.error('[LikedVideoStorage] Failed to save on unload:', error);
 			new Notice('Geulo: Could not save the liked video list before unloading.', 10000);
@@ -227,18 +235,6 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.summaryStorage?.cleanup();
 
 		debugLogger.info('Plugin unloaded successfully');
-	}
-
-	async reloadView(): Promise<void> {
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_LIKED_VIDEO_LIST);
-
-		for (const leaf of leaves) {
-			const view = leaf.view;
-			if (view instanceof LikedVideoListPane) {
-				await view.onClose();
-				await view.onOpen();
-			}
-		}
 	}
 
 	async activateView() {
@@ -354,21 +350,43 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 	}
 
-	async performAutoFetch(forceFullFetch = false) {
+	getFetchStatus(): LikedVideoFetchStatus {
+		return this.fetchStatus;
+	}
+
+	subscribeFetchStatus(listener: (status: LikedVideoFetchStatus) => void): () => void {
+		this.fetchStatusListeners.add(listener);
+		return () => this.fetchStatusListeners.delete(listener);
+	}
+
+	private setFetchStatus(status: LikedVideoFetchStatus): void {
+		this.fetchStatus = status;
+		this.isFetching = status !== 'idle';
+		this.fetchStatusListeners.forEach((listener) => listener(status));
+	}
+
+	async performAutoFetch(forceFullFetch = false, useConfiguredMode = true): Promise<void> {
 		if (this.isFetching) {
 			debugLogger.autoFetch('Skipping auto-fetch - already fetching');
 			return;
 		}
+		if (!this.likedVideoApi || !googleTokenStorageService.getAccessToken()) {
+			new Notice('Geulo: Connect your Google account before fetching liked videos.');
+			return;
+		}
 
+		const shouldFetchAllVideos = forceFullFetch ||
+			(useConfiguredMode && this.settings.fullFetchOnEveryAutoFetch);
 		try {
 			debugLogger.autoFetch('Starting auto-fetch');
-			new Notice('Geulo: Auto-fetching started');
-			this.isFetching = true;
+			new Notice(shouldFetchAllVideos
+				? 'Geulo: Full liked-video sync started'
+				: 'Geulo: Checking the 50 most recent liked videos');
+			this.setFetchStatus(shouldFetchAllVideos ? 'full' : 'recent');
 			const now = Date.now();
 			debugLogger.time('auto-fetch');
 
 			if (this.likedVideoApi && googleTokenStorageService.getAccessToken()) {
-				const shouldFetchAllVideos = forceFullFetch || this.settings.fullFetchOnEveryAutoFetch;
 				const fetchInterval = this.settings.autoFetchInterval;
 
 				if (shouldFetchAllVideos) {
@@ -381,8 +399,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 				const result = await fetchAndMergeLikedVideos(this.likedVideoApi, {
 					mode: shouldFetchAllVideos ? 'full' : 'partial',
-					// Auto-fetch must not remove locally stored videos.
-					keepUnfetched: true,
+					keepUnfetched: !shouldFetchAllVideos,
 				});
 				const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos, updatedCount } = result;
 
@@ -398,21 +415,19 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					);
 				}
 
-				// Save when there are new videos OR when existing videos were updated
-				if (newLikedVideos.length > 0 || updatedCount > 0) {
+				if (shouldFetchAllVideos || newLikedVideos.length > 0 || updatedCount > 0) {
 					localStorageService.setLikedVideos(updatedLikedVideos);
-					if (newLikedVideos.length > 0) {
+					if (shouldFetchAllVideos) {
+						new Notice(UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(updatedLikedVideos.length));
+					} else if (newLikedVideos.length > 0) {
 						new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
 					} else {
 						debugLogger.autoFetch(`Updated ${updatedCount} existing video(s) with fresh data.`);
 					}
 
-					this.settings.lastAutoFetchTime = now;
-					await this.saveData(this.settings);
-
-					await this.reloadView();
-					this.settingTabRef?.display();
-
+					if (newLikedVideos.length > 0 && this.settings.autoCreateNoteEnabled) {
+						this.setFetchStatus('creating-notes');
+					}
 					await createNotesForNewVideos(
 						newLikedVideos,
 						this.settings.autoCreateNoteEnabled,
@@ -421,13 +436,16 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				} else {
 					debugLogger.autoFetch('No new videos found during auto-fetch.');
 				}
+				this.settings.lastAutoFetchTime = now;
+				await this.saveData(this.settings);
+				this.settingTabRef?.update();
 			}
 		} catch (error) {
 			debugLogger.error('Auto-fetch failed:', error);
 			console.error('Auto-fetch failed:', error);
 		} finally {
 			debugLogger.timeEnd('auto-fetch');
-			this.isFetching = false;
+			this.setFetchStatus('idle');
 			debugLogger.autoFetch('Auto-fetch completed');
 		}
 	}

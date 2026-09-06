@@ -1,5 +1,5 @@
-import { useContext, useEffect, useMemo, useState } from "react";
-import type { KeyboardEvent } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { usePlugin } from "../store/pluginContext";
 import { localStorageService } from "src/storage";
 import {
@@ -20,24 +20,39 @@ import {
 	Bot,
 	ChevronDown,
 	SlidersHorizontal,
+	MoreHorizontal,
 } from "lucide-react";
 import { VideoCard } from "src/ui/VideoCard";
 import { SearchBar } from "src/ui/SearchBar";
 import { APP_ID } from "src/main";
-import { Modal, Notice } from "obsidian";
+import type { LikedVideoFetchStatus } from "src/main";
+import { Menu, Notice } from "obsidian";
 import { VideosContext } from "src/store/videoContext";
 import { UI_TEXT } from "src/constants/uiText";
 import { categoriesService } from "src/categoriesService";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { LikedVideoCollection } from "src/ui/LikedVideoCollection";
 import { ViewHeader } from "src/ui/ViewHeader";
-import { ActiveTagFilter } from "src/ui/ActiveTagFilter";
-import { createNotesForNewVideos, fetchAndMergeLikedVideos } from "src/services/likedVideoFetchService";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
+import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
+
+interface ActiveChannelFilter {
+	id: string;
+	title: string;
+}
+
+const FilterChip = ({ label, onClear }: { label: string; onClear: () => void }) => (
+	<button type="button" className="active-tag-filter__chip" title={`Clear ${label}`} onClick={onClear}>
+		<span className="active-tag-filter__label">{label}</span>
+		<span className="active-tag-filter__remove" aria-hidden="true">×</span>
+	</button>
+);
+
 export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 	const [selectedTag, setSelectedTag] = useState<string | null>(null);
+	const [selectedChannel, setSelectedChannel] = useState<ActiveChannelFilter | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageInput, setPageInput] = useState("1");
 	const paginationMode = localStorageService.getLikedVideoPaginationMode();
@@ -57,12 +72,19 @@ export const LikedVideoView: React.FC = () => {
 	const [showAINoteOnly, setShowAINoteOnly] = useState(
 		localStorageService.getAINoteFilter(),
 	);
+	const [videoNoteFilter, setVideoNoteFilter] = useState(
+		localStorageService.getVideoNoteFilter(),
+	);
 	const [filtersExpanded, setFiltersExpanded] = useState(
 		localStorageService.getFiltersExpanded(),
 	);
-	const [videos, setVideos] = useContext(VideosContext);
-	const [isFetching, setIsFetching] = useState(false);
+	const [videos] = useContext(VideosContext);
+	const [pendingUnlikeIds, setPendingUnlikeIds] = useState<ReadonlySet<string>>(new Set());
+	const pendingUnlikeIdsRef = useRef(new Set<string>());
 	const plugin = usePlugin();
+	const [fetchStatus, setFetchStatus] = useState<LikedVideoFetchStatus>(plugin.getFetchStatus());
+	const noteExistenceMap = useNoteExistenceMap(plugin, videos);
+	const [summaryVersion, setSummaryVersion] = useState(0);
 	const shortVideoMaxDurationSeconds = plugin.settings.shortVideoMaxDurationSeconds;
 	const videosPerPage = 10;
 
@@ -135,6 +157,16 @@ export const LikedVideoView: React.FC = () => {
 	}, [showAINoteOnly]);
 
 	useEffect(() => {
+		localStorageService.setVideoNoteFilter(videoNoteFilter);
+	}, [videoNoteFilter]);
+
+	useEffect(() => plugin.summaryStorage.subscribe(() => {
+		setSummaryVersion((version) => version + 1);
+	}), [plugin.summaryStorage]);
+
+	useEffect(() => plugin.subscribeFetchStatus(setFetchStatus), [plugin]);
+
+	useEffect(() => {
 		localStorageService.setFiltersExpanded(filtersExpanded);
 	}, [filtersExpanded]);
 
@@ -167,11 +199,13 @@ export const LikedVideoView: React.FC = () => {
 				searchMatch = titleMatch || tagsMatch || channelMatch;
 			}
 
-			const exactTagMatch =
+				const exactTagMatch =
 				selectedTag === null ||
 				(video.snippet.tags ?? []).some(
 					(tag) => tag.toLowerCase() === selectedTag.toLowerCase(),
-				);
+					);
+				const channelMatch = selectedChannel === null ||
+					video.snippet.channelId === selectedChannel.id;
 
 			// Category filter
 			const categoryMatch =
@@ -205,31 +239,41 @@ export const LikedVideoView: React.FC = () => {
 			}
 
 			// AI Note filter
-			const aiNoteMatch =
-				!showAINoteOnly ||
-				plugin.summaryStorage.hasVideoSummary(video.id);
+				const aiNoteMatch =
+					!showAINoteOnly ||
+					plugin.summaryStorage.hasVideoSummary(video.id);
+				const hasVideoNote = noteExistenceMap.get(video.id) ?? false;
+				const videoNoteMatch = videoNoteFilter === "all" ||
+					(videoNoteFilter === "with" ? hasVideoNote : !hasVideoNote);
 
 			return (
-				searchMatch &&
-				exactTagMatch &&
-				categoryMatch &&
-				contentTypeMatch &&
-				aiNoteMatch
+					searchMatch &&
+					exactTagMatch &&
+					channelMatch &&
+					categoryMatch &&
+					contentTypeMatch &&
+					aiNoteMatch &&
+					videoNoteMatch
 			);
 		});
 	}, [
 		videos,
 		debouncedSearchTerm,
-		selectedTag,
+			selectedTag,
+			selectedChannel,
 		selectedCategory,
 		contentTypeSelection,
 		shortVideoMaxDurationSeconds,
 		videoDurations,
-		showAINoteOnly,
-	]);
+			showAINoteOnly,
+			videoNoteFilter,
+			noteExistenceMap,
+			summaryVersion,
+		]);
 
 	const sortedVideos = useMemo(() => {
 		const sorted = [...filteredVideos];
+		const originalIndexes = new Map(videos.map((video, index) => [video.id, index]));
 		switch (sortOption) {
 			case "title":
 				sorted.sort((a, b) =>
@@ -238,12 +282,12 @@ export const LikedVideoView: React.FC = () => {
 				break;
 			case "viewCount":
 				sorted.sort(
-					(a, b) => b.statistics.viewCount - a.statistics.viewCount,
+					(a, b) => a.statistics.viewCount - b.statistics.viewCount,
 				);
 				break;
 			case "likeCount":
 				sorted.sort(
-					(a, b) => b.statistics.likeCount - a.statistics.likeCount,
+					(a, b) => a.statistics.likeCount - b.statistics.likeCount,
 				);
 				break;
 			case "commentCount":
@@ -252,36 +296,41 @@ export const LikedVideoView: React.FC = () => {
 						parseInt(a.statistics.commentCount) || 0;
 					const bCommentCount =
 						parseInt(b.statistics.commentCount) || 0;
-					return bCommentCount - aCommentCount;
+					return aCommentCount - bCommentCount;
 				});
 				break;
 			case "likeViewRatio":
-				sorted.sort(
-					(a, b) =>
-						b.statistics.likeCount / b.statistics.viewCount -
-						a.statistics.likeCount / a.statistics.viewCount,
-				);
+				sorted.sort((a, b) => {
+					const aRatio = a.statistics.viewCount > 0
+						? a.statistics.likeCount / a.statistics.viewCount
+						: -1;
+					const bRatio = b.statistics.viewCount > 0
+						? b.statistics.likeCount / b.statistics.viewCount
+						: -1;
+					return aRatio - bRatio;
+				});
 				break;
 
 			case "date":
 				sorted.sort(
 					(a, b) =>
-						new Date(b.snippet.publishedAt).getTime() -
-						new Date(a.snippet.publishedAt).getTime(),
+						new Date(a.snippet.publishedAt).getTime() -
+						new Date(b.snippet.publishedAt).getTime(),
 				);
 				break;
 			case "addedDate":
-				sorted.sort((a, b) => videos.indexOf(a) - videos.indexOf(b));
+				sorted.sort((a, b) =>
+					(originalIndexes.get(b.id) ?? 0) - (originalIndexes.get(a.id) ?? 0));
 				break;
 			case "duration":
 				sorted.sort((a, b) => {
 					const aDuration = videoDurations.get(a.id) || 0;
 					const bDuration = videoDurations.get(b.id) || 0;
-					return bDuration - aDuration;
+					return aDuration - bDuration;
 				});
 				break;
 		}
-		if (sortOrder === "ASC") {
+		if (sortOrder === "DESC") {
 			sorted.reverse();
 		}
 		return sorted;
@@ -289,8 +338,23 @@ export const LikedVideoView: React.FC = () => {
 
 	const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
 	const maximumPage = Math.max(totalPages, 1);
-	const browsingKey = JSON.stringify([paginationMode, debouncedSearchTerm, selectedTag, sortOption,
-		sortOrder, selectedCategory, contentTypeSelection, showAINoteOnly]);
+	const browsingKey = JSON.stringify([paginationMode, debouncedSearchTerm, selectedTag, selectedChannel?.id,
+		sortOption, sortOrder, selectedCategory, contentTypeSelection, showAINoteOnly, videoNoteFilter]);
+	const hasContentTypeFilter = contentTypeSelection.length > 0 && contentTypeSelection.length < 3;
+	const activeFilterCount = Number(selectedTag !== null) + Number(selectedChannel !== null) +
+		Number(selectedCategory !== "all") + Number(hasContentTypeFilter) + Number(showAINoteOnly) +
+		Number(videoNoteFilter !== "all");
+	const selectedCategoryTitle = availableCategories.find((category) =>
+		category.id === selectedCategory)?.title ?? selectedCategory;
+	const contentTypeFilterLabel = contentTypeSelection.map((type) => type === "videos"
+		? UI_TEXT.CONTENT_TYPE_VIDEOS
+		: type === "shorts" ? UI_TEXT.CONTENT_TYPE_SHORTS : UI_TEXT.CONTENT_TYPE_MUSIC).join(", ");
+	const hasActiveQuery = debouncedSearchTerm.length > 0 || activeFilterCount > 0;
+	const sortDirectionLabel = sortOption === "title"
+		? sortOrder === "ASC" ? "A to Z" : "Z to A"
+		: sortOption === "addedDate" || sortOption === "date"
+			? sortOrder === "ASC" ? "oldest first" : "newest first"
+			: sortOrder === "ASC" ? "lowest first" : "highest first";
 
 	useEffect(() => {
 		setPageInput(String(currentPage));
@@ -371,6 +435,30 @@ export const LikedVideoView: React.FC = () => {
 		);
 	};
 
+	const clearAllFilters = (): void => {
+		setSearchTerm("");
+		setDebouncedSearchTerm("");
+		setSelectedTag(null);
+		setSelectedChannel(null);
+		setSelectedCategory("all");
+		setContentTypeSelection([]);
+		setShowAINoteOnly(false);
+		setVideoNoteFilter("all");
+	};
+
+	const openSyncMenu = (event: MouseEvent<HTMLButtonElement>): void => {
+		const menu = new Menu();
+		menu.addItem((item) => item
+			.setTitle("Full sync (replace saved list)")
+			.setIcon("refresh-cw")
+			.setDisabled(fetchStatus !== "idle")
+			.onClick(() => {
+				void plugin.performAutoFetch(true, false);
+			}));
+		const rect = event.currentTarget.getBoundingClientRect();
+		menu.showAtPosition({ x: rect.right, y: rect.bottom });
+	};
+
 	return (
 		<div className="liked-video-view" onKeyDown={handleViewKeyDown}>
 			<ViewHeader
@@ -387,9 +475,9 @@ export const LikedVideoView: React.FC = () => {
 									: `${plugin.settings.autoFetchInterval} minutes`
 									}`}
 							>
-								{plugin.isFetching
-									? "🔄 Fetching..."
-									: "⏰ Auto"}
+									{fetchStatus !== "idle"
+										? fetchStatus === "creating-notes" ? "Creating notes..." : "Fetching..."
+										: "⏰ Auto"}
 							</span>
 						)}
 					</>
@@ -401,45 +489,25 @@ export const LikedVideoView: React.FC = () => {
 				actions={
 					<>
 						<button
-							title={UI_TEXT.BTN_REFRESH}
-							/// Refresh button to fetch recently liked videos
-							className="video-view-header__refresh-button"
-							disabled={isFetching || plugin.isFetching}
-							onClick={() => {
-								void (async () => {
-									setIsFetching(true);
-									try {
-										const result = await fetchAndMergeLikedVideos(
-											plugin.likedVideoApi,
-											{
-												mode: "partial",
-												keepUnfetched: true,
-											},
-										);
-
-										localStorageService.setLikedVideos(
-											result.mergedVideos,
-										);
-										setVideos(result.mergedVideos);
-										new Notice(
-											UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(
-												result.newVideos.length,
-											),
-										);
-										await createNotesForNewVideos(
-											result.newVideos,
-											plugin.settings.autoCreateNoteEnabled,
-											(video) =>
-												plugin.automateVideoProcessing(video),
-										);
-									} finally {
-										setIsFetching(false);
-									}
-								})();
-							}}
-						>
-							<RefreshCcw size={16} />
-						</button>
+								title="Fetch the 50 most recent liked videos"
+								/// Refresh button to fetch recently liked videos
+								className="refresh-button"
+								disabled={fetchStatus !== "idle"}
+								onClick={() => {
+									void plugin.performAutoFetch(false, false);
+								}}
+							>
+								<RefreshCcw size={16} />
+							</button>
+							<button
+								type="button"
+								title="More sync options"
+								aria-label="More sync options"
+								disabled={fetchStatus !== "idle"}
+								onClick={openSyncMenu}
+							>
+								<MoreHorizontal size={16} />
+							</button>
 						<button
 							title={UI_TEXT.BTN_SETTINGS}
 							onClick={() => {
@@ -463,10 +531,17 @@ export const LikedVideoView: React.FC = () => {
 							<Settings size={16} />
 						</button>
 					</>
-				}
-			/>
+					}
+				/>
+				<div className="liked-video-sync-status" role="status" aria-live="polite">
+					{fetchStatus === "recent" && "Checking the 50 most recent liked videos..."}
+					{fetchStatus === "full" && "Syncing all liked videos..."}
+					{fetchStatus === "creating-notes" && "Liked videos updated. Creating notes..."}
+					{fetchStatus === "idle" && plugin.settings.lastAutoFetchTime > 0 &&
+						`Last checked ${new Date(plugin.settings.lastAutoFetchTime).toLocaleString()}`}
+				</div>
 
-			<div className="search-bar-container">
+				<div className="search-bar-container">
 				<div className="search-bar-wrapper">
 					<SearchBar
 						searchTerm={searchTerm}
@@ -474,28 +549,41 @@ export const LikedVideoView: React.FC = () => {
 						escapeClearsSearch
 					/>
 				</div>
-				<button
-					className={`filter-toggle-button ${filtersExpanded ? "filter-toggle-button--active" : ""}`}
-					title={
+					<button
+						className={`filter-toggle-button ${activeFilterCount > 0 ? "filter-toggle-button--active" : ""}`}
+						title={
 						filtersExpanded
 							? UI_TEXT.FILTERS_HIDE
 							: UI_TEXT.FILTERS_SHOW
-					}
-					onClick={() => setFiltersExpanded((prev) => !prev)}
-				>
-					<SlidersHorizontal size={16} />
-				</button>
-			</div>
-			{selectedTag && (
-				<ActiveTagFilter
-					tag={selectedTag}
-					onClear={() => setSelectedTag(null)}
-				/>
-			)}
+						}
+						aria-expanded={filtersExpanded}
+						aria-controls="liked-video-filters"
+						onClick={() => setFiltersExpanded((prev) => !prev)}
+					>
+						<SlidersHorizontal size={16} />
+						{activeFilterCount > 0 && (
+							<span className="filter-toggle-button__count">{activeFilterCount}</span>
+						)}
+					</button>
+				</div>
+				{activeFilterCount > 0 && (
+					<div className="active-tag-filter active-filter-list" aria-label="Active filters">
+						{selectedTag && <FilterChip label={`Tag: ${selectedTag}`} onClear={() => setSelectedTag(null)} />}
+						{selectedChannel && <FilterChip label={`Channel: ${selectedChannel.title}`} onClear={() => setSelectedChannel(null)} />}
+						{selectedCategory !== "all" && <FilterChip label={`Category: ${selectedCategoryTitle}`} onClear={() => setSelectedCategory("all")} />}
+						{hasContentTypeFilter && <FilterChip label={`Type: ${contentTypeFilterLabel}`} onClear={() => setContentTypeSelection([])} />}
+						{showAINoteOnly && <FilterChip label="AI summary" onClear={() => setShowAINoteOnly(false)} />}
+						{videoNoteFilter !== "all" && (
+							<FilterChip label={videoNoteFilter === "with" ? "Has video note" : "No video note"} onClear={() => setVideoNoteFilter("all")} />
+						)}
+						<button type="button" className="active-filter-list__clear" onClick={clearAllFilters}>Clear all</button>
+					</div>
+				)}
 
-			<div
-				className={`filters-container ${filtersExpanded ? "filters-container--expanded" : "filters-container--collapsed"}`}
-			>
+				{filtersExpanded && <div
+					id="liked-video-filters"
+					className="filters-container filters-container--expanded"
+				>
 				<div className="video-view-sort">
 					<div className="video-view-sort-left-group">
 						<div className="category-filter">
@@ -585,9 +673,23 @@ export const LikedVideoView: React.FC = () => {
 							<span className="content-type-filter__text">
 								{UI_TEXT.AI_NOTE_FILTER_LABEL}
 							</span>
-						</label>
-						<div className="filters-divider" />
-						<div className="sort-controls-inline">
+							</label>
+							<div className="filters-divider" />
+							<div className="video-view-sort__select-wrapper">
+								<select
+									className="video-view-sort__select"
+									aria-label="Filter by video note"
+									value={videoNoteFilter}
+									onChange={(event) => setVideoNoteFilter(event.target.value as "all" | "with" | "without")}
+								>
+									<option value="all">All note states</option>
+									<option value="with">Has video note</option>
+									<option value="without">No video note</option>
+								</select>
+								<ChevronDown className="video-view-sort__select-icon" size={16} aria-hidden="true" />
+							</div>
+							<div className="filters-divider" />
+							<div className="sort-controls-inline">
 							<div className="video-view-sort__select-wrapper">
 								<select
 									id="sort-video-select"
@@ -628,14 +730,14 @@ export const LikedVideoView: React.FC = () => {
 								/>
 							</div>
 							<button
-								title={UI_TEXT.BTN_TOGGLE_SORT_ORDER}
+									title={`Current order: ${sortDirectionLabel}`}
 								onClick={() =>
 									setSortOrder(
 										sortOrder === "ASC" ? "DESC" : "ASC",
 									)
 								}
 								className="video-view-sort__order"
-								aria-label={UI_TEXT.ARIA_TOGGLE_SORT_ORDER}
+									aria-label={`Change sort order. Current order: ${sortDirectionLabel}`}
 							>
 								{sortOrder === "DESC" ? (
 									<ArrowDownWideNarrow size={16} />
@@ -646,68 +748,36 @@ export const LikedVideoView: React.FC = () => {
 						</div>
 					</div>
 				</div>
-			</div>
-			{sortedVideos.length === 0 && (
+				</div>}
+				{sortedVideos.length === 0 && (
 				<div className="no-videos-found">
 					<div className="no-videos-found__text">
-						{debouncedSearchTerm || selectedTag
-							? "No videos match the active filters"
-							: UI_TEXT.NO_VIDEOS_FOUND}
-					</div>
+							{hasActiveQuery
+								? "No videos match the active filters"
+								: UI_TEXT.NO_VIDEOS_FOUND}
+						</div>
+						{hasActiveQuery && (
+							<button type="button" className="no-videos-found__fetch-all-button" onClick={clearAllFilters}>
+								Clear search and filters
+							</button>
+						)}
 
-					{videos.length === 0 && (
-						<button
-							className="no-videos-found__fetch-all-button"
-							onClick={() => {
-								void (async () => {
-									try {
-										const totalLikedVideos =
-											await plugin.likedVideoApi.fetchTotalLikedVideoCount();
-										new Notice(
-											UI_TEXT.NOTICE_TOTAL_VIDEOS(
-												totalLikedVideos ?? 0,
-											),
-										);
-
-										const result = await fetchAndMergeLikedVideos(
-											plugin.likedVideoApi,
-											{
-												mode: "full",
-												keepUnfetched: false,
-											},
-										);
-										localStorageService.setLikedVideos(
-											result.mergedVideos,
-										);
-										setVideos(result.mergedVideos);
-
-										new Notice(
-											UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(
-												result.fetchedCount,
-											),
-										);
-										await createNotesForNewVideos(
-											result.newVideos,
-											plugin.settings.autoCreateNoteEnabled,
-											(video) =>
-												plugin.automateVideoProcessing(video),
-										);
-									} catch (error) {
-										new Modal(plugin.app)
-											.setTitle(UI_TEXT.ERROR_TITLE)
-											.setContent(UI_TEXT.ERROR_MESSAGE(error))
-											.open();
-									}
-								})();
-							}}
-						>
-							{UI_TEXT.BTN_FETCH_ALL}
+						{videos.length === 0 && (
+							<button
+								className="no-videos-found__fetch-all-button"
+								disabled={fetchStatus !== "idle"}
+								onClick={() => {
+									void plugin.performAutoFetch(true);
+								}}
+							>
+								{fetchStatus === "full" ? "Fetching all liked videos..." : UI_TEXT.BTN_FETCH_ALL}
 						</button>
 					)}
 				</div>
 			)}
 			{/* Videos */}
 			<LikedVideoCollection videos={sortedVideos} mode={paginationMode} currentPage={currentPage}
+				noteExistenceMap={noteExistenceMap}
 				resetKey={browsingKey} renderVideo={(video, noteExists, summaryState) => (
 					<VideoCard
 						{...summaryState}
@@ -717,43 +787,51 @@ export const LikedVideoView: React.FC = () => {
 						url={`https://www.youtube.com/watch?v=${video.id}`}
 						videoInfo={video}
 						noteExists={noteExists}
+						likeActionPending={pendingUnlikeIds.has(video.id)}
 						onUnlike={() => {
+							if (pendingUnlikeIdsRef.current.has(video.id)) return;
+							pendingUnlikeIdsRef.current.add(video.id);
+							setPendingUnlikeIds(new Set(pendingUnlikeIdsRef.current));
 							void (async () => {
 								const index = videos.findIndex((v) => v.id === video.id);
 								const previousVideoId = index > 0 ? videos[index - 1].id : null;
-								await plugin.likedVideoApi.unlikeVideo(video.id);
-								const filtered = videos.filter((v) => v.id !== video.id);
-								localStorageService.setLikedVideos(filtered);
-								setVideos(filtered);
+								try {
+									await plugin.likedVideoApi.unlikeVideo(video.id);
+									localStorageService.removeLikedVideo(video.id);
 
-								const fragment = new DocumentFragment();
-								fragment.createEl("span", { text: `Unliked "${video.snippet.title}" ` });
-								const undoBtn = fragment.createEl("span", {
-									text: "Undo",
-									cls: "geulo-undo-btn",
-								});
-								const notice = new Notice(fragment, 5000);
-								undoBtn.addEventListener("click", () => {
-									void (async () => {
-										try {
-											await plugin.likedVideoApi.likeVideo(video.id);
-											const current = localStorageService.getLikedVideos();
-											const restored = [...current];
-											let insertIndex = 0;
-											if (previousVideoId) {
-												const prevIdx = restored.findIndex((v) => v.id === previousVideoId);
-												insertIndex = prevIdx >= 0 ? prevIdx + 1 : Math.min(index, restored.length);
+									const fragment = new DocumentFragment();
+									fragment.createEl("span", { text: `Unliked "${video.snippet.title}" ` });
+									const undoBtn = fragment.createEl("button", {
+										text: "Undo",
+										cls: "geulo-undo-btn",
+									});
+									const notice = new Notice(fragment, 5000);
+									undoBtn.addEventListener("click", () => {
+										void (async () => {
+											try {
+												await plugin.likedVideoApi.likeVideo(video.id);
+												const current = localStorageService.getLikedVideos();
+												const previousIndex = previousVideoId
+													? current.findIndex((item) => item.id === previousVideoId)
+													: -1;
+												const insertIndex = previousIndex >= 0
+													? previousIndex + 1
+													: Math.min(index, current.length);
+												localStorageService.restoreLikedVideo(video, insertIndex);
+												notice.hide();
+											} catch (error) {
+												console.error("Failed to undo unlike:", error);
+												new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
 											}
-											restored.splice(insertIndex, 0, video);
-											localStorageService.setLikedVideos(restored);
-											setVideos(restored);
-											notice.hide();
-										} catch (error) {
-											console.error("Failed to undo unlike:", error);
-											new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
-										}
-									})();
-								}, { once: true });
+										})();
+									}, { once: true });
+								} catch (error) {
+									console.error("Failed to unlike video:", error);
+									new Notice(UI_TEXT.NOTICE_UNLIKE_FAILED);
+								} finally {
+									pendingUnlikeIdsRef.current.delete(video.id);
+									setPendingUnlikeIds(new Set(pendingUnlikeIdsRef.current));
+								}
 							})();
 						}}
 						onAddToDailyNote={async (videoData, file) => {
@@ -772,8 +850,8 @@ export const LikedVideoView: React.FC = () => {
 								`Added video to ${file.basename} and opened the note`,
 							);
 						}}
-						onChannelClick={(channelTitle) => {
-							setSearchTerm(channelTitle);
+						onChannelClick={(channelTitle, channelId) => {
+							setSelectedChannel({ id: channelId, title: channelTitle });
 						}}
 						onTagClick={handleTagClick}
 						onLinkClick={(videoUrl) => {

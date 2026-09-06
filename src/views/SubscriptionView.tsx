@@ -1,6 +1,6 @@
 import { Modal, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, Loader2, RefreshCw, Rss, Search, X } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, Rss, Search, Settings, X } from "lucide-react";
 import { SearchBar } from "src/ui/SearchBar";
 import { VideoCard } from "src/ui/VideoCard";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
@@ -16,6 +16,7 @@ import type {
 	YouTubeVideo,
 } from "src/types";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
+import { APP_ID } from "src/main";
 import { usePlugin } from "../store/pluginContext";
 
 export type SubscriptionPeriod = "all" | "day" | "week" | "month";
@@ -84,6 +85,34 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const endRef = useRef<HTMLParagraphElement>(null);
+
+	const openPluginSettings = (): void => {
+		const setting = Reflect.get(plugin.app, "setting");
+		if (
+			typeof setting === "object" &&
+			setting !== null &&
+			"open" in setting &&
+			typeof setting.open === "function" &&
+			"openTabById" in setting &&
+			typeof setting.openTabById === "function"
+		) {
+			setting.open();
+			setting.openTabById(APP_ID);
+		} else {
+			new Notice("Unable to open Geulo settings in this Obsidian version.");
+		}
+	};
+
+	const settingsAction = (
+		<button
+			type="button"
+			title={UI_TEXT.BTN_SETTINGS}
+			aria-label={UI_TEXT.BTN_SETTINGS}
+			onClick={openPluginSettings}
+		>
+			<Settings size={16} />
+		</button>
+	);
 
 	useEffect(() => {
 		onStateChange({ searchTerm, channelId, period, contentTypes, dismissedFailureUpdatedAt });
@@ -184,7 +213,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const handleLikeVideo = async (video: YouTubeVideo): Promise<void> => {
 		try {
 			await plugin.likedVideoApi.likeVideo(video.id);
-			localStorageService.setLikedVideos([video, ...localStorageService.getLikedVideos()]);
+				localStorageService.restoreLikedVideo(video);
 			setLikedVideoIds((current) => new Set(current).add(video.id));
 			new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
 		} catch (likeError) {
@@ -196,9 +225,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const handleUnlikeVideo = async (video: YouTubeVideo): Promise<void> => {
 		try {
 			await plugin.likedVideoApi.unlikeVideo(video.id);
-			localStorageService.setLikedVideos(
-				localStorageService.getLikedVideos().filter((likedVideo) => likedVideo.id !== video.id),
-			);
+				localStorageService.removeLikedVideo(video.id);
 			setLikedVideoIds((current) => {
 				const next = new Set(current);
 				next.delete(video.id);
@@ -321,7 +348,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	if (!snapshot && !isLoading && !error) {
 		return (
 			<div className="subscription-view">
-				<ViewHeader icon={<Rss className="video-view-header__icon" />} title="Subscriptions" />
+				<ViewHeader
+					icon={<Rss className="video-view-header__icon" />}
+					title="Subscriptions"
+					actions={settingsAction}
+				/>
 				<div className="no-videos-found">
 					<Rss size={48} />
 					<div className="no-videos-found__title">Subscriptions are not loaded</div>
@@ -337,7 +368,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	if (!snapshot && isLoading) {
 		return (
 			<div className="subscription-view">
-				<ViewHeader icon={<Rss className="video-view-header__icon" />} title="Subscriptions" />
+				<ViewHeader
+					icon={<Rss className="video-view-header__icon" />}
+					title="Subscriptions"
+					actions={settingsAction}
+				/>
 				<div className="subscription-loading">
 					<Loader2 size={24} className="animate-spin" />
 					<span>{progress ? `${progress.completedChannels} / ${progress.totalChannels} channels checked` : "Loading subscriptions…"}</span>
@@ -350,7 +385,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	if (!snapshot && error) {
 		return (
 			<div className="subscription-view">
-				<ViewHeader icon={<Rss className="video-view-header__icon" />} title="Subscriptions" />
+				<ViewHeader
+					icon={<Rss className="video-view-header__icon" />}
+					title="Subscriptions"
+					actions={settingsAction}
+				/>
 				<div className="videos-error">
 					<AlertCircle size={48} />
 					<div className="videos-error__title">Failed to load subscriptions</div>
@@ -370,9 +409,12 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				title="Subscriptions"
 				badge={`${snapshot?.channels.length ?? 0} channels`}
 				actions={
-					<button type="button" className="refresh-button" onClick={onRequestRefresh} disabled={isLoading} title="Refresh subscriptions">
-						<RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
-					</button>
+					<>
+						<button type="button" className="refresh-button" onClick={onRequestRefresh} disabled={isLoading} title="Refresh subscriptions">
+							<RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+						</button>
+						{settingsAction}
+					</>
 				}
 			/>
 

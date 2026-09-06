@@ -336,8 +336,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 	const handleLikeVideo = async (video: YouTubeVideo) => {
 		try {
 			await plugin.likedVideoApi.likeVideo(video.id);
-			const currentLikedVideos = localStorageService.getLikedVideos();
-			localStorageService.setLikedVideos([video, ...currentLikedVideos]);
+				localStorageService.restoreLikedVideo(video);
 			setLikedVideoIds((prev) => {
 				const next = new Set(prev);
 				next.add(video.id);
@@ -353,10 +352,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 	const handleUnlikeVideo = async (video: YouTubeVideo) => {
 		try {
 			await plugin.likedVideoApi.unlikeVideo(video.id);
-			const currentLikedVideos = localStorageService.getLikedVideos();
-			localStorageService.setLikedVideos(
-				currentLikedVideos.filter((v) => v.id !== video.id),
-			);
+				localStorageService.removeLikedVideo(video.id);
 			setLikedVideoIds((prev) => {
 				const next = new Set(prev);
 				next.delete(video.id);
