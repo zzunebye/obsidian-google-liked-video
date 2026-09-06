@@ -128,12 +128,48 @@ If you encounter any issues, consider the following steps:
 
 ## Release Notes
 
+### 3.4
+
+**Smoother browsing and more dependable notes**
+
+- Scroll through large liked-video collections more smoothly. Infinite scroll now renders only the videos around your current position and loads more as you continue.
+- Choose how videos open inside Obsidian. Enable **Open Videos in Obsidian Web Viewer**, then use **Open Web Viewer in Split Pane** to open videos beside your notes instead of in a new tab.
+- Rename or move a video note without losing its connection to the video. Geulo now identifies notes by their YouTube video ID, so opening a note or adding a summary continues to use the same file instead of creating a duplicate.
+- Existing video notes remain supported. Geulo adds the video ID when you next open an older note from a video card or add a summary to it. Leaving **Video note location** empty now uses Obsidian's default new-file location.
+- Check your Google connection at a glance in Settings. Geulo clearly shows whether you are connected and presents the actions available for your current status.
+- Your liked-video list now moves automatically from browser storage to a dedicated file in the Geulo plugin folder. Geulo keeps a backup before saving changes and preserves an unreadable file instead of replacing your videos with an empty list.
+- If your sync includes plugin data, reload Geulo after syncing to see list changes from another device. Avoid changing the list on two devices at the same time, because 3.4 does not merge competing changes.
+
+### 3.3.1
+
+**Google credential storage**
+
+- Google access tokens, refresh tokens, and the client secret now use Obsidian SecretStorage. Existing credentials move automatically when the plugin loads.
+- This change applies to Google credentials; Gemini and OpenRouter API keys still use the existing plugin settings storage.
+
+### 3.3.0
+
+**Video tags and page navigation**
+
+- Liked videos and playlists now show video tags. Click a tag to show videos with that exact tag; select another to replace the filter, or clear it to return to the full list.
+- Cards show a compact selection of tags. Click **+N** to view the rest. You can hide tag chips in **Settings → Show video tags**.
+- In **Settings → Video display**, choose **Pagination** to navigate liked videos by page instead of scrolling.
+- Requires Obsidian 1.11.4 or later.
+
+### 3.2.0
+
+**Delete your YouTube playlists**
+
+- You can now delete playlists you own from the playlists view or an open playlist.
+- A confirmation appears before deletion. This permanently deletes the playlist from YouTube, not just from Geulo, and cannot be undone.
+
 ### 3.1.0
 
-- **Like feature for Playlist videos**
-- **Undo unliking video from Liked Video View**
-- **Add full fetch command for liked videos**
-- Add more commands
+**Likes, undo, and full fetch**
+
+- You can like or unlike a video directly from a playlist.
+- After unliking a video in liked videos, click **Undo** in the notification within 5 seconds to restore the like and return the video to the list.
+- Run **Geulo: Full Fetch Liked Videos** from the command palette to fetch beyond the regular fetch limit, using your configured full-fetch limit.
 
 ### 3.0.0
 
@@ -186,4 +222,3 @@ If you encounter any issues, consider the following steps:
 Liked videos are stored in `liked-videos.json` in this plugin's folder, separately from settings in `data.json`. On startup, the plugin reads the list into memory; browsing and sorting do not reread the file. Updates are saved asynchronously, with synchronous updates combined into one save. The previous valid file is backed up as `liked-videos.json.bak` before replacement.
 
 Existing liked videos in localStorage migrate automatically after the new file is written and verified. Invalid files stop loading instead of being overwritten with an empty list. To restore a backup or edit the JSON manually, disable the plugin first, replace/edit `liked-videos.json`, and enable it again. Other devices do not automatically refresh the in-memory list when a synced file changes; reload the plugin after syncing. This change does not add conflict merging or incremental YouTube fetching.
-
