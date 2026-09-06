@@ -20,20 +20,20 @@ export const AddPlaylistForm = ({
 	return (
 		<div className="add-playlist-form">
 			<div className="add-playlist-form__header">
-				<label>Add Playlist by ID</label>
+				<label>Add a YouTube playlist</label>
 			</div>
 
 			<div className="add-playlist-form__content">
 				<div className="add-playlist-form__input-group">
 					<label htmlFor="playlist-id-input">
-						Playlist ID or URL:
+						Enter the playlist ID or URL:
 					</label>
 					<div className="add-playlist-form__input-wrapper">
 						<input
 							id="playlist-id-input"
 							type="text"
 							className="add-playlist-form__input"
-							placeholder="PLDDTZzm0d6OE3op3... or full YouTube URL"
+							placeholder="PLDDTZzm0d6OE3op3... or the full YouTube URL"
 							value={playlistIdInput}
 							onChange={(e) => setPlaylistIdInput(e.target.value)}
 							disabled={isAdding}
@@ -71,7 +71,7 @@ export const AddPlaylistForm = ({
 						) : (
 							<>
 								<Plus size={16} />
-								Add Playlist
+								Add playlist
 							</>
 						)}
 					</button>
