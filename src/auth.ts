@@ -1,6 +1,7 @@
+import { Platform, Notice, requestUrl } from 'obsidian';
+import { createServer } from 'http';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
-import { Platform, Notice, requestUrl } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
 interface ServerSession {
@@ -82,12 +83,10 @@ export async function handleGoogleLogin(
     if (serverSession) {
         window.open(requestAuthUrl);
         return;
-    }
+	}
 
 	if (Platform.isDesktop) {
-		const http = await import("http");
-
-		serverSession = http.createServer((req, res) => {
+		serverSession = createServer((req, res) => {
 			void (async () => {
 				try {
 					if (!req.url || req.url.indexOf("/callback") < 0) return;
