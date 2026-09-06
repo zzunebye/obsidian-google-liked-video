@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { VideoCard } from "src/ui/VideoCard";
 import { SearchBar } from "src/ui/SearchBar";
-import { APP_ID } from "src/main";
 import type { LikedVideoFetchStatus } from "src/main";
 import { Menu, Notice } from "obsidian";
 import { VideosContext } from "src/store/videoContext";
@@ -511,19 +510,7 @@ export const LikedVideoView: React.FC = () => {
 						<button
 							title={UI_TEXT.BTN_SETTINGS}
 							onClick={() => {
-								// Open Plugin Setting.
-								const setting = Reflect.get(plugin.app, "setting");
-								if (
-									typeof setting === "object" &&
-									setting !== null &&
-									"open" in setting &&
-									typeof setting.open === "function" &&
-									"openTabById" in setting &&
-									typeof setting.openTabById === "function"
-								) {
-									setting.open();
-									setting.openTabById(APP_ID);
-								} else {
+								if (!plugin.settingTabRef?.openVideoDisplaySettings()) {
 									new Notice("Unable to open Geulo settings in this Obsidian version.");
 								}
 							}}

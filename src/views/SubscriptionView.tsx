@@ -16,7 +16,6 @@ import type {
 	YouTubeVideo,
 } from "src/types";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
-import { APP_ID } from "src/main";
 import { usePlugin } from "../store/pluginContext";
 
 export type SubscriptionPeriod = "all" | "day" | "week" | "month";
@@ -87,18 +86,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const endRef = useRef<HTMLParagraphElement>(null);
 
 	const openPluginSettings = (): void => {
-		const setting = Reflect.get(plugin.app, "setting");
-		if (
-			typeof setting === "object" &&
-			setting !== null &&
-			"open" in setting &&
-			typeof setting.open === "function" &&
-			"openTabById" in setting &&
-			typeof setting.openTabById === "function"
-		) {
-			setting.open();
-			setting.openTabById(APP_ID);
-		} else {
+		if (!plugin.settingTabRef?.openVideoDisplaySettings()) {
 			new Notice("Unable to open Geulo settings in this Obsidian version.");
 		}
 	};
