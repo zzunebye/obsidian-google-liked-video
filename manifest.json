@@ -1,7 +1,7 @@
 {
 	"id": "geulo-youtube-liked-video",
 	"name": "Geulo",
-	"version": "3.4.2",
+	"version": "4.0.0",
 	"minAppVersion": "1.11.4",
 	"description": "Organize and search your liked YouTube videos and playlists, generate AI summaries, and save videos as notes.",
 	"author": "Junyoung Bang",
