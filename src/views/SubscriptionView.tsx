@@ -377,7 +377,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			channels.forEach((channel) => channelList.createEl("li", { text: channel.title }));
 		}
 		modal.contentEl.createEl("p", {
-			text: `YouTube API quota: ${quotaUnits} units.`,
+				text: `YouTube API quota: ${quotaUnits} units (YouTube sets each subscription change at a fixed 50 units).`,
 			cls: "subscription-unsubscribe__quota",
 		});
 		const actions = modal.contentEl.createDiv({ cls: "subscription-unsubscribe__actions" });
