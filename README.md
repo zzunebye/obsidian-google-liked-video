@@ -126,6 +126,12 @@ If you encounter any issues, consider the following steps:
 2. **Authorized URIs**: Verify that http://127.0.0.1:42813 is listed in the Authorized JavaScript origins and http://127.0.0.1:42813/callback in the Authorized redirect URIs.
 3. If granting permission to your google project fails, check if there are multiple window/tabs for login process opened. If so, close all of them and try again.
 
+### Local video data
+
+Liked videos are stored in `liked-videos.json` in this plugin's folder, separately from settings in `data.json`. On startup, the plugin reads the list into memory; browsing and sorting do not reread the file. Updates are saved asynchronously, with synchronous updates combined into one save. The previous valid file is backed up as `liked-videos.json.bak` before replacement.
+
+Existing liked videos in localStorage migrate automatically after the new file is written and verified. Invalid files stop loading instead of being overwritten with an empty list. To restore a backup or edit the JSON manually, disable the plugin first, replace/edit `liked-videos.json`, and enable it again. Other devices do not automatically refresh the in-memory list when a synced file changes; reload the plugin after syncing. This change does not add conflict merging or incremental YouTube fetching.
+
 ## Release Notes
 
 ### 3.4
@@ -214,9 +220,3 @@ If you encounter any issues, consider the following steps:
 - **Performance optimization**: Video display limit for better performance
 - **Improved caching**: Enhanced cache management in PlaylistApi
 - **UI refinements**: Updated ribbon icon labels and command names for clarity
-
-### Local video data
-
-Liked videos are stored in `liked-videos.json` in this plugin's folder, separately from settings in `data.json`. On startup, the plugin reads the list into memory; browsing and sorting do not reread the file. Updates are saved asynchronously, with synchronous updates combined into one save. The previous valid file is backed up as `liked-videos.json.bak` before replacement.
-
-Existing liked videos in localStorage migrate automatically after the new file is written and verified. Invalid files stop loading instead of being overwritten with an empty list. To restore a backup or edit the JSON manually, disable the plugin first, replace/edit `liked-videos.json`, and enable it again. Other devices do not automatically refresh the in-memory list when a synced file changes; reload the plugin after syncing. This change does not add conflict merging or incremental YouTube fetching.
