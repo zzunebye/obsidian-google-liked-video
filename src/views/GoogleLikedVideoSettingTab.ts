@@ -21,6 +21,34 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
+    openVideoDisplaySettings(): boolean {
+        const setting = Reflect.get(this.app, 'setting');
+        if (
+            typeof setting !== 'object' ||
+            setting === null ||
+            !('open' in setting) ||
+            typeof setting.open !== 'function' ||
+            !('openTabById' in setting) ||
+            typeof setting.openTabById !== 'function'
+        ) {
+            return false;
+        }
+
+        setting.open();
+        setting.openTabById(this.plugin.manifest.id);
+
+        const ownerWindow = this.containerEl.ownerDocument.defaultView;
+        ownerWindow?.requestAnimationFrame(() => {
+            ownerWindow.requestAnimationFrame(() => {
+                this.containerEl
+                    .querySelector<HTMLElement>('[data-geulo-settings-section="video-display"]')
+                    ?.scrollIntoView({ behavior: 'auto', block: 'start' });
+            });
+        });
+
+        return true;
+    }
+
     getSettingDefinitions(): SettingDefinitionItem[] {
         const refreshToken = googleTokenStorageService.getRefreshToken();
         const isLoggedIn = refreshToken !== null && refreshToken !== '';
@@ -100,7 +128,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     async updateListPaneView(): Promise<void> {
-		localStorageService.setLikedVideos(localStorageService.getLikedVideos());
+        localStorageService.setLikedVideos(localStorageService.getLikedVideos());
     }
 
     updatePlaylistVideosPaneView(): void {
@@ -121,6 +149,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     private renderVideoDisplaySection(containerEl: HTMLElement): void {
+        containerEl.dataset.geuloSettingsSection = 'video-display';
         new Setting(containerEl).setHeading().setName('Video display');
         this.renderLikedVideoViewModeSetting(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
@@ -202,10 +231,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .addDropdown(dropdown => dropdown
                 .addOption('pagination', 'Pagination')
                 .addOption('infinite', 'Infinite scroll')
-				.setValue(localStorageService.getLikedVideoPaginationMode())
-				.onChange(async (value) => {
-					const paginationMode = value === 'infinite' ? 'infinite' : 'pagination';
-					localStorageService.setLikedVideoPaginationMode(paginationMode);
+                .setValue(localStorageService.getLikedVideoPaginationMode())
+                .onChange(async (value) => {
+                    const paginationMode = value === 'infinite' ? 'infinite' : 'pagination';
+                    localStorageService.setLikedVideoPaginationMode(paginationMode);
                     await this.updateListPaneView();
                 }));
     }
@@ -548,19 +577,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setName('Full scan')
                 .setDesc('Check all liked videos and replace the saved list with the results. Videos no longer returned by YouTube are removed from this list.')
                 .addButton(button => button
-					.setButtonText('Full scan')
-					.onClick(async () => {
-						await this.plugin.performAutoFetch(true, false);
-					}));
+                    .setButtonText('Full scan')
+                    .onClick(async () => {
+                        await this.plugin.performAutoFetch(true, false);
+                    }));
 
             new Setting(containerEl)
                 .setName('Fetch recent videos')
                 .setDesc('Check the 50 most recent liked videos. Add new videos and update matching saved videos, keeping the rest of your saved list.')
                 .addButton(button => button
-					.setButtonText('Fetch recent videos')
-					.onClick(async () => {
-						await this.plugin.performAutoFetch(false, false);
-					}));
+                    .setButtonText('Fetch recent videos')
+                    .onClick(async () => {
+                        await this.plugin.performAutoFetch(false, false);
+                    }));
         }
 
     }
@@ -610,12 +639,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 : 'Enter your Google API credentials below, then connect your account.')
             .addButton(button => button
                 .setButtonText(isLoggedIn ? 'Disconnect' : 'Connect with Google')
-				.onClick(async (): Promise<void> => {
-					const refreshDisplay = (): void => {
-						this.plugin.commentService.resetIdentityCache();
-						this.update();
-						void this.updateListPaneView();
-					};
+                .onClick(async (): Promise<void> => {
+                    const refreshDisplay = (): void => {
+                        this.plugin.commentService.resetIdentityCache();
+                        this.update();
+                        void this.updateListPaneView();
+                    };
                     if (isLoggedIn) {
                         await handleGoogleLogout(this.plugin.settings, refreshDisplay, refreshDisplay);
                     } else {
