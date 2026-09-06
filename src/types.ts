@@ -97,7 +97,7 @@ export interface YouTubeVideo {
         defaultAudioLanguage: string;
     };
     contentDetails: {
-        duration: string;
+        duration?: string;
         dimension: string;
         definition: string;
         caption: string;

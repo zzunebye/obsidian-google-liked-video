@@ -27,7 +27,7 @@ function isVideo(value: unknown): value is YouTubeVideo {
 		&& isRecord(snippet.thumbnails) && isRecord(snippet.thumbnails.medium)
 		&& typeof snippet.thumbnails.medium.url === 'string'
 		&& (snippet.tags === undefined || (Array.isArray(snippet.tags) && snippet.tags.every(tag => typeof tag === 'string')))
-		&& typeof value.contentDetails.duration === 'string'
+		&& (value.contentDetails.duration === undefined || typeof value.contentDetails.duration === 'string')
 		&& isOptionalCount(value.statistics.viewCount)
 		&& isOptionalCount(value.statistics.likeCount)
 		&& isOptionalCount(value.statistics.commentCount);

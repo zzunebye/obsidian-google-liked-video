@@ -10,7 +10,7 @@ interface VideoInfoModalProps {
 }
 
 // Parse YouTube ISO 8601 duration format to seconds
-export const parseDurationToSeconds = (duration: string): number | null => {
+export const parseDurationToSeconds = (duration: string | undefined): number | null => {
     if (!duration || typeof duration !== 'string') {
         return null;
     }

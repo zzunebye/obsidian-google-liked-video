@@ -41,7 +41,7 @@ function isVideo(value: unknown): value is YouTubeVideo {
 		&& typeof snippet.thumbnails.medium.url === "string"
 		&& (snippet.tags === undefined
 			|| (Array.isArray(snippet.tags) && snippet.tags.every((tag) => typeof tag === "string")))
-		&& typeof value.contentDetails.duration === "string"
+		&& (value.contentDetails.duration === undefined || typeof value.contentDetails.duration === "string")
 		&& isOptionalCount(value.statistics.viewCount)
 		&& isOptionalCount(value.statistics.likeCount)
 		&& isOptionalCount(value.statistics.commentCount);
@@ -101,6 +101,8 @@ export class SubscriptionStorageService {
 	async save(snapshot: SubscriptionSnapshot): Promise<void> {
 		const stored: StoredSubscriptions = { schemaVersion: 1, snapshot };
 		const json = JSON.stringify(stored, null, 2);
+		const candidate: unknown = JSON.parse(json);
+		parseStoredSubscriptions(candidate);
 		if (await this.adapter.exists(this.filePath)) {
 			const previous = await this.adapter.read(this.filePath);
 			await this.adapter.write(normalizePath(`${this.filePath}.bak`), previous);
