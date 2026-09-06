@@ -1,3 +1,5 @@
+import { requestUrl } from "obsidian";
+import type { RequestUrlResponse } from "obsidian";
 import { getValidAccessToken } from "../auth";
 import type { ObsidianGoogleLikedVideoSettings } from "../types";
 
@@ -101,13 +103,34 @@ function readApiErrorReason(value: unknown): string | undefined {
 	return undefined;
 }
 
-async function readResponseBody(response: Response): Promise<unknown> {
-	try {
-		return await response.json();
-	} catch (error) {
-		if (error instanceof SyntaxError) return undefined;
-		throw error;
-	}
+function createAbortError(): DOMException {
+	return new DOMException("Request aborted", "AbortError");
+}
+
+function requestComments(url: URL, accessToken: string, signal: AbortSignal): Promise<RequestUrlResponse> {
+	if (signal.aborted) return Promise.reject(createAbortError());
+
+	const request = requestUrl({
+		url: url.toString(),
+		method: "GET",
+		headers: { Authorization: `Bearer ${accessToken}` },
+		throw: false,
+	});
+
+	return new Promise((resolve, reject) => {
+		const abort = () => reject(createAbortError());
+		signal.addEventListener("abort", abort, { once: true });
+		void request.then(
+			(response) => {
+				signal.removeEventListener("abort", abort);
+				resolve(response);
+			},
+			(error: unknown) => {
+				signal.removeEventListener("abort", abort);
+				reject(error instanceof Error ? error : new Error("YouTube request failed"));
+			},
+		);
+	});
 }
 
 export class CommentService {
@@ -204,20 +227,16 @@ export class CommentService {
 
 	private async get(url: URL, signal: AbortSignal): Promise<unknown> {
 		const accessToken = await getValidAccessToken(this.settings.googleClientId);
-		let response: Response;
+		let response: RequestUrlResponse;
 		try {
-			response = await fetch(url.toString(), {
-				method: "GET",
-				headers: { Authorization: `Bearer ${accessToken}` },
-				signal,
-			});
+			response = await requestComments(url, accessToken, signal);
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "AbortError") throw error;
 			throw new CommentServiceError("network", "Could not connect to YouTube.");
 		}
 
-		const body = await readResponseBody(response);
-		if (response.ok) return body;
+		const body: unknown = response.json;
+		if (response.status >= 200 && response.status < 300) return body;
 		const reason = readApiErrorReason(body);
 		if (reason === "commentsDisabled") {
 			throw new CommentServiceError("comments-disabled", "Comments are disabled for this video.");

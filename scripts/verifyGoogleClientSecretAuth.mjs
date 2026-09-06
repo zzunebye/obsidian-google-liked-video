@@ -102,6 +102,14 @@ function createCallbackResponse() {
 	};
 }
 
+async function waitFor(predicate) {
+	for (let attempt = 0; attempt < 20; attempt += 1) {
+		if (predicate()) return;
+		await new Promise((resolve) => setImmediate(resolve));
+	}
+	assert.fail('OAuth callback did not finish');
+}
+
 const httpVerification = {
 	createServer(callback) {
 		createServerCount += 1;
@@ -143,7 +151,8 @@ try {
 	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, handleLoginSuccess);
 	assert.equal(typeof oauthCallback, 'function');
 	const firstCallbackResponse = createCallbackResponse();
-	await oauthCallback({ url: '/callback?code=auth-code' }, firstCallbackResponse);
+	oauthCallback({ url: '/callback?code=auth-code' }, firstCallbackResponse);
+	await waitFor(() => loginSuccessCount === 1);
 	assert.equal(loginSuccessCount, 1);
 	assert.equal(firstCallbackResponse.headers.get('Connection'), 'close');
 	assert.equal(loginRequestUrl, 'https://oauth2.googleapis.com/token');
@@ -156,7 +165,8 @@ try {
 
 	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, handleLoginSuccess);
 	assert.equal(createServerCount, 2);
-	await oauthCallback({ url: '/callback?code=second-auth-code' }, createCallbackResponse());
+	oauthCallback({ url: '/callback?code=second-auth-code' }, createCallbackResponse());
+	await waitFor(() => loginSuccessCount === 2);
 	assert.equal(loginSuccessCount, 2);
 
 	await refreshAccessToken('client-id');
@@ -170,7 +180,8 @@ try {
 	};
 	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, handleLoginSuccess);
 	const failedCallbackResponse = createCallbackResponse();
-	await oauthCallback({ url: '/callback?code=expired-auth-code' }, failedCallbackResponse);
+	oauthCallback({ url: '/callback?code=expired-auth-code' }, failedCallbackResponse);
+	await waitFor(() => failedCallbackResponse.ended);
 	assert.equal(loginSuccessCount, 2);
 	assert.equal(googleTokenStorageService.getRefreshToken(), '');
 	assert.equal(googleTokenStorageService.getAccessToken(), '');

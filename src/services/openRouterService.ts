@@ -1,5 +1,5 @@
 import { debugLogger } from '../debug';
-import { AIServiceError } from './geminiService';
+import { AIServiceError } from './aiServiceError';
 import { BaseAIService } from './baseAIService';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -87,10 +87,10 @@ export class OpenRouterService extends BaseAIService {
 
 	protected mapHttpStatusToError(status: number, message: string): AIServiceError {
 		if (status === 401 || status === 403) {
-			return { type: 'invalid_key', message: `Invalid API key: ${message}` };
+			return new AIServiceError('invalid_key', `Invalid API key: ${message}`);
 		} else if (status === 429) {
-			return { type: 'rate_limit', message: 'Rate limit exceeded. Try again later.' };
+			return new AIServiceError('rate_limit', 'Rate limit exceeded. Try again later.');
 		}
-		return { type: 'unknown', message: `HTTP ${status}: ${message}` };
+		return new AIServiceError('unknown', `HTTP ${status}: ${message}`);
 	}
 }

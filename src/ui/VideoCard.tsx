@@ -521,19 +521,21 @@ export const VideoCard = ({
 										? "Unlike"
 										: "Like"
 							}
-							onClick={async (e) => {
+							onClick={(e) => {
 								e.stopPropagation();
-								if (source === "liked") {
-									onUnlike();
-								} else if (isLiked) {
-									const confirmed = await confirmUnlikeAction(
-										plugin.app,
-										videoInfo.snippet.title,
-									);
-									if (confirmed) onUnlike();
-								} else {
-									onLike?.();
-								}
+								void (async () => {
+									if (source === "liked") {
+										onUnlike();
+									} else if (isLiked) {
+										const confirmed = await confirmUnlikeAction(
+											plugin.app,
+											videoInfo.snippet.title,
+										);
+										if (confirmed) onUnlike();
+									} else {
+										onLike?.();
+									}
+								})();
 							}}
 						>
 							<ThumbsUp
@@ -599,7 +601,9 @@ export const VideoCard = ({
 				aria-label={
 					noteExists ? "Open Video Note" : "Create Video Note"
 				}
-				onClick={(e) => handleCreateVideoNote(e)}
+				onClick={(e) => {
+					void handleCreateVideoNote(e);
+				}}
 				title={
 					noteExists
 						? "Open existing video note"

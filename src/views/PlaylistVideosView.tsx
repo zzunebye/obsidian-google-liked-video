@@ -394,7 +394,9 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 						{playlistInfo.isOwnedByUser === true && (
 							<button
 								className="playlist-delete-button"
-								onClick={onDeletePlaylist}
+								onClick={() => {
+									void onDeletePlaylist();
+								}}
 								title="Delete playlist"
 								aria-label="Delete playlist"
 							>
@@ -514,33 +516,39 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 									noteExistenceMap.get(video.id) ?? false
 								}
 								isLiked={likedVideoIds.has(video.id)}
-								onLike={() => handleLikeVideo(video)}
-								onLinkClick={async (videoUrl) => {
-									const openInObsidianWebViewer =
-										plugin.settings
-											?.openInObsidianWebViewer;
+								onLike={() => {
+									void handleLikeVideo(video);
+								}}
+								onLinkClick={(videoUrl) => {
+									void (async () => {
+										const openInObsidianWebViewer =
+											plugin.settings
+												?.openInObsidianWebViewer;
 
-									if (openInObsidianWebViewer) {
-										const leafType = plugin.settings.openWebViewerInSplitPane
-											? "split"
-											: "tab";
-										const leaf =
-											plugin.app.workspace.getLeaf(leafType);
-										await leaf.setViewState({
-											type: "webviewer",
-											state: {
-												url: videoUrl,
-												navigate: true,
-											},
-											active: true,
-										});
-									} else {
-										window.open(videoUrl, "_blank");
-									}
+										if (openInObsidianWebViewer) {
+											const leafType = plugin.settings.openWebViewerInSplitPane
+												? "split"
+												: "tab";
+											const leaf =
+												plugin.app.workspace.getLeaf(leafType);
+											await leaf.setViewState({
+												type: "webviewer",
+												state: {
+													url: videoUrl,
+													navigate: true,
+												},
+												active: true,
+											});
+										} else {
+											window.open(videoUrl, "_blank");
+										}
+									})();
 								}}
 								id={video.id}
 								url={`https://www.youtube.com/watch?v=${video.id}`}
-								onUnlike={() => handleUnlikeVideo(video)}
+								onUnlike={() => {
+									void handleUnlikeVideo(video);
+								}}
 								onAddToDailyNote={async (videoData, file) => {
 									const contentToAppend = `\n${videoData}`;
 

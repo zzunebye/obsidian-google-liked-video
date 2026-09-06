@@ -1,6 +1,7 @@
 import { requestUrl } from 'obsidian';
 import { debugLogger } from '../debug';
-import { AIService, AIServiceResult, AIServiceError, StreamOptions, StreamCallback } from './geminiService';
+import { AIService, AIServiceResult, StreamOptions, StreamCallback } from './geminiService';
+import { AIServiceError, toAIServiceError } from './aiServiceError';
 
 const REQUEST_TIMEOUT_MS = 90000;
 const TEXT_COMPLETION_TIMEOUT_MS = 30000;
@@ -21,12 +22,7 @@ function getApiErrorMessage(responseBody: unknown, fallback: string): string {
 }
 
 function isAIServiceError(error: unknown): error is AIServiceError {
-	if (!isRecord(error) || typeof error.message !== 'string') return false;
-	return error.type === 'no_api_key'
-		|| error.type === 'invalid_key'
-		|| error.type === 'network_error'
-		|| error.type === 'rate_limit'
-		|| error.type === 'unknown';
+	return error instanceof AIServiceError;
 }
 
 export abstract class BaseAIService implements AIService {
@@ -64,7 +60,7 @@ export abstract class BaseAIService implements AIService {
 				signal: controller.signal,
 			}).catch((error) => {
 				window.clearTimeout(timeoutId);
-				reject(error);
+				reject(toAIServiceError(error));
 			});
 		});
 	}
@@ -87,7 +83,10 @@ export abstract class BaseAIService implements AIService {
 
 			const reader = response.body?.getReader();
 			if (!reader) {
-				return this.throwAndNotify({ type: 'unknown', message: 'No response body for streaming' }, options.onError);
+				return this.throwAndNotify(
+					new AIServiceError('unknown', 'No response body for streaming'),
+					options.onError,
+				);
 			}
 
 			accumulated = await this.processSSEStream(reader, options.onChunk, (jsonStr) => this.parseChunk(jsonStr));
@@ -124,13 +123,13 @@ export abstract class BaseAIService implements AIService {
 		} catch (error: unknown) {
 			window.clearTimeout(timeoutId);
 			if (isAbortError(error)) {
-				const timeoutError: AIServiceError = {
-					type: 'network_error',
-					message: 'Text completion request timed out',
-				};
+				const timeoutError = new AIServiceError(
+					'network_error',
+					'Text completion request timed out',
+				);
 				throw timeoutError;
 			}
-			throw error;
+			throw toAIServiceError(error);
 		}
 	}
 
@@ -157,20 +156,20 @@ export abstract class BaseAIService implements AIService {
 					signal.removeEventListener('abort', abort);
 					resolve(response);
 				},
-				(error: unknown) => {
-					signal.removeEventListener('abort', abort);
-					reject(error);
-				}
+					(error: unknown) => {
+						signal.removeEventListener('abort', abort);
+						reject(toAIServiceError(error));
+					}
 			);
 		});
 	}
 
 	protected validateApiKey(onError?: (e: AIServiceError) => void): void {
 		if (!this.apiKey) {
-			const error: AIServiceError = {
-				type: 'no_api_key',
-				message: `${this.serviceName} API key is not configured`
-			};
+			const error = new AIServiceError(
+				'no_api_key',
+				`${this.serviceName} API key is not configured`,
+			);
 			debugLogger.warn(`[AI Summary] No ${this.serviceName} API key configured`);
 			onError?.(error);
 			throw error;
@@ -253,10 +252,10 @@ export abstract class BaseAIService implements AIService {
 		}
 
 		if (!isAIServiceError(error)) {
-			const wrappedError: AIServiceError = {
-				type: 'network_error',
-				message: error instanceof Error ? error.message : 'Network error',
-			};
+			const wrappedError = new AIServiceError(
+				'network_error',
+				error instanceof Error ? error.message : 'Network error',
+			);
 			options.onError?.(wrappedError);
 			throw wrappedError;
 		}

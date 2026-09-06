@@ -405,35 +405,37 @@ export const LikedVideoView: React.FC = () => {
 							/// Refresh button to fetch recently liked videos
 							className="video-view-header__refresh-button"
 							disabled={isFetching || plugin.isFetching}
-							onClick={async () => {
-								setIsFetching(true);
-								try {
-									const result = await fetchAndMergeLikedVideos(
-										plugin.likedVideoApi,
-										{
-											mode: "partial",
-											keepUnfetched: true,
-										},
-									);
+							onClick={() => {
+								void (async () => {
+									setIsFetching(true);
+									try {
+										const result = await fetchAndMergeLikedVideos(
+											plugin.likedVideoApi,
+											{
+												mode: "partial",
+												keepUnfetched: true,
+											},
+										);
 
-									localStorageService.setLikedVideos(
-										result.mergedVideos,
-									);
-									setVideos(result.mergedVideos);
-									new Notice(
-										UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(
-											result.newVideos.length,
-										),
-									);
-									await createNotesForNewVideos(
-										result.newVideos,
-										plugin.settings.autoCreateNoteEnabled,
-										(video) =>
-											plugin.automateVideoProcessing(video),
-									);
-								} finally {
-									setIsFetching(false);
-								}
+										localStorageService.setLikedVideos(
+											result.mergedVideos,
+										);
+										setVideos(result.mergedVideos);
+										new Notice(
+											UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(
+												result.newVideos.length,
+											),
+										);
+										await createNotesForNewVideos(
+											result.newVideos,
+											plugin.settings.autoCreateNoteEnabled,
+											(video) =>
+												plugin.automateVideoProcessing(video),
+										);
+									} finally {
+										setIsFetching(false);
+									}
+								})();
 							}}
 						>
 							<RefreshCcw size={16} />
@@ -656,45 +658,47 @@ export const LikedVideoView: React.FC = () => {
 					{videos.length === 0 && (
 						<button
 							className="no-videos-found__fetch-all-button"
-							onClick={async () => {
-								try {
-									const totalLikedVideos =
-										await plugin.likedVideoApi.fetchTotalLikedVideoCount();
-									new Notice(
-										UI_TEXT.NOTICE_TOTAL_VIDEOS(
-											totalLikedVideos ?? 0,
-										),
-									);
+							onClick={() => {
+								void (async () => {
+									try {
+										const totalLikedVideos =
+											await plugin.likedVideoApi.fetchTotalLikedVideoCount();
+										new Notice(
+											UI_TEXT.NOTICE_TOTAL_VIDEOS(
+												totalLikedVideos ?? 0,
+											),
+										);
 
-									const result = await fetchAndMergeLikedVideos(
-										plugin.likedVideoApi,
-										{
-											mode: "full",
-											keepUnfetched: false,
-										},
-									);
-									localStorageService.setLikedVideos(
-										result.mergedVideos,
-									);
-									setVideos(result.mergedVideos);
+										const result = await fetchAndMergeLikedVideos(
+											plugin.likedVideoApi,
+											{
+												mode: "full",
+												keepUnfetched: false,
+											},
+										);
+										localStorageService.setLikedVideos(
+											result.mergedVideos,
+										);
+										setVideos(result.mergedVideos);
 
-									new Notice(
-										UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(
-											result.fetchedCount,
-										),
-									);
-									await createNotesForNewVideos(
-										result.newVideos,
-										plugin.settings.autoCreateNoteEnabled,
-										(video) =>
-											plugin.automateVideoProcessing(video),
-									);
-								} catch (error) {
-									new Modal(plugin.app)
-										.setTitle(UI_TEXT.ERROR_TITLE)
-										.setContent(UI_TEXT.ERROR_MESSAGE(error))
-										.open();
-								}
+										new Notice(
+											UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(
+												result.fetchedCount,
+											),
+										);
+										await createNotesForNewVideos(
+											result.newVideos,
+											plugin.settings.autoCreateNoteEnabled,
+											(video) =>
+												plugin.automateVideoProcessing(video),
+										);
+									} catch (error) {
+										new Modal(plugin.app)
+											.setTitle(UI_TEXT.ERROR_TITLE)
+											.setContent(UI_TEXT.ERROR_MESSAGE(error))
+											.open();
+									}
+								})();
 							}}
 						>
 							{UI_TEXT.BTN_FETCH_ALL}
@@ -713,40 +717,44 @@ export const LikedVideoView: React.FC = () => {
 						url={`https://www.youtube.com/watch?v=${video.id}`}
 						videoInfo={video}
 						noteExists={noteExists}
-						onUnlike={async () => {
-							const index = videos.findIndex((v) => v.id === video.id);
-							const previousVideoId = index > 0 ? videos[index - 1].id : null;
-							await plugin.likedVideoApi.unlikeVideo(video.id);
-							const filtered = videos.filter((v) => v.id !== video.id);
-							localStorageService.setLikedVideos(filtered);
-							setVideos(filtered);
+						onUnlike={() => {
+							void (async () => {
+								const index = videos.findIndex((v) => v.id === video.id);
+								const previousVideoId = index > 0 ? videos[index - 1].id : null;
+								await plugin.likedVideoApi.unlikeVideo(video.id);
+								const filtered = videos.filter((v) => v.id !== video.id);
+								localStorageService.setLikedVideos(filtered);
+								setVideos(filtered);
 
-							const fragment = document.createDocumentFragment();
-							fragment.createEl("span", { text: `Unliked "${video.snippet.title}" ` });
-							const undoBtn = fragment.createEl("span", {
-								text: "Undo",
-								cls: "geulo-undo-btn",
-							});
-							const notice = new Notice(fragment, 5000);
-							undoBtn.addEventListener("click", async () => {
-								try {
-									await plugin.likedVideoApi.likeVideo(video.id);
-									const current = localStorageService.getLikedVideos();
-									const restored = [...current];
-									let insertIndex = 0;
-									if (previousVideoId) {
-										const prevIdx = restored.findIndex((v) => v.id === previousVideoId);
-										insertIndex = prevIdx >= 0 ? prevIdx + 1 : Math.min(index, restored.length);
-									}
-									restored.splice(insertIndex, 0, video);
-									localStorageService.setLikedVideos(restored);
-									setVideos(restored);
-									notice.hide();
-								} catch (error) {
-									console.error("Failed to undo unlike:", error);
-									new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
-								}
-							}, { once: true });
+								const fragment = new DocumentFragment();
+								fragment.createEl("span", { text: `Unliked "${video.snippet.title}" ` });
+								const undoBtn = fragment.createEl("span", {
+									text: "Undo",
+									cls: "geulo-undo-btn",
+								});
+								const notice = new Notice(fragment, 5000);
+								undoBtn.addEventListener("click", () => {
+									void (async () => {
+										try {
+											await plugin.likedVideoApi.likeVideo(video.id);
+											const current = localStorageService.getLikedVideos();
+											const restored = [...current];
+											let insertIndex = 0;
+											if (previousVideoId) {
+												const prevIdx = restored.findIndex((v) => v.id === previousVideoId);
+												insertIndex = prevIdx >= 0 ? prevIdx + 1 : Math.min(index, restored.length);
+											}
+											restored.splice(insertIndex, 0, video);
+											localStorageService.setLikedVideos(restored);
+											setVideos(restored);
+											notice.hide();
+										} catch (error) {
+											console.error("Failed to undo unlike:", error);
+											new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+										}
+									})();
+								}, { once: true });
+							})();
 						}}
 						onAddToDailyNote={async (videoData, file) => {
 							const contentToAppend = `\n${videoData}`;
@@ -768,26 +776,28 @@ export const LikedVideoView: React.FC = () => {
 							setSearchTerm(channelTitle);
 						}}
 						onTagClick={handleTagClick}
-						onLinkClick={async (videoUrl) => {
-							const openInObsidianWebViewer =
-								plugin.settings?.openInObsidianWebViewer;
+						onLinkClick={(videoUrl) => {
+							void (async () => {
+								const openInObsidianWebViewer =
+									plugin.settings?.openInObsidianWebViewer;
 
-							if (openInObsidianWebViewer) {
-								const leafType = plugin.settings.openWebViewerInSplitPane
-									? "split"
-									: "tab";
-								const leaf = plugin.app.workspace.getLeaf(leafType);
-								await leaf.setViewState({
-									type: "webviewer",
-									state: {
-										url: videoUrl,
-										navigate: true,
-									},
-									active: true,
-								});
-							} else {
-								window.open(videoUrl, "_blank");
-							}
+								if (openInObsidianWebViewer) {
+									const leafType = plugin.settings.openWebViewerInSplitPane
+										? "split"
+										: "tab";
+									const leaf = plugin.app.workspace.getLeaf(leafType);
+									await leaf.setViewState({
+										type: "webviewer",
+										state: {
+											url: videoUrl,
+											navigate: true,
+										},
+										active: true,
+									});
+								} else {
+									window.open(videoUrl, "_blank");
+								}
+							})();
 						}}
 					/>
 				)} />

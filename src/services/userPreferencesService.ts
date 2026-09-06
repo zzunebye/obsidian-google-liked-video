@@ -1,10 +1,22 @@
 /**
- * Service for managing user preferences stored in localStorage
+ * Service for managing vault-scoped user preferences
  */
+import { vaultLocalStorageService } from './vaultLocalStorageService';
+import { debugLogger } from '../debug';
+
+type UserPreferences = {
+    skipUnlikeConfirmation: boolean;
+    skipLongVideoSummaryConfirmation: boolean;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
 class UserPreferencesService {
     private readonly PREFERENCES_KEY = 'geulo-user-preferences';
 
-    private defaultPreferences = {
+    private defaultPreferences: UserPreferences = {
         skipUnlikeConfirmation: false,
         skipLongVideoSummaryConfirmation: false,
     };
@@ -12,16 +24,22 @@ class UserPreferencesService {
     /**
      * Get all user preferences
      */
-    getPreferences() {
+    getPreferences(): UserPreferences {
         try {
-            const stored = localStorage.getItem(this.PREFERENCES_KEY);
-            if (!stored) {
+            const stored = vaultLocalStorageService.load(this.PREFERENCES_KEY);
+            if (!isRecord(stored)) {
                 return { ...this.defaultPreferences };
             }
-            const parsed = JSON.parse(stored);
-            return { ...this.defaultPreferences, ...parsed };
+            return {
+                skipUnlikeConfirmation: typeof stored.skipUnlikeConfirmation === 'boolean'
+                    ? stored.skipUnlikeConfirmation
+                    : this.defaultPreferences.skipUnlikeConfirmation,
+                skipLongVideoSummaryConfirmation: typeof stored.skipLongVideoSummaryConfirmation === 'boolean'
+                    ? stored.skipLongVideoSummaryConfirmation
+                    : this.defaultPreferences.skipLongVideoSummaryConfirmation,
+            };
         } catch (error) {
-            console.error('Failed to load user preferences:', error);
+            debugLogger.error('Failed to load user preferences:', error);
             return { ...this.defaultPreferences };
         }
     }
@@ -33,9 +51,9 @@ class UserPreferencesService {
         try {
             const current = this.getPreferences();
             const updated = { ...current, ...preferences };
-            localStorage.setItem(this.PREFERENCES_KEY, JSON.stringify(updated));
+            vaultLocalStorageService.save(this.PREFERENCES_KEY, updated);
         } catch (error) {
-            console.error('Failed to save user preferences:', error);
+            debugLogger.error('Failed to save user preferences:', error);
         }
     }
 
@@ -96,9 +114,9 @@ class UserPreferencesService {
      */
     resetPreferences() {
         try {
-            localStorage.removeItem(this.PREFERENCES_KEY);
+            vaultLocalStorageService.save(this.PREFERENCES_KEY, null);
         } catch (error) {
-            console.error('Failed to reset user preferences:', error);
+            debugLogger.error('Failed to reset user preferences:', error);
         }
     }
 }

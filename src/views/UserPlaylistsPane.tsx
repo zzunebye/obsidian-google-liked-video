@@ -167,10 +167,12 @@ export class UserPlaylistsPane
 						playlists={this.playlists}
 						isLoading={this.isLoading}
 						error={this.error}
-						onPlaylistSelect={(playlist: PlaylistInfo) =>
-							this.openPlaylistVideos(playlist)
-						}
-						onRetry={() => this.loadPlaylists()}
+						onPlaylistSelect={(playlist: PlaylistInfo) => {
+							void this.openPlaylistVideos(playlist);
+						}}
+						onRetry={() => {
+							void this.loadPlaylists();
+						}}
 						onAddPlaylist={(playlistId: string) =>
 							this.handleAddPlaylist(playlistId)
 						}

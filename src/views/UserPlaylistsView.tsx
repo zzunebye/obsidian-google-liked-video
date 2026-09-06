@@ -252,7 +252,9 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 					isAdding={isAdding}
 					playlistIdInput={playlistIdInput}
 					setPlaylistIdInput={setPlaylistIdInput}
-					handleAddPlaylist={handleAddPlaylist}
+					handleAddPlaylist={() => {
+						void handleAddPlaylist();
+					}}
 					addError={addError}
 				/>
 			)}

@@ -84,61 +84,63 @@ export async function handleGoogleLogin(
         return;
     }
 
-	const http = await import("http");
+	if (Platform.isDesktop) {
+		const http = await import("http");
 
+		serverSession = http.createServer((req, res) => {
+			void (async () => {
+				try {
+					if (!req.url || req.url.indexOf("/callback") < 0) return;
 
-	serverSession = http.createServer(async (req, res) => {
-        try {
-            if (!req.url || req.url.indexOf("/callback") < 0) return;
+					const queryString = new URL(req.url, `http://127.0.0.1:${PORT}`).searchParams;
+					const code = queryString.get("code");
+					const tokenUrl = 'https://oauth2.googleapis.com/token';
+					const tokenRequestBody = new URLSearchParams({
+						grant_type: 'authorization_code',
+						client_id: userClientID.trim(),
+						client_secret: userClientSecret.trim(),
+						access_type: 'offline',
+						code: code ?? '',
+						redirect_uri: AUTH_REDIRECT_URI,
+					});
 
-			const queryString = new URL(req.url, `http://127.0.0.1:${PORT}`).searchParams;
-            const code = queryString.get("code");
-            const tokenUrl = 'https://oauth2.googleapis.com/token';
-            const tokenRequestBody = new URLSearchParams({
-                grant_type: 'authorization_code',
-                client_id: userClientID.trim(),
-                client_secret: userClientSecret.trim(),
-                access_type: 'offline',
-                code: code ?? '',
-                redirect_uri: AUTH_REDIRECT_URI,
-            });
+					const response = await requestUrl({
+						url: tokenUrl,
+						method: 'POST',
+						headers: { 'content-type': 'application/x-www-form-urlencoded' },
+						body: tokenRequestBody.toString(),
+						throw: false,
+					});
 
-            const response = await requestUrl({
-                url: tokenUrl,
-                method: 'POST',
-                headers: { 'content-type': 'application/x-www-form-urlencoded' },
-                body: tokenRequestBody.toString(),
-                throw: false,
-            });
+					if (response.status >= 400) {
+						await finishGoogleLoginFailure(res);
+						return;
+					}
 
-			if (response.status >= 400) {
-				await finishGoogleLoginFailure(res);
-				return;
-            }
+					const token: unknown = response.json;
+					if (!isGoogleOAuthTokenResponse(token)) {
+						await finishGoogleLoginFailure(res);
+						return;
+					}
 
-			const token: unknown = response.json;
-			if (!isGoogleOAuthTokenResponse(token)) {
-				await finishGoogleLoginFailure(res);
-				return;
-			}
+					googleTokenStorageService.setRefreshToken(token.refresh_token);
+					googleTokenStorageService.setAccessToken(token.access_token);
+					localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
 
-			googleTokenStorageService.setRefreshToken(token.refresh_token);
-			googleTokenStorageService.setAccessToken(token.access_token);
-			localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
+					res.setHeader('Connection', 'close');
+					res.end("Authentication successful! Please return to Obsidian.");
+					await closeServerSession();
 
-			res.setHeader('Connection', 'close');
-			res.end("Authentication successful! Please return to Obsidian.");
-			await closeServerSession();
-
-			new Notice("Tokens acquired.");
-			onSuccess();
-
-        } catch {
-			await finishGoogleLoginFailure(res);
-        }
-    }).listen(PORT, async () => {
-        window.open(requestAuthUrl);
-    });
+					new Notice("Tokens acquired.");
+					onSuccess();
+				} catch {
+					await finishGoogleLoginFailure(res);
+				}
+			})();
+		}).listen(PORT, () => {
+			window.open(requestAuthUrl);
+		});
+	}
 }
 
 export async function handleGoogleLogout(

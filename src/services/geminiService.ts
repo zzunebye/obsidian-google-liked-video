@@ -1,5 +1,8 @@
 import { debugLogger } from '../debug';
 import { BaseAIService } from './baseAIService';
+import { AIServiceError } from './aiServiceError';
+
+export { AIServiceError } from './aiServiceError';
 
 const GEMINI_MODEL = 'gemini-3-flash-preview';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -20,11 +23,6 @@ export interface AIServiceResult {
 	summary: string;
 	generatedAt: string;
 	model: string;
-}
-
-export interface AIServiceError {
-	type: 'no_api_key' | 'invalid_key' | 'network_error' | 'rate_limit' | 'unknown';
-	message: string;
 }
 
 export type StreamCallback = (chunk: string, accumulated: string) => void;
@@ -109,10 +107,10 @@ export class GeminiService extends BaseAIService {
 
 	protected mapHttpStatusToError(status: number, message: string): AIServiceError {
 		if (status === 400 || status === 403) {
-			return { type: 'invalid_key', message: `Invalid API key: ${message}` };
+			return new AIServiceError('invalid_key', `Invalid API key: ${message}`);
 		} else if (status === 429) {
-			return { type: 'rate_limit', message: 'Rate limit exceeded. Try again later.' };
+			return new AIServiceError('rate_limit', 'Rate limit exceeded. Try again later.');
 		}
-		return { type: 'unknown', message: `HTTP ${status}: ${message}` };
+		return new AIServiceError('unknown', `HTTP ${status}: ${message}`);
 	}
 }

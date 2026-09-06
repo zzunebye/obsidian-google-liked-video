@@ -1,3 +1,7 @@
+/* eslint-disable no-console -- Console output is the explicit opt-in interface of this debug logger. */
+
+import { vaultLocalStorageService } from './services/vaultLocalStorageService';
+
 export interface DebugConfig {
     enabled: boolean;
     logLevel: 'error' | 'warn' | 'info' | 'debug' | 'verbose';
@@ -26,15 +30,43 @@ const DEFAULT_DEBUG_CONFIG: DebugConfig = {
     mockApiResponses: false,
 };
 
+const DEBUG_ENABLED_KEY = 'GEULO_DEBUG';
+const DEBUG_CONFIG_KEY = 'GEULO_DEBUG_CONFIG';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isDebugConfig(value: unknown): value is DebugConfig {
+    return isRecord(value)
+        && typeof value.enabled === 'boolean'
+        && (value.logLevel === 'error'
+            || value.logLevel === 'warn'
+            || value.logLevel === 'info'
+            || value.logLevel === 'debug'
+            || value.logLevel === 'verbose')
+        && typeof value.logApiCalls === 'boolean'
+        && typeof value.logStateChanges === 'boolean'
+        && typeof value.logAutoFetch === 'boolean'
+        && typeof value.showDebugPanel === 'boolean'
+        && typeof value.mockApiResponses === 'boolean'
+        && (value.autoFetchIntervalOverride === undefined
+            || typeof value.autoFetchIntervalOverride === 'number');
+}
+
 class DebugLogger {
 	private config: DebugConfig;
 
 	constructor() {
+		this.config = { ...DEFAULT_DEBUG_CONFIG };
+	}
+
+	initialize(): void {
 		this.config = this.loadDebugConfig();
 	}
 
 	private isDebugEnabled(): boolean {
-		return localStorage.getItem('GEULO_DEBUG') === 'true';
+		return vaultLocalStorageService.load(DEBUG_ENABLED_KEY) === true;
 	}
 
 	private loadDebugConfig(): DebugConfig {
@@ -42,13 +74,9 @@ class DebugLogger {
 			return DEFAULT_DEBUG_CONFIG;
 		}
 
-        const stored = localStorage.getItem('GEULO_DEBUG_CONFIG');
-        if (stored) {
-            try {
-                return { ...DEFAULT_DEBUG_CONFIG, ...JSON.parse(stored) };
-            } catch (e) {
-                console.error('Failed to parse debug config:', e);
-            }
+        const stored = vaultLocalStorageService.load(DEBUG_CONFIG_KEY);
+        if (isDebugConfig(stored)) {
+            return { ...DEFAULT_DEBUG_CONFIG, ...stored, enabled: true };
         }
         
 		return { ...DEFAULT_DEBUG_CONFIG, enabled: true };
@@ -56,7 +84,22 @@ class DebugLogger {
 
     updateConfig(config: Partial<DebugConfig>) {
         this.config = { ...this.config, ...config };
-        localStorage.setItem('GEULO_DEBUG_CONFIG', JSON.stringify(this.config));
+        vaultLocalStorageService.save(DEBUG_CONFIG_KEY, this.config);
+    }
+
+    enable(config?: Partial<DebugConfig>): DebugConfig {
+        vaultLocalStorageService.save(DEBUG_ENABLED_KEY, true);
+        this.config = { ...this.config, enabled: true };
+        if (config) {
+            this.updateConfig(config);
+        }
+        return this.config;
+    }
+
+    disable(): void {
+        vaultLocalStorageService.save(DEBUG_ENABLED_KEY, null);
+        vaultLocalStorageService.save(DEBUG_CONFIG_KEY, null);
+        this.config = { ...DEFAULT_DEBUG_CONFIG };
     }
 
     getConfig(): DebugConfig {
@@ -150,17 +193,13 @@ export const debugLogger = new DebugLogger();
 
 // Helper function to enable debug mode from console
 window.enableGeuloDebug = (config?: Partial<DebugConfig>): DebugConfig => {
-    localStorage.setItem('GEULO_DEBUG', 'true');
-    if (config) {
-        debugLogger.updateConfig(config);
-    }
+    const updatedConfig = debugLogger.enable(config);
     console.log('Geulo debug mode enabled. Reload the plugin to see debug logs.');
-    return debugLogger.getConfig();
+    return updatedConfig;
 };
 
 // Helper function to disable debug mode from console
 window.disableGeuloDebug = (): void => {
-    localStorage.removeItem('GEULO_DEBUG');
-    localStorage.removeItem('GEULO_DEBUG_CONFIG');
+    debugLogger.disable();
     console.log('Geulo debug mode disabled. Reload the plugin to stop debug logs.');
 };

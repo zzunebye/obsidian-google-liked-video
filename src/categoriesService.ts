@@ -1,9 +1,26 @@
 import { YouTubeCategory, CategoriesCache } from './types';
 import { LikedVideoApi } from './api';
 import { debugLogger } from './debug';
+import { vaultLocalStorageService } from './services/vaultLocalStorageService';
 
 const CACHE_KEY = 'geulo-video-categories';
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isCategoriesCache(value: unknown): value is CategoriesCache {
+    if (!isRecord(value) || !isRecord(value.categories) || typeof value.lastFetched !== 'number') {
+        return false;
+    }
+
+    return Object.values(value.categories).every((category) =>
+        isRecord(category)
+        && typeof category.id === 'string'
+        && typeof category.title === 'string'
+    );
+}
 
 // Default YouTube categories as fallback when API fetch fails
 const DEFAULT_CATEGORIES: YouTubeCategory[] = [
@@ -153,26 +170,25 @@ class CategoriesService {
     }
 
     /**
-     * Load categories from localStorage cache
+     * Load categories from the vault-scoped cache
      */
     private loadFromCache(): CategoriesCache | null {
         try {
-            const cached = localStorage.getItem(CACHE_KEY);
-            if (!cached) {
+            const cached = vaultLocalStorageService.load(CACHE_KEY);
+            if (!isCategoriesCache(cached)) {
                 return null;
             }
 
-            const data: CategoriesCache = JSON.parse(cached);
             const now = Date.now();
 
             // Check if cache is expired
-            if (now - data.lastFetched > CACHE_DURATION) {
+            if (now - cached.lastFetched > CACHE_DURATION) {
                 debugLogger.debug('Categories cache expired');
                 return null;
             }
 
             debugLogger.debug('Categories loaded from cache');
-            return data;
+            return cached;
         } catch (error) {
             debugLogger.error('Failed to load categories from cache:', error);
             return null;
@@ -180,7 +196,7 @@ class CategoriesService {
     }
 
     /**
-     * Save categories to localStorage cache
+     * Save categories to the vault-scoped cache
      */
     private saveToCache(categories: YouTubeCategory[]): void {
         try {
@@ -194,7 +210,7 @@ class CategoriesService {
                 cacheData.categories[category.id] = category;
             });
 
-            localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+            vaultLocalStorageService.save(CACHE_KEY, cacheData);
             debugLogger.debug('Categories saved to cache');
         } catch (error) {
             debugLogger.error('Failed to save categories to cache:', error);
@@ -206,7 +222,7 @@ class CategoriesService {
      */
     private clearCache(): void {
         try {
-            localStorage.removeItem(CACHE_KEY);
+            vaultLocalStorageService.save(CACHE_KEY, null);
             debugLogger.debug('Categories cache cleared');
         } catch (error) {
             debugLogger.error('Failed to clear categories cache:', error);

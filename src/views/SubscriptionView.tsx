@@ -503,8 +503,12 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 								url={`https://www.youtube.com/watch?v=${video.id}`}
 								noteExists={noteExistenceMap.get(video.id) ?? false}
 								isLiked={likedVideoIds.has(video.id)}
-								onLike={() => handleLikeVideo(video)}
-								onUnlike={() => handleUnlikeVideo(video)}
+								onLike={() => {
+									void handleLikeVideo(video);
+								}}
+								onUnlike={() => {
+									void handleUnlikeVideo(video);
+								}}
 								onChannelClick={() => setChannelId(video.snippet.channelId)}
 								onTagClick={(tag) => setSearchTerm(tag)}
 								onLinkClick={(url) => void openVideo(url)}

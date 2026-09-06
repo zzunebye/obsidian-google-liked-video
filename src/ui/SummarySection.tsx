@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Notice, MarkdownRenderer } from "obsidian";
+import { Component, Notice, MarkdownRenderer } from "obsidian";
 import {
 	Copy,
 	RefreshCw,
@@ -86,6 +86,7 @@ export const SummarySection = ({
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const requestPendingRef = useRef(false);
 	const renderTimeoutRef = useRef<number | null>(null);
+	const renderComponentRef = useRef<Component | null>(null);
 
 	useEffect(() => {
 		const el = contentRef.current;
@@ -100,12 +101,16 @@ export const SummarySection = ({
 		const delay = isStreaming ? 100 : 0;
 		renderTimeoutRef.current = window.setTimeout(() => {
 			el.empty();
+			renderComponentRef.current?.unload();
+			const renderComponent = new Component();
+			renderComponent.load();
+			renderComponentRef.current = renderComponent;
 			void MarkdownRenderer.render(
 				plugin.app,
 				contentToRender,
 				el,
 				"",
-				plugin,
+				renderComponent,
 			).catch((error: unknown) => {
 				debugLogger.warn(
 					`[AI Summary] Failed to render summary for video: ${videoId}`,
@@ -118,6 +123,8 @@ export const SummarySection = ({
 			if (renderTimeoutRef.current) {
 				window.clearTimeout(renderTimeoutRef.current);
 			}
+			renderComponentRef.current?.unload();
+			renderComponentRef.current = null;
 		};
 	}, [summary, streamingContent, plugin, isExpanded, isStreaming]);
 
@@ -183,11 +190,10 @@ export const SummarySection = ({
 				debugLogger.warn(
 					`[AI Summary] No API key configured for video: ${videoId}`,
 				);
-				setError({
-					type: "no_api_key",
-					message:
-						"Please configure your API key in Settings > AI Features",
-				});
+				setError(new AIServiceError(
+					"no_api_key",
+					"Please configure your API key in Settings > AI Features",
+				));
 				return;
 			}
 
@@ -338,7 +344,12 @@ export const SummarySection = ({
 						);
 					}
 				} catch (err) {
-					const aiError = err as AIServiceError;
+					const aiError = err instanceof AIServiceError
+						? err
+						: new AIServiceError(
+							"unknown",
+							err instanceof Error ? err.message : "Unknown error",
+						);
 					debugLogger.error(
 						`[AI Summary] Generation failed for video ${videoId}: type=${aiError.type}, message=${aiError.message}`,
 					);
@@ -441,7 +452,7 @@ export const SummarySection = ({
 				setSummary(streamingContent);
 				setStreamingContent("");
 			}
-			setError({ type: "unknown", message: "Summary cancelled. Retry when ready." });
+			setError(new AIServiceError("unknown", "Summary cancelled. Retry when ready."));
 		},
 		[videoId, streamingContent],
 	);
@@ -545,7 +556,9 @@ export const SummarySection = ({
 						<div className="summary-section__left-actions">
 							<button
 								className="summary-section__action-btn"
-								onClick={handleAddToNote}
+								onClick={(event) => {
+									void handleAddToNote(event);
+								}}
 								title="Add summary to video note"
 							>
 								<FileText size={14} />

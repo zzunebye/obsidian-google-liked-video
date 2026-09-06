@@ -24,6 +24,7 @@ import { migrateLegacyGoogleSecrets, splitGoogleSecretsFromPluginData } from './
 import { CommentService } from './services/commentService';
 import { SubscriptionService } from './services/subscriptionService';
 import { SubscriptionStorageService } from './services/subscriptionStorageService';
+import { vaultLocalStorageService } from './services/vaultLocalStorageService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -69,6 +70,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	private featureAnnouncementModal: FeatureIntroModal | null = null;
 
 	async onload() {
+		vaultLocalStorageService.initialize(this.app);
+		debugLogger.initialize();
 		debugLogger.info('Plugin loading...');
 		void googleTokenStorageService.initialize(this.app.secretStorage);
 		await this.loadSettings();
