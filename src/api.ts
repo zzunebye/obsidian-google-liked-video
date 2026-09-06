@@ -595,10 +595,21 @@ export class LikedVideoApi {
                 ...options
             });
             debugLogger.api(`Response status: ${response.status}`);
+
+            if (response.status >= 400) {
+                let errorMessage = `YouTube API request failed (${response.status})`;
+                if (isRecord(response.json)
+                    && isRecord(response.json.error)
+                    && typeof response.json.error.message === 'string') {
+                    errorMessage = response.json.error.message;
+                }
+                throw new Error(errorMessage);
+            }
+
             return response;
-        } catch (error) {
+        } catch (error: unknown) {
             debugLogger.error('API request failed:', error);
-            new Notice("Failed to get access token: " + error.message);
+            new Notice("YouTube API request failed: " + getErrorMessage(error));
             throw error;
         }
     }

@@ -411,7 +411,6 @@ export const LikedVideoView: React.FC = () => {
 										plugin.likedVideoApi,
 										{
 											mode: "partial",
-											pageSize: plugin.settings.fetchLimit,
 											keepUnfetched: true,
 										},
 									);
@@ -670,8 +669,6 @@ export const LikedVideoView: React.FC = () => {
 										plugin.likedVideoApi,
 										{
 											mode: "full",
-											pageSize:
-												plugin.settings.fullFetchLimit,
 											keepUnfetched: false,
 										},
 									);

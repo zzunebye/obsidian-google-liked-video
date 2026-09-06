@@ -188,16 +188,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderSyncSection(containerEl: HTMLElement, isLoggedIn: boolean): void {
         new Setting(containerEl).setHeading().setName('Sync');
-        this.renderStoredVideosAndFetchLimit(containerEl);
+        this.renderStoredVideos(containerEl);
         if (isLoggedIn) {
             this.renderAutoFetchSection(containerEl);
         }
         this.renderManualFetchSettings(containerEl, isLoggedIn);
     }
 
-    private renderStoredVideosAndFetchLimit(containerEl: HTMLElement): void {
+    private renderStoredVideos(containerEl: HTMLElement): void {
         const likedVideosCount = localStorageService.getLikedVideos().length;
-        const fetchLimit = this.plugin.settings.fetchLimit;
 
         const storedVideosSetting = new Setting(containerEl)
             .setName('Stored videos')
@@ -206,16 +205,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             cls: 'geulo-stored-video-count',
             text: likedVideosCount.toLocaleString(),
         });
-
-        new Setting(containerEl)
-            .setName('Fetch Limit')
-            .setDesc('Maximum number of recent videos to check per fetch. Full scans ignore this limit.')
-            .addSlider(slider => slider
-                .setValue(fetchLimit)
-                .setLimits(10, 50, 10)
-                .onChange(async (value) => {
-                    await this.saveSetting('fetchLimit', value);
-                }));
     }
 
     private renderOpenInWebViewerSetting(containerEl: HTMLElement): void {
@@ -583,7 +572,6 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
                             const result = await fetchAndMergeLikedVideos(this.plugin.likedVideoApi, {
                                 mode: 'full',
-                                pageSize: this.plugin.settings.fullFetchLimit,
                                 keepUnfetched: false,
                             });
 
@@ -598,14 +586,13 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
             new Setting(containerEl)
                 .setName('Fetch recent videos')
-                .setDesc('Check recent liked videos up to the Fetch Limit above. Add new videos and update matching saved videos, keeping the rest of your saved list.')
+                .setDesc('Check the 50 most recent liked videos. Add new videos and update matching saved videos, keeping the rest of your saved list.')
                 .addButton(button => button
                     .setButtonText('Fetch recent videos')
                     .onClick(async () => {
                         try {
                             const result = await fetchAndMergeLikedVideos(this.plugin.likedVideoApi, {
                                 mode: 'partial',
-                                pageSize: this.plugin.settings.fetchLimit,
                                 keepUnfetched: true,
                             });
 

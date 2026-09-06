@@ -5,10 +5,10 @@ import { mergeVideos } from 'src/utils/videoMergeUtils';
 
 export type LikedVideoFetchMode = 'full' | 'partial';
 
+const LIKED_VIDEOS_PAGE_SIZE = 50;
+
 export interface FetchAndMergeLikedVideosOptions {
 	mode: LikedVideoFetchMode;
-	/** Page size sent to the YouTube API. */
-	pageSize: number;
 	/**
 	 * If true, keep stored videos that were not in the fetched set (partial fetch / auto-fetch).
 	 * If false, drop them (manual full scan).
@@ -28,14 +28,13 @@ function nextPageTokenOrUndefined(token: string | undefined | null): string | un
 }
 
 export async function fetchAllLikedVideos(
-	api: LikedVideoApi,
-	pageSize: number
+	api: LikedVideoApi
 ): Promise<YouTubeVideo[]> {
 	const allVideos: YouTubeVideo[] = [];
 	let nextPageToken: string | undefined = undefined;
 
 	do {
-		const response = await api.fetchLikedVideos(pageSize, nextPageToken);
+		const response = await api.fetchLikedVideos(LIKED_VIDEOS_PAGE_SIZE, nextPageToken);
 		allVideos.push(...(response?.items ?? []));
 		nextPageToken = nextPageTokenOrUndefined(response?.nextPageToken);
 	} while (nextPageToken !== undefined);
@@ -44,10 +43,9 @@ export async function fetchAllLikedVideos(
 }
 
 export async function fetchPartialLikedVideos(
-	api: LikedVideoApi,
-	pageSize: number
+	api: LikedVideoApi
 ): Promise<YouTubeVideo[]> {
-	const response = await api.fetchLikedVideos(pageSize);
+	const response = await api.fetchLikedVideos(LIKED_VIDEOS_PAGE_SIZE);
 	return response?.items ?? [];
 }
 
@@ -60,8 +58,8 @@ export async function fetchAndMergeLikedVideos(
 	options: FetchAndMergeLikedVideosOptions
 ): Promise<FetchAndMergeLikedVideosResult> {
 	const fetchedVideos = options.mode === 'full'
-		? await fetchAllLikedVideos(api, options.pageSize)
-		: await fetchPartialLikedVideos(api, options.pageSize);
+		? await fetchAllLikedVideos(api)
+		: await fetchPartialLikedVideos(api);
 
 	const storedVideos = localStorageService.getLikedVideos();
 	const { mergedVideos, newVideos, updatedCount } = mergeVideos(

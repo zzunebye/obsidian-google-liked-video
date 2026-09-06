@@ -17,8 +17,6 @@ export interface ObsidianGoogleLikedVideoSettings {
     dailyNotePath: string;
     videoNotePath: string;
     organizeByChannel: boolean;
-    fetchLimit: number;
-    fullFetchLimit: number;
     autoFetchEnabled: boolean;
     autoFetchInterval: number;
     fetchOnStartup: boolean;
