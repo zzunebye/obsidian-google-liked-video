@@ -1233,6 +1233,12 @@ button.video-stat--button:focus-visible {
 }
 
 .video-comment__header,
+.video-comment__text {
+	-webkit-user-select: text;
+	user-select: text;
+}
+
+.video-comment__header,
 .video-comment__meta,
 .video-comment__badges {
 	display: flex;
@@ -1274,6 +1280,42 @@ button.video-stat--button:focus-visible {
 	font-size: 13px;
 	line-height: 1.5;
 	color: var(--text-normal);
+}
+
+.video-comment__text--collapsed {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 4;
+}
+
+button.video-comment__toggle {
+	display: block;
+	height: auto;
+	min-height: 0;
+	margin: -3px 0 7px;
+	padding: 0;
+	border: 0;
+	box-shadow: none;
+	background: transparent;
+	color: var(--text-accent);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.5;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+button.video-comment__toggle:hover {
+	background: transparent;
+	color: var(--text-accent-hover);
+	text-decoration: underline;
+}
+
+button.video-comment__toggle:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
 }
 
 .video-comment__meta {

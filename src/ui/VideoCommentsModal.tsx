@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { App, moment } from "obsidian";
 import { MessageCircle, ThumbsUp } from "lucide-react";
 import type { CommentService, VideoComment, VideoCommentsResult } from "../services/commentService";
-import { CommentServiceError } from "../services/commentService";
+import { COMMENT_LIMIT, CommentServiceError } from "../services/commentService";
 import { ReactModal } from "./ReactModal";
 
 type CommentsState =
@@ -22,6 +22,26 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, isOwnComment }: CommentItemProps) {
+	const textId = useId();
+	const textRef = useRef<HTMLParagraphElement>(null);
+	const [isCollapsible, setIsCollapsible] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(false);
+
+	useLayoutEffect(() => {
+		if (isExpanded) return;
+		const textElement = textRef.current;
+		if (!textElement) return;
+
+		const updateCollapsibleState = () => {
+			setIsCollapsible(textElement.scrollHeight > textElement.clientHeight + 1);
+		};
+		updateCollapsibleState();
+
+		const observer = new ResizeObserver(updateCollapsibleState);
+		observer.observe(textElement);
+		return () => observer.disconnect();
+	}, [comment.text, isExpanded]);
+
 	return (
 		<article className="video-comment">
 			<div className="video-comment__avatar" aria-hidden="true">
@@ -46,7 +66,24 @@ function CommentItem({ comment, isOwnComment }: CommentItemProps) {
 						)}
 					</div>
 				)}
-				<p className="video-comment__text">{comment.text}</p>
+				<p
+					ref={textRef}
+					id={textId}
+					className={`video-comment__text${isExpanded ? "" : " video-comment__text--collapsed"}`}
+				>
+					{comment.text}
+				</p>
+				{isCollapsible && (
+					<button
+						type="button"
+						className="video-comment__toggle"
+						aria-controls={textId}
+						aria-expanded={isExpanded}
+						onClick={() => setIsExpanded((expanded) => !expanded)}
+					>
+						{isExpanded ? "Show less" : "View more"}
+					</button>
+				)}
 				<div className="video-comment__meta">
 					<span><ThumbsUp size={13} />{comment.likeCount.toLocaleString()}</span>
 					{comment.replyCount > 0 && (
@@ -102,7 +139,7 @@ function VideoCommentsContent({ videoId, videoTitle, service }: VideoCommentsCon
 			aria-label={`Comments for ${videoTitle}`}
 		>
 			<p className="video-comments-modal__video-title" title={videoTitle}>{videoTitle}</p>
-			<p className="video-comments-modal__scope">Most relevant · Up to 10 top-level comments</p>
+			<p className="video-comments-modal__scope">Most relevant · Up to {COMMENT_LIMIT} top-level comments</p>
 			{state.kind === "loading" && (
 				<div className="video-comments-modal__status" role="status">Loading comments…</div>
 			)}

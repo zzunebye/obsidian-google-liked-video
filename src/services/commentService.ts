@@ -2,7 +2,7 @@ import { getValidAccessToken } from "../auth";
 import type { ObsidianGoogleLikedVideoSettings } from "../types";
 
 const YOUTUBE_API_BASE_URL = "https://youtube.googleapis.com/youtube/v3/";
-const COMMENT_LIMIT = 10;
+export const COMMENT_LIMIT = 30;
 
 type JsonRecord = Record<string, unknown>;
 
