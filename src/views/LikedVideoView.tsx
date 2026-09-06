@@ -199,13 +199,13 @@ export const LikedVideoView: React.FC = () => {
 				searchMatch = titleMatch || tagsMatch || channelMatch;
 			}
 
-				const exactTagMatch =
+			const exactTagMatch =
 				selectedTag === null ||
 				(video.snippet.tags ?? []).some(
 					(tag) => tag.toLowerCase() === selectedTag.toLowerCase(),
-					);
-				const channelMatch = selectedChannel === null ||
-					video.snippet.channelId === selectedChannel.id;
+				);
+			const channelMatch = selectedChannel === null ||
+				video.snippet.channelId === selectedChannel.id;
 
 			// Category filter
 			const categoryMatch =
@@ -239,37 +239,37 @@ export const LikedVideoView: React.FC = () => {
 			}
 
 			// AI Note filter
-				const aiNoteMatch =
-					!showAINoteOnly ||
-					plugin.summaryStorage.hasVideoSummary(video.id);
-				const hasVideoNote = noteExistenceMap.get(video.id) ?? false;
-				const videoNoteMatch = videoNoteFilter === "all" ||
-					(videoNoteFilter === "with" ? hasVideoNote : !hasVideoNote);
+			const aiNoteMatch =
+				!showAINoteOnly ||
+				plugin.summaryStorage.hasVideoSummary(video.id);
+			const hasVideoNote = noteExistenceMap.get(video.id) ?? false;
+			const videoNoteMatch = videoNoteFilter === "all" ||
+				(videoNoteFilter === "with" ? hasVideoNote : !hasVideoNote);
 
 			return (
-					searchMatch &&
-					exactTagMatch &&
-					channelMatch &&
-					categoryMatch &&
-					contentTypeMatch &&
-					aiNoteMatch &&
-					videoNoteMatch
+				searchMatch &&
+				exactTagMatch &&
+				channelMatch &&
+				categoryMatch &&
+				contentTypeMatch &&
+				aiNoteMatch &&
+				videoNoteMatch
 			);
 		});
 	}, [
 		videos,
 		debouncedSearchTerm,
-			selectedTag,
-			selectedChannel,
+		selectedTag,
+		selectedChannel,
 		selectedCategory,
 		contentTypeSelection,
 		shortVideoMaxDurationSeconds,
 		videoDurations,
-			showAINoteOnly,
-			videoNoteFilter,
-			noteExistenceMap,
-			summaryVersion,
-		]);
+		showAINoteOnly,
+		videoNoteFilter,
+		noteExistenceMap,
+		summaryVersion,
+	]);
 
 	const sortedVideos = useMemo(() => {
 		const sorted = [...filteredVideos];
@@ -475,9 +475,9 @@ export const LikedVideoView: React.FC = () => {
 									: `${plugin.settings.autoFetchInterval} minutes`
 									}`}
 							>
-									{fetchStatus !== "idle"
-										? fetchStatus === "creating-notes" ? "Creating notes..." : "Fetching..."
-										: "⏰ Auto"}
+								{fetchStatus !== "idle"
+									? fetchStatus === "creating-notes" ? "Creating notes..." : "Fetching..."
+									: "⏰ Auto"}
 							</span>
 						)}
 					</>
@@ -489,25 +489,25 @@ export const LikedVideoView: React.FC = () => {
 				actions={
 					<>
 						<button
-								title="Fetch the 50 most recent liked videos"
-								/// Refresh button to fetch recently liked videos
-								className="refresh-button"
-								disabled={fetchStatus !== "idle"}
-								onClick={() => {
-									void plugin.performAutoFetch(false, false);
-								}}
-							>
-								<RefreshCcw size={16} />
-							</button>
-							<button
-								type="button"
-								title="More sync options"
-								aria-label="More sync options"
-								disabled={fetchStatus !== "idle"}
-								onClick={openSyncMenu}
-							>
-								<MoreHorizontal size={16} />
-							</button>
+							title="Fetch the 50 most recent liked videos"
+							/// Refresh button to fetch recently liked videos
+							className="video-view-header__refresh-button"
+							disabled={fetchStatus !== "idle"}
+							onClick={() => {
+								void plugin.performAutoFetch(false, false);
+							}}
+						>
+							<RefreshCcw size={16} />
+						</button>
+						<button
+							type="button"
+							title="More sync options"
+							aria-label="More sync options"
+							disabled={fetchStatus !== "idle"}
+							onClick={openSyncMenu}
+						>
+							<MoreHorizontal size={16} />
+						</button>
 						<button
 							title={UI_TEXT.BTN_SETTINGS}
 							onClick={() => {
@@ -531,17 +531,17 @@ export const LikedVideoView: React.FC = () => {
 							<Settings size={16} />
 						</button>
 					</>
-					}
-				/>
-				<div className="liked-video-sync-status" role="status" aria-live="polite">
-					{fetchStatus === "recent" && "Checking the 50 most recent liked videos..."}
-					{fetchStatus === "full" && "Syncing all liked videos..."}
-					{fetchStatus === "creating-notes" && "Liked videos updated. Creating notes..."}
-					{fetchStatus === "idle" && plugin.settings.lastAutoFetchTime > 0 &&
-						`Last checked ${new Date(plugin.settings.lastAutoFetchTime).toLocaleString()}`}
-				</div>
+				}
+			/>
+			<div className="liked-video-sync-status" role="status" aria-live="polite">
+				{fetchStatus === "recent" && "Checking the 50 most recent liked videos..."}
+				{fetchStatus === "full" && "Syncing all liked videos..."}
+				{fetchStatus === "creating-notes" && "Liked videos updated. Creating notes..."}
+				{fetchStatus === "idle" && plugin.settings.lastAutoFetchTime > 0 &&
+					`Last checked ${new Date(plugin.settings.lastAutoFetchTime).toLocaleString()}`}
+			</div>
 
-				<div className="search-bar-container">
+			<div className="search-bar-container">
 				<div className="search-bar-wrapper">
 					<SearchBar
 						searchTerm={searchTerm}
@@ -549,41 +549,41 @@ export const LikedVideoView: React.FC = () => {
 						escapeClearsSearch
 					/>
 				</div>
-					<button
-						className={`filter-toggle-button ${activeFilterCount > 0 ? "filter-toggle-button--active" : ""}`}
-						title={
+				<button
+					className={`filter-toggle-button ${activeFilterCount > 0 ? "filter-toggle-button--active" : ""}`}
+					title={
 						filtersExpanded
 							? UI_TEXT.FILTERS_HIDE
 							: UI_TEXT.FILTERS_SHOW
-						}
-						aria-expanded={filtersExpanded}
-						aria-controls="liked-video-filters"
-						onClick={() => setFiltersExpanded((prev) => !prev)}
-					>
-						<SlidersHorizontal size={16} />
-						{activeFilterCount > 0 && (
-							<span className="filter-toggle-button__count">{activeFilterCount}</span>
-						)}
-					</button>
-				</div>
-				{activeFilterCount > 0 && (
-					<div className="active-tag-filter active-filter-list" aria-label="Active filters">
-						{selectedTag && <FilterChip label={`Tag: ${selectedTag}`} onClear={() => setSelectedTag(null)} />}
-						{selectedChannel && <FilterChip label={`Channel: ${selectedChannel.title}`} onClear={() => setSelectedChannel(null)} />}
-						{selectedCategory !== "all" && <FilterChip label={`Category: ${selectedCategoryTitle}`} onClear={() => setSelectedCategory("all")} />}
-						{hasContentTypeFilter && <FilterChip label={`Type: ${contentTypeFilterLabel}`} onClear={() => setContentTypeSelection([])} />}
-						{showAINoteOnly && <FilterChip label="AI summary" onClear={() => setShowAINoteOnly(false)} />}
-						{videoNoteFilter !== "all" && (
-							<FilterChip label={videoNoteFilter === "with" ? "Has video note" : "No video note"} onClear={() => setVideoNoteFilter("all")} />
-						)}
-						<button type="button" className="active-filter-list__clear" onClick={clearAllFilters}>Clear all</button>
-					</div>
-				)}
-
-				{filtersExpanded && <div
-					id="liked-video-filters"
-					className="filters-container filters-container--expanded"
+					}
+					aria-expanded={filtersExpanded}
+					aria-controls="liked-video-filters"
+					onClick={() => setFiltersExpanded((prev) => !prev)}
 				>
+					<SlidersHorizontal size={16} />
+					{activeFilterCount > 0 && (
+						<span className="filter-toggle-button__count">{activeFilterCount}</span>
+					)}
+				</button>
+			</div>
+			{activeFilterCount > 0 && (
+				<div className="active-tag-filter active-filter-list" aria-label="Active filters">
+					{selectedTag && <FilterChip label={`Tag: ${selectedTag}`} onClear={() => setSelectedTag(null)} />}
+					{selectedChannel && <FilterChip label={`Channel: ${selectedChannel.title}`} onClear={() => setSelectedChannel(null)} />}
+					{selectedCategory !== "all" && <FilterChip label={`Category: ${selectedCategoryTitle}`} onClear={() => setSelectedCategory("all")} />}
+					{hasContentTypeFilter && <FilterChip label={`Type: ${contentTypeFilterLabel}`} onClear={() => setContentTypeSelection([])} />}
+					{showAINoteOnly && <FilterChip label="AI summary" onClear={() => setShowAINoteOnly(false)} />}
+					{videoNoteFilter !== "all" && (
+						<FilterChip label={videoNoteFilter === "with" ? "Has video note" : "No video note"} onClear={() => setVideoNoteFilter("all")} />
+					)}
+					<button type="button" className="active-filter-list__clear" onClick={clearAllFilters}>Clear all</button>
+				</div>
+			)}
+
+			{filtersExpanded && <div
+				id="liked-video-filters"
+				className="filters-container filters-container--expanded"
+			>
 				<div className="video-view-sort">
 					<div className="video-view-sort-left-group">
 						<div className="category-filter">
@@ -673,23 +673,23 @@ export const LikedVideoView: React.FC = () => {
 							<span className="content-type-filter__text">
 								{UI_TEXT.AI_NOTE_FILTER_LABEL}
 							</span>
-							</label>
-							<div className="filters-divider" />
-							<div className="video-view-sort__select-wrapper">
-								<select
-									className="video-view-sort__select"
-									aria-label="Filter by video note"
-									value={videoNoteFilter}
-									onChange={(event) => setVideoNoteFilter(event.target.value as "all" | "with" | "without")}
-								>
-									<option value="all">All note states</option>
-									<option value="with">Has video note</option>
-									<option value="without">No video note</option>
-								</select>
-								<ChevronDown className="video-view-sort__select-icon" size={16} aria-hidden="true" />
-							</div>
-							<div className="filters-divider" />
-							<div className="sort-controls-inline">
+						</label>
+						<div className="filters-divider" />
+						<div className="video-view-sort__select-wrapper">
+							<select
+								className="video-view-sort__select"
+								aria-label="Filter by video note"
+								value={videoNoteFilter}
+								onChange={(event) => setVideoNoteFilter(event.target.value as "all" | "with" | "without")}
+							>
+								<option value="all">All note states</option>
+								<option value="with">Has video note</option>
+								<option value="without">No video note</option>
+							</select>
+							<ChevronDown className="video-view-sort__select-icon" size={16} aria-hidden="true" />
+						</div>
+						<div className="filters-divider" />
+						<div className="sort-controls-inline">
 							<div className="video-view-sort__select-wrapper">
 								<select
 									id="sort-video-select"
@@ -730,14 +730,14 @@ export const LikedVideoView: React.FC = () => {
 								/>
 							</div>
 							<button
-									title={`Current order: ${sortDirectionLabel}`}
+								title={`Current order: ${sortDirectionLabel}`}
 								onClick={() =>
 									setSortOrder(
 										sortOrder === "ASC" ? "DESC" : "ASC",
 									)
 								}
 								className="video-view-sort__order"
-									aria-label={`Change sort order. Current order: ${sortDirectionLabel}`}
+								aria-label={`Change sort order. Current order: ${sortDirectionLabel}`}
 							>
 								{sortOrder === "DESC" ? (
 									<ArrowDownWideNarrow size={16} />
@@ -748,29 +748,29 @@ export const LikedVideoView: React.FC = () => {
 						</div>
 					</div>
 				</div>
-				</div>}
-				{sortedVideos.length === 0 && (
+			</div>}
+			{sortedVideos.length === 0 && (
 				<div className="no-videos-found">
 					<div className="no-videos-found__text">
-							{hasActiveQuery
-								? "No videos match the active filters"
-								: UI_TEXT.NO_VIDEOS_FOUND}
-						</div>
-						{hasActiveQuery && (
-							<button type="button" className="no-videos-found__fetch-all-button" onClick={clearAllFilters}>
-								Clear search and filters
-							</button>
-						)}
+						{hasActiveQuery
+							? "No videos match the active filters"
+							: UI_TEXT.NO_VIDEOS_FOUND}
+					</div>
+					{hasActiveQuery && (
+						<button type="button" className="no-videos-found__fetch-all-button" onClick={clearAllFilters}>
+							Clear search and filters
+						</button>
+					)}
 
-						{videos.length === 0 && (
-							<button
-								className="no-videos-found__fetch-all-button"
-								disabled={fetchStatus !== "idle"}
-								onClick={() => {
-									void plugin.performAutoFetch(true);
-								}}
-							>
-								{fetchStatus === "full" ? "Fetching all liked videos..." : UI_TEXT.BTN_FETCH_ALL}
+					{videos.length === 0 && (
+						<button
+							className="no-videos-found__fetch-all-button"
+							disabled={fetchStatus !== "idle"}
+							onClick={() => {
+								void plugin.performAutoFetch(true);
+							}}
+						>
+							{fetchStatus === "full" ? "Fetching all liked videos..." : UI_TEXT.BTN_FETCH_ALL}
 						</button>
 					)}
 				</div>
