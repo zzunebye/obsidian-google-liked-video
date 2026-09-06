@@ -84,8 +84,8 @@ export const UI_TEXT = {
     FILTERS_HIDE: 'Hide filters',
 
     // AI Note Filter
-    AI_NOTE_FILTER_LABEL: 'AI Note',
-    AI_NOTE_FILTER_TOOLTIP: 'Show only videos with AI-generated summaries',
+	AI_NOTE_FILTER_LABEL: 'AI summary',
+	AI_NOTE_FILTER_TOOLTIP: 'Show only videos with a saved AI summary',
 
     // Like/Unlike actions
     NOTICE_VIDEO_LIKED: (title: string) => `Liked "${title}"`,
