@@ -442,9 +442,20 @@ export const LikedVideoView: React.FC = () => {
 							title={UI_TEXT.BTN_SETTINGS}
 							onClick={() => {
 								// Open Plugin Setting.
-								const setting = (plugin.app as any).setting;
-								setting.open();
-								setting.openTabById(APP_ID);
+								const setting = Reflect.get(plugin.app, "setting");
+								if (
+									typeof setting === "object" &&
+									setting !== null &&
+									"open" in setting &&
+									typeof setting.open === "function" &&
+									"openTabById" in setting &&
+									typeof setting.openTabById === "function"
+								) {
+									setting.open();
+									setting.openTabById(APP_ID);
+								} else {
+									new Notice("Unable to open Geulo settings in this Obsidian version.");
+								}
 							}}
 						>
 							<Settings size={16} />

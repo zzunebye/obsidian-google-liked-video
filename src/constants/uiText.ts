@@ -38,7 +38,7 @@ export const UI_TEXT = {
 
     // Error
     ERROR_TITLE: 'error',
-    ERROR_MESSAGE: (error: any) => `error: ${error}`,
+    ERROR_MESSAGE: (error: unknown) => `error: ${String(error)}`,
 
     // Full Fetch Mode Warnings
     FULL_FETCH_WARNING_TITLE: 'Full Fetch Mode - Resource Intensive',

@@ -6,6 +6,26 @@ import { debugLogger } from "./debug";
 const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
 const REQUEST_TIMEOUT_MS = 90000;
 
+type PlaylistItemResponse = {
+    snippet: {
+        resourceId: {
+            videoId: string;
+        };
+    };
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
+}
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 // Generic Playlist API that can handle different playlist sources
 export class PlaylistApi {
     private paginationCache = new Map<string, PlaylistCache>();
@@ -24,12 +44,14 @@ export class PlaylistApi {
 
     // Type-safe validation for YouTube playlist responses
     private validatePlaylistResponse(playlist: unknown): playlist is YouTubePlaylistResponse {
-        return typeof playlist === 'object' && playlist !== null &&
-            'id' in playlist && typeof (playlist as any).id === 'string' &&
-            'snippet' in playlist && typeof (playlist as any).snippet === 'object' &&
-            'contentDetails' in playlist && typeof (playlist as any).contentDetails === 'object' &&
-            typeof (playlist as any).snippet.title === 'string' &&
-            typeof (playlist as any).contentDetails.itemCount === 'number';
+        if (!isRecord(playlist)) return false;
+
+        const { id, snippet, contentDetails } = playlist;
+        return typeof id === 'string'
+            && isRecord(snippet)
+            && typeof snippet.title === 'string'
+            && isRecord(contentDetails)
+            && typeof contentDetails.itemCount === 'number';
     }
 
     // Cache management methods
@@ -92,14 +114,14 @@ export class PlaylistApi {
             }
 
             return response;
-        } catch (error: any) {
-            if (error.name === 'AbortError') {
+        } catch (error: unknown) {
+            if (isAbortError(error)) {
                 debugLogger.error('Request timeout');
                 new Notice("Request timeout - please try again");
                 throw new Error('Request timeout - please try again');
             }
             debugLogger.error('API request failed:', error);
-            new Notice("API request failed: " + error.message);
+            new Notice("API request failed: " + getErrorMessage(error));
             throw error;
         } finally {
             clearTimeout(timeoutId);
@@ -169,14 +191,13 @@ export class PlaylistApi {
 
         // Extract video IDs from playlist items, filtering out any invalid items with proper type checking
         const videoIds = playlistResponse.items
-            .filter((item: unknown): item is { snippet: { resourceId: { videoId: string } } } =>
-                typeof item === 'object' && item !== null &&
-                'snippet' in item &&
-                typeof (item as any).snippet === 'object' &&
-                'resourceId' in (item as any).snippet &&
-                typeof (item as any).snippet.resourceId?.videoId === 'string'
+            .filter((item: unknown): item is PlaylistItemResponse =>
+                isRecord(item)
+                && isRecord(item.snippet)
+                && isRecord(item.snippet.resourceId)
+                && typeof item.snippet.resourceId.videoId === 'string'
             )
-            .map((item: { snippet: { resourceId: { videoId: string } } }) => item.snippet.resourceId.videoId);
+            .map((item: PlaylistItemResponse) => item.snippet.resourceId.videoId);
 
         if (videoIds.length === 0) {
             return {
@@ -235,9 +256,9 @@ export class PlaylistApi {
             + '&mine=true';
 
         const response = await this.sendRequest('GET', url, {});
-        const data = await response.json();
+        const data: unknown = await response.json();
 
-        if (!data.items) {
+        if (!isRecord(data) || !Array.isArray(data.items)) {
             return [];
         }
 
@@ -587,7 +608,7 @@ export class LikedVideoApi {
         return data;
     }
 
-    async fetchPlaylists(): Promise<any> {
+    async fetchPlaylists(): Promise<unknown> {
         const url = BASE_URL + 'playlists?'
             + 'part=snippet,contentDetails'
             + '&maxResults=5'

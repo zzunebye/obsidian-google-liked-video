@@ -3,6 +3,7 @@ import { TFile, EventRef } from "obsidian";
 import { sanitizeFileName, computeExpectedNotePath } from "src/utils/noteUtils";
 import { getVideoNoteId, indexVideoNotesById } from "src/utils/videoNoteUtils";
 import { YouTubeVideo } from "src/types";
+import type GoogleLikedVideoPlugin from "src/main";
 
 /**
  * React hook that efficiently tracks the existence of note files in the Obsidian vault
@@ -25,7 +26,7 @@ import { YouTubeVideo } from "src/types";
  *   const doesExist = existenceMap.get(videoId) // true if a note file exists for that video
  */
 export const useNoteExistenceMap = (
-    plugin: any,
+    plugin: GoogleLikedVideoPlugin,
     videos: YouTubeVideo[]
 ): Map<string, boolean> => {
     const configuredPath = plugin.settings?.videoNotePath?.trim() || '';

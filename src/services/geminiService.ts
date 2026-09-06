@@ -4,6 +4,18 @@ import { BaseAIService } from './baseAIService';
 const GEMINI_MODEL = 'gemini-3-flash-preview';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function getGeminiText(data: unknown): string {
+	if (!isRecord(data) || !Array.isArray(data.candidates)) return '';
+	const candidate = data.candidates[0];
+	if (!isRecord(candidate) || !isRecord(candidate.content) || !Array.isArray(candidate.content.parts)) return '';
+	const part = candidate.content.parts[0];
+	return isRecord(part) && typeof part.text === 'string' ? part.text : '';
+}
+
 export interface AIServiceResult {
 	summary: string;
 	generatedAt: string;
@@ -78,8 +90,8 @@ export class GeminiService extends BaseAIService {
 
 	protected parseChunk(jsonStr: string): string | null {
 		try {
-			const data = JSON.parse(jsonStr);
-			return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+			const data: unknown = JSON.parse(jsonStr);
+			return getGeminiText(data) || null;
 		} catch {
 			debugLogger.debug(`[AI Summary] Failed to parse Gemini SSE chunk: ${jsonStr}`);
 			return null;
@@ -96,8 +108,8 @@ export class GeminiService extends BaseAIService {
 		};
 	}
 
-	protected parseTextCompletionResponse(data: any): string {
-		return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+	protected parseTextCompletionResponse(data: unknown): string {
+		return getGeminiText(data);
 	}
 
 	protected mapHttpStatusToError(status: number, message: string): AIServiceError {

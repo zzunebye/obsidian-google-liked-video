@@ -100,13 +100,18 @@ export const SummarySection = ({
 		const delay = isStreaming ? 100 : 0;
 		renderTimeoutRef.current = setTimeout(() => {
 			el.empty();
-			MarkdownRenderer.render(
+			void MarkdownRenderer.render(
 				plugin.app,
 				contentToRender,
 				el,
 				"",
 				plugin,
-			);
+			).catch((error: unknown) => {
+				debugLogger.warn(
+					`[AI Summary] Failed to render summary for video: ${videoId}`,
+					error,
+				);
+			});
 		}, delay);
 
 		return () => {
@@ -137,10 +142,15 @@ export const SummarySection = ({
 					.then((oneLiner) => {
 						const trimmed = oneLiner.trim();
 						if (trimmed) {
-							plugin.summaryStorage.setOneLinerSummary(
+							void plugin.summaryStorage.setOneLinerSummary(
 								videoId,
 								trimmed,
-							);
+							).catch((error: unknown) => {
+								debugLogger.warn(
+									`[AI Summary] Failed to save one-liner for ${videoId}:`,
+									error,
+								);
+							});
 							onPreviewUpdated?.();
 						}
 					})
@@ -367,7 +377,7 @@ export const SummarySection = ({
 			debugLogger.debug(
 				`[AI Summary] Section expanded for video: ${videoId} - triggering auto-generation`,
 			);
-			generateSummary();
+			void generateSummary();
 		} else if (isExpanded) {
 			debugLogger.debug(
 				`[AI Summary] Section expanded for video: ${videoId} - state: summary=${!!summary}, loading=${isLoading}, error=${!!error}`,
@@ -377,14 +387,20 @@ export const SummarySection = ({
 
 	useEffect(() => {
 		if (regenerateTrigger && regenerateTrigger > 0) {
-			generateSummary(true);
+			void generateSummary(true);
 		}
 	}, [regenerateTrigger]);
 
 	const handleCopy = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		if (summary) {
-			navigator.clipboard.writeText(summary);
+			void navigator.clipboard.writeText(summary).catch((error: unknown) => {
+				debugLogger.warn(
+					`[AI Summary] Failed to copy summary for video: ${videoId}`,
+					error,
+				);
+				new Notice("Could not copy the summary. Please try again.");
+			});
 			new Notice("Summary copied to clipboard");
 			debugLogger.debug(
 				`[AI Summary] Summary copied to clipboard for video: ${videoId}`,
@@ -397,7 +413,7 @@ export const SummarySection = ({
 		debugLogger.info(
 			`[AI Summary] Regenerate requested for video: ${videoId}`,
 		);
-		generateSummary(true);
+		void generateSummary(true);
 	};
 
 	const handleAddToNote = async (e: React.MouseEvent) => {

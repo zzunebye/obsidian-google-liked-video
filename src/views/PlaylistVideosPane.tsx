@@ -9,8 +9,8 @@ import { PluginContext } from "../store/pluginContext";
 import { PlaylistVideosView } from "./PlaylistVideosView";
 
 interface IPlaylistVideosViewPersistedState {
-    playlistSource: PlaylistSource;
-    playlistInfo: PlaylistInfo;
+    playlistSource?: PlaylistSource;
+    playlistInfo?: PlaylistInfo;
 }
 
 export const VIEW_TYPE_PLAYLIST_VIDEOS = "playlist-videos";
@@ -54,7 +54,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
             item.setTitle("Back to Playlists");
             item.setIcon("arrow-left");
             item.onClick(() => {
-                this.plugin?.activatePlaylistsView();
+                void this.plugin?.activatePlaylistsView();
             });
         });
     }
@@ -142,7 +142,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         this.root?.unmount();
     }
 
-    async setState(state: IPlaylistVideosViewPersistedState & any, result: ViewStateResult): Promise<void> {
+    async setState(state: IPlaylistVideosViewPersistedState, result: ViewStateResult): Promise<void> {
         if (state.playlistSource) {
             this.playlistSource = state.playlistSource;
         }

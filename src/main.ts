@@ -67,7 +67,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	async onload() {
 		debugLogger.info('Plugin loading...');
-		googleTokenStorageService.initialize(this.app.secretStorage);
+		void googleTokenStorageService.initialize(this.app.secretStorage);
 		await this.loadSettings();
 		const manifestDir = this.manifest.dir;
 		if (!manifestDir) throw new Error('Plugin directory is unavailable.');
@@ -88,7 +88,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.commentService = new CommentService(this.settings);
 		debugLogger.debug('API clients initialized');
 
-		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, this.manifest.dir!, 500);
+		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, manifestDir, 500);
 		await this.summaryStorage.initialize();
 
 		this.registerView(
@@ -117,18 +117,18 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 
 		this.addRibbonIcon("tv-minimal-play", "Geulo: Open YouTube Liked Videos View", () => {
-			this.activateView();
+			void this.activateView();
 		});
 
 		this.addRibbonIcon("list-video", "Geulo: Open YouTube Playlists View", () => {
-			this.activatePlaylistsView();
+			void this.activatePlaylistsView();
 		});
 
 		this.addCommand({
 			id: 'open-liked-video-list-view',
 			name: 'Open YouTube Liked Videos View',
 			callback: () => {
-				this.activateView();
+				void this.activateView();
 			}
 		});
 
@@ -136,7 +136,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			id: 'open-user-playlists-view',
 			name: 'Open YouTube Playlists View',
 			callback: () => {
-				this.activatePlaylistsView();
+				void this.activatePlaylistsView();
 			}
 		});
 
@@ -156,21 +156,21 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					new Notice('Geulo: Please authenticate first in plugin settings.');
 					return;
 				}
-				this.performAutoFetch(true);
+				void this.performAutoFetch(true);
 			}
 		});
 
 		if (this.settings.fetchOnStartup && googleTokenStorageService.getAccessToken()) {
 			debugLogger.info('Fetch on startup enabled, scheduling fetch in 5 seconds');
 			setTimeout(() => {
-				this.performAutoFetch();
+				void this.performAutoFetch();
 			}, 5000);
 		}
 
 		this.setupAutoFetch();
 
 		// Initialize categories in the background
-		this.initializeCategories();
+		void this.initializeCategories();
 
 		await this.checkFeatureAnnouncement();
 	}
@@ -226,7 +226,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 		if (leaf) {
 			// "Reveal" the leaf in case it is in a collapsed sidebar
-			workspace.revealLeaf(leaf);
+			void workspace.revealLeaf(leaf);
 		}
 	}
 
@@ -247,7 +247,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 		if (leaf) {
 			// "Reveal" the leaf in case it is in a collapsed sidebar
-			workspace.revealLeaf(leaf);
+			void workspace.revealLeaf(leaf);
 		}
 	}
 

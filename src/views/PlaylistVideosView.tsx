@@ -108,7 +108,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 			}
 		};
 
-		loadVideosWithAbort();
+		void loadVideosWithAbort();
 
 		return () => {
 			isMounted = false;
@@ -274,7 +274,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		loadingRef.current = false;
 
 		// Force refresh will bypass cache and fetch new data
-		loadAllVideos(true);
+		void loadAllVideos(true);
 	};
 
 	// Loading State - skeleton cards

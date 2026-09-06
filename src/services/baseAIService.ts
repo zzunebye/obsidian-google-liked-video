@@ -4,6 +4,30 @@ import { AIService, AIServiceResult, AIServiceError, StreamOptions, StreamCallba
 const REQUEST_TIMEOUT_MS = 90000;
 const TEXT_COMPLETION_TIMEOUT_MS = 30000;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isAbortError(error: unknown): boolean {
+	return error instanceof Error && error.name === 'AbortError';
+}
+
+function getApiErrorMessage(responseBody: unknown, fallback: string): string {
+	if (!isRecord(responseBody) || !isRecord(responseBody.error)) return fallback;
+	return typeof responseBody.error.message === 'string'
+		? responseBody.error.message
+		: fallback;
+}
+
+function isAIServiceError(error: unknown): error is AIServiceError {
+	if (!isRecord(error) || typeof error.message !== 'string') return false;
+	return error.type === 'no_api_key'
+		|| error.type === 'invalid_key'
+		|| error.type === 'network_error'
+		|| error.type === 'rate_limit'
+		|| error.type === 'unknown';
+}
+
 export abstract class BaseAIService implements AIService {
 	protected abstract serviceName: string;
 	protected abstract apiKey: string;
@@ -16,7 +40,7 @@ export abstract class BaseAIService implements AIService {
 	protected abstract mapHttpStatusToError(status: number, message: string): AIServiceError;
 	protected abstract buildTextCompletionUrl(): string;
 	protected abstract buildTextCompletionBody(prompt: string): object;
-	protected abstract parseTextCompletionResponse(data: any): string;
+	protected abstract parseTextCompletionResponse(data: unknown): string;
 
 	async generateVideoSummary(videoId: string, prompt: string): Promise<AIServiceResult> {
 		return new Promise((resolve, reject) => {
@@ -69,7 +93,7 @@ export abstract class BaseAIService implements AIService {
 
 			debugLogger.info(`[AI Summary] ${this.serviceName} streaming complete for video: ${videoId} (${accumulated.length} chars)`);
 			options.onComplete?.(this.createResult(accumulated));
-		} catch (error: any) {
+		} catch (error: unknown) {
 			this.handleStreamError(error, accumulated, options, videoId);
 		} finally {
 			debugLogger.timeEnd(`ai-summary-${videoId}`);
@@ -89,17 +113,21 @@ export abstract class BaseAIService implements AIService {
 			clearTimeout(timeoutId);
 
 			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				const errorMessage = (errorData as any)?.error?.message || response.statusText;
+				const errorData: unknown = await response.json().catch(() => ({}));
+				const errorMessage = getApiErrorMessage(errorData, response.statusText);
 				throw this.mapHttpStatusToError(response.status, errorMessage);
 			}
 
-			const data = await response.json();
+			const data: unknown = await response.json();
 			return this.parseTextCompletionResponse(data);
-		} catch (error: any) {
+		} catch (error: unknown) {
 			clearTimeout(timeoutId);
-			if (error?.name === 'AbortError') {
-				throw { type: 'network_error', message: 'Text completion request timed out' } as AIServiceError;
+			if (isAbortError(error)) {
+				const timeoutError: AIServiceError = {
+					type: 'network_error',
+					message: 'Text completion request timed out',
+				};
+				throw timeoutError;
 			}
 			throw error;
 		}
@@ -120,8 +148,8 @@ export abstract class BaseAIService implements AIService {
 	protected async handleHttpError(response: Response, onError?: (e: AIServiceError) => void): Promise<void> {
 		if (response.ok) return;
 
-		const errorData = await response.json().catch(() => ({}));
-		const errorMessage = (errorData as any)?.error?.message || response.statusText;
+		const errorData: unknown = await response.json().catch(() => ({}));
+		const errorMessage = getApiErrorMessage(errorData, response.statusText);
 		debugLogger.error(`[AI Summary] ${this.serviceName} API error: HTTP ${response.status} - ${errorMessage}`);
 
 		const error = this.mapHttpStatusToError(response.status, errorMessage);
@@ -138,9 +166,11 @@ export abstract class BaseAIService implements AIService {
 		let buffer = '';
 		let accumulated = '';
 
-		while (true) {
+		let streamDone = false;
+		while (!streamDone) {
 			const { done, value } = await reader.read();
-			if (done) break;
+			streamDone = done;
+			if (streamDone) break;
 
 			buffer += decoder.decode(value, { stream: true });
 			const lines = buffer.split('\n');
@@ -177,12 +207,12 @@ export abstract class BaseAIService implements AIService {
 	}
 
 	protected handleStreamError(
-		error: any,
+		error: unknown,
 		accumulated: string,
 		options: StreamOptions,
 		videoId: string
 	): void {
-		if (error?.name === 'AbortError') {
+		if (isAbortError(error)) {
 			debugLogger.info(`[AI Summary] ${this.serviceName} streaming aborted for video: ${videoId}`);
 			if (accumulated) {
 				options.onComplete?.(this.createResult(accumulated));
@@ -190,8 +220,11 @@ export abstract class BaseAIService implements AIService {
 			return;
 		}
 
-		if (!error?.type) {
-			const wrappedError: AIServiceError = { type: 'network_error', message: error?.message || 'Network error' };
+		if (!isAIServiceError(error)) {
+			const wrappedError: AIServiceError = {
+				type: 'network_error',
+				message: error instanceof Error ? error.message : 'Network error',
+			};
 			options.onError?.(wrappedError);
 			throw wrappedError;
 		}

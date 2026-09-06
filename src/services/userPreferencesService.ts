@@ -52,11 +52,15 @@ class UserPreferencesService {
     /**
      * Set specific preference value
      */
-    setPreference<K extends keyof typeof this.defaultPreferences>(
-        key: K,
-        value: typeof this.defaultPreferences[K]
-    ) {
-        this.setPreferences({ [key]: value } as any);
+    setPreference(
+        key: keyof typeof this.defaultPreferences,
+        value: boolean
+    ): void {
+        if (key === 'skipUnlikeConfirmation') {
+            this.setPreferences({ skipUnlikeConfirmation: value });
+            return;
+        }
+        this.setPreferences({ skipLongVideoSummaryConfirmation: value });
     }
 
     /**

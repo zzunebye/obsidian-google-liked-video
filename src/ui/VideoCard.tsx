@@ -308,7 +308,7 @@ export const VideoCard = ({
 		await appInstance.workspace.openLinkText(file.path, "", true);
 	};
 
-	const handleContextMenu = (e: any): void => {
+	const handleContextMenu = (e: React.MouseEvent<HTMLElement>): void => {
 		e.preventDefault();
 		e.stopPropagation();
 		const menu = new Menu();

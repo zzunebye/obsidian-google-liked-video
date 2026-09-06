@@ -47,7 +47,7 @@ export class UserPlaylistsPane
 			item.setTitle("Refresh Playlists");
 			item.setIcon("refresh-cw");
 			item.onClick(() => {
-				this.loadPlaylists();
+				void this.loadPlaylists();
 			});
 		});
 
@@ -302,7 +302,7 @@ export class UserPlaylistsPane
 			await leaf.setViewState(viewState);
 
 			// Reveal the leaf
-			workspace.revealLeaf(leaf);
+			void workspace.revealLeaf(leaf);
 		}
 	}
 

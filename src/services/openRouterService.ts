@@ -4,6 +4,19 @@ import { BaseAIService } from './baseAIService';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function getOpenRouterText(data: unknown, responseType: 'delta' | 'message'): string {
+	if (!isRecord(data) || !Array.isArray(data.choices)) return '';
+	const choice: unknown = data.choices[0];
+	if (!isRecord(choice)) return '';
+	const response: unknown = choice[responseType];
+	if (!isRecord(response)) return '';
+	return typeof response.content === 'string' ? response.content : '';
+}
+
 export class OpenRouterService extends BaseAIService {
 	protected serviceName = 'OpenRouter';
 	protected apiKey: string;
@@ -53,8 +66,8 @@ export class OpenRouterService extends BaseAIService {
 
 	protected parseChunk(jsonStr: string): string | null {
 		try {
-			const data = JSON.parse(jsonStr);
-			return data?.choices?.[0]?.delta?.content || null;
+			const data: unknown = JSON.parse(jsonStr);
+			return getOpenRouterText(data, 'delta') || null;
 		} catch {
 			debugLogger.debug(`[AI Summary] Failed to parse OpenRouter SSE chunk: ${jsonStr}`);
 			return null;
@@ -73,8 +86,8 @@ export class OpenRouterService extends BaseAIService {
 		};
 	}
 
-	protected parseTextCompletionResponse(data: any): string {
-		return data?.choices?.[0]?.message?.content || '';
+	protected parseTextCompletionResponse(data: unknown): string {
+		return getOpenRouterText(data, 'message');
 	}
 
 	protected mapHttpStatusToError(status: number, message: string): AIServiceError {

@@ -34,8 +34,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     updatePlaylistVideosPaneView(): void {
-        this.app.workspace.getActiveViewOfType(PlaylistVideosPane)?.onClose();
-        this.app.workspace.getActiveViewOfType(PlaylistVideosPane)?.onOpen();
+        void this.app.workspace.getActiveViewOfType(PlaylistVideosPane)?.onClose();
+        void this.app.workspace.getActiveViewOfType(PlaylistVideosPane)?.onOpen();
     }
 
     display(): void {

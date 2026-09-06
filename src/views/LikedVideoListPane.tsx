@@ -35,8 +35,8 @@ export class LikedVideoListPane
             item.setTitle("Refresh");
             item.setIcon("sync");
             item.onClick(() => {
-                this.onClose();
-                this.onOpen();
+                void this.onClose();
+                void this.onOpen();
             });
         });
     }

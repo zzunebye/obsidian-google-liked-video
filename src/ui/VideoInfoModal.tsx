@@ -122,9 +122,9 @@ const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategor
         return key.replace(/([A-Z])/g, ' $1').trim();
     };
 
-    const formatValue = (key: string, value: any): React.ReactNode => {
+    const formatValue = (key: string, value: unknown): React.ReactNode => {
         if (key === 'categoryId' && getCategoryDisplay) {
-            return getCategoryDisplay(value as string);
+            return typeof value === 'string' ? getCategoryDisplay(value) : '';
         }
 
         if (key === 'duration' && typeof value === 'string') {
@@ -139,10 +139,10 @@ const VideoInfoContent: React.FC<VideoInfoModalProps> = ({ videoInfo, getCategor
             return JSON.stringify(value, null, 2);
         }
 
-        return value?.toString() || '';
+        return value === null || value === undefined ? '' : String(value);
     };
 
-    const renderInfoSection = (title: string, data: Record<string, any>, excludeKeys: string[] = []) => {
+    const renderInfoSection = (title: string, data: Record<string, unknown>, excludeKeys: string[] = []) => {
         const entries = Object.entries(data).filter(([key]) => !excludeKeys.includes(key));
 
         if (entries.length === 0) return null;
