@@ -1,4 +1,4 @@
-export type LikedVideoDisplayMode = 'pagination' | 'infinite';
+export type LikedVideoPaginationMode = 'pagination' | 'infinite';
 
 export const AI_PROVIDERS = ['gemini', 'openrouter'] as const;
 export type AIProvider = typeof AI_PROVIDERS[number];

@@ -167,10 +167,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .addDropdown(dropdown => dropdown
                 .addOption('pagination', 'Pagination')
                 .addOption('infinite', 'Infinite scroll')
-                .setValue(localStorageService.getLikedVideoDisplayMode())
-                .onChange(async (value) => {
-                    const displayMode = value === 'infinite' ? 'infinite' : 'pagination';
-                    localStorageService.setLikedVideoDisplayMode(displayMode);
+				.setValue(localStorageService.getLikedVideoPaginationMode())
+				.onChange(async (value) => {
+					const paginationMode = value === 'infinite' ? 'infinite' : 'pagination';
+					localStorageService.setLikedVideoPaginationMode(paginationMode);
                     await this.updateListPaneView();
                 }));
     }

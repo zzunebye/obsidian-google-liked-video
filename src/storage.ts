@@ -1,4 +1,4 @@
-import { YouTubeVideo, ContentTypeSelection, ContentTypeOption, PlaylistInfo, LikedVideoDisplayMode } from "./types";
+import { YouTubeVideo, ContentTypeSelection, ContentTypeOption, PlaylistInfo, LikedVideoPaginationMode } from "./types";
 import type { LikedVideoStorageService } from './services/likedVideoStorageService';
 
 export interface SavedPlaylist extends PlaylistInfo {
@@ -19,12 +19,12 @@ class LocalStorageService {
 		if (!this.likedVideoStorage) throw new Error('Liked video storage has not been initialized.');
 		return this.likedVideoStorage;
 	}
-	getLikedVideoDisplayMode(): LikedVideoDisplayMode {
-		return window.localStorage.getItem("likedVideoDisplayMode") === "infinite"
-			? "infinite" : "pagination";
+	getLikedVideoPaginationMode(): LikedVideoPaginationMode {
+		return window.localStorage.getItem("likedVideoDisplayMode") === "pagination"
+			? "pagination" : "infinite";
 	}
 
-	setLikedVideoDisplayMode(mode: LikedVideoDisplayMode): void {
+	setLikedVideoPaginationMode(mode: LikedVideoPaginationMode): void {
 		window.localStorage.setItem("likedVideoDisplayMode", mode);
 	}
     /**

@@ -41,7 +41,7 @@ export const LikedVideoView: React.FC = () => {
 	const [selectedTag, setSelectedTag] = useState<string | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageInput, setPageInput] = useState("1");
-	const displayMode = localStorageService.getLikedVideoDisplayMode();
+	const paginationMode = localStorageService.getLikedVideoPaginationMode();
 	const [sortOption, setSortOption] = useState(
 		localStorageService.getSortOption(),
 	);
@@ -288,7 +288,7 @@ export const LikedVideoView: React.FC = () => {
 
 	const totalPages = Math.ceil(sortedVideos.length / videosPerPage);
 	const maximumPage = Math.max(totalPages, 1);
-	const browsingKey = JSON.stringify([displayMode, debouncedSearchTerm, selectedTag, sortOption,
+	const browsingKey = JSON.stringify([paginationMode, debouncedSearchTerm, selectedTag, sortOption,
 		sortOrder, selectedCategory, contentTypeSelection, showAINoteOnly]);
 
 	useEffect(() => {
@@ -705,7 +705,7 @@ export const LikedVideoView: React.FC = () => {
 				</div>
 			)}
 			{/* Videos */}
-			<LikedVideoCollection videos={sortedVideos} mode={displayMode} currentPage={currentPage}
+			<LikedVideoCollection videos={sortedVideos} mode={paginationMode} currentPage={currentPage}
 				resetKey={browsingKey} renderVideo={(video, noteExists, summaryState) => (
 					<VideoCard
 						{...summaryState}
@@ -795,7 +795,7 @@ export const LikedVideoView: React.FC = () => {
 				)} />
 
 			{/* Pagination */}
-			{displayMode === "pagination" && <nav className="video-view__pagination" aria-label="Pagination">
+			{paginationMode === "pagination" && <nav className="video-view__pagination" aria-label="Pagination">
 				<div className="video-view__pagination__controls">
 					{currentPage > 1 && (
 						<>

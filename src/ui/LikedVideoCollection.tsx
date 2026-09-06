@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ReactNode } from "react";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import type { Range } from "@tanstack/react-virtual";
-import type { LikedVideoDisplayMode, YouTubeVideo } from "src/types";
+import type { LikedVideoPaginationMode, YouTubeVideo } from "src/types";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { usePlugin } from "src/store/pluginContext";
 import type { SummarySnapshot } from "./SummarySection";
@@ -17,7 +17,7 @@ export interface SummaryCardState {
 
 interface Props {
 	readonly videos: YouTubeVideo[];
-	readonly mode: LikedVideoDisplayMode;
+	readonly mode: LikedVideoPaginationMode;
 	readonly currentPage: number;
 	readonly resetKey: string;
 	readonly renderVideo: (video: YouTubeVideo, noteExists: boolean, summary: SummaryCardState) => ReactNode;
