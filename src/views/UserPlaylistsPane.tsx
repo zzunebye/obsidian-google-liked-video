@@ -170,7 +170,7 @@ export class UserPlaylistsPane
 						onPlaylistSelect={(playlist: PlaylistInfo) => {
 							void this.openPlaylistVideos(playlist);
 						}}
-						onRetry={() => {
+						onRefresh={() => {
 							void this.loadPlaylists();
 						}}
 						onAddPlaylist={(playlistId: string) =>

@@ -21,7 +21,7 @@ interface UserPlaylistsViewProps {
 	isLoading: boolean;
 	error: string | null;
 	onPlaylistSelect: (playlist: PlaylistInfo) => void;
-	onRetry: () => void;
+	onRefresh: () => void;
 	onAddPlaylist: (playlistId: string) => Promise<boolean>;
 	onDeletePlaylist: (playlist: PlaylistInfo) => Promise<void>;
 }
@@ -31,7 +31,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 	isLoading,
 	error,
 	onPlaylistSelect,
-	onRetry,
+	onRefresh,
 	onAddPlaylist,
 	onDeletePlaylist,
 }) => {
@@ -218,7 +218,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 					<div className="playlists-error__message">{error}</div>
 					<button
 						className="playlists-error__retry-button"
-						onClick={onRetry}
+						onClick={onRefresh}
 					>
 						<RefreshCw size={16} />
 						Try Again
@@ -234,14 +234,27 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				icon={<Youtube className="video-view-header__icon" />}
 				title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
 				actions={
-					<button
-						className="add-playlist-button"
-						onClick={() => setShowAddForm(true)}
-						disabled={isLoading || showAddForm}
-						title="Add playlist by ID"
-					>
-						<Plus size={16} />
-					</button>
+					<>
+						<button
+							className="refresh-button"
+							onClick={onRefresh}
+							disabled={isLoading}
+							title="Refresh playlists"
+						>
+							<RefreshCw
+								size={16}
+								className={isLoading ? "animate-spin" : ""}
+							/>
+						</button>
+						<button
+							className="add-playlist-button"
+							onClick={() => setShowAddForm(true)}
+							disabled={isLoading || showAddForm}
+							title="Add playlist by ID"
+						>
+							<Plus size={16} />
+						</button>
+					</>
 				}
 			/>
 
