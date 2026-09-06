@@ -27,8 +27,6 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	dailyNotePath: '',
 	videoNotePath: '',
 	organizeByChannel: false,
-	fetchLimit: 10,
-	fullFetchLimit: 100,
 	autoFetchEnabled: false,
 	autoFetchInterval: 60,
 	fetchOnStartup: false,
@@ -254,7 +252,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const storedData: unknown = await this.loadData();
 		const splitData = splitGoogleSecretsFromPluginData(storedData);
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, splitData.settingsData);
+		const settingsData = { ...splitData.settingsData };
+		const hasDeprecatedFetchLimits = Object.prototype.hasOwnProperty.call(settingsData, 'fetchLimit')
+			|| Object.prototype.hasOwnProperty.call(settingsData, 'fullFetchLimit');
+		delete settingsData.fetchLimit;
+		delete settingsData.fullFetchLimit;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, settingsData);
 		if (!isAIProvider(this.settings.aiProvider)) {
 			this.settings.aiProvider = DEFAULT_SETTINGS.aiProvider;
 		}
@@ -264,6 +267,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			migrateClientSecret: (value) => googleTokenStorageService.migrateClientSecret(value),
 			persistSanitizedData: () => this.saveData(this.settings),
 		});
+		if (hasDeprecatedFetchLimits) {
+			await this.saveData(this.settings);
+		}
 	}
 
 	async saveSettings() {
@@ -328,9 +334,6 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 				const result = await fetchAndMergeLikedVideos(this.likedVideoApi, {
 					mode: shouldFetchAllVideos ? 'full' : 'partial',
-					pageSize: shouldFetchAllVideos
-						? this.settings.fullFetchLimit
-						: this.settings.fetchLimit,
 					// Auto-fetch must not remove locally stored videos.
 					keepUnfetched: true,
 				});
@@ -339,7 +342,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				debugLogger.autoFetch(
 					shouldFetchAllVideos
 						? `Fetched all videos: ${result.fetchedCount} total`
-						: `Fetched limited videos: ${result.fetchedCount} (limit: ${this.settings.fetchLimit})`
+						: `Fetched recent videos: ${result.fetchedCount} (limit: 50)`
 				);
 				if (shouldFetchAllVideos && result.fetchedCount > 2000 && fetchInterval < 120) {
 					debugLogger.warn(
