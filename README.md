@@ -1,19 +1,19 @@
 # Geulo - YouTube Liked Video Plugin
 
-Transform your YouTube liked videos into a powerful knowledge management system within Obsidian.
+Integrate your 'liked videos' on YouTube into a powerful knowledge management system within Obsidian.
 
-Geulo seamlessly fetches, organizes, and integrates your liked videos in YouTube directly into your Obsidian workflow. Perfect for researchers, content creators, and knowledge workers who believe that revisiting quality content is as valuable as discovering new material.
+**Geulo** seamlessly fetches, organizes, and integrates your liked videos in YouTube directly into your Obsidian. Perfect for researchers, content creators, knowledge workers, or anyone who believes that revisiting quality content is as valuable as discovering new ones.
 
-**Why Geulo?** Instead of letting your liked videos disappear into YouTube's depths, Geulo brings them into your personal knowledge base where you can search, sort, and reference them alongside your notes. Turn passive video consumption into active knowledge building.
+Instead of letting your liked videos disappear into YouTube's depths, Geulo brings them into your personal knowledge base where you can search, sort, manage, and reference them alongside your notes. Turn passive video consumption into active knowledge building.
 
 **Key capabilities:**
 
-- Instantly access your entire YouTube 'liked video' collection
-- Browse and manage your YouTube playlists
-- Search, filter and sort to rediscover videos
+- Instantly access your entire YouTube 'My Liked Videos' playlist and subscriptions
+- Browse and manage your YouTube playlists saved or created
+- Search, filter and sort the videos to rediscover them
 - AI-powered video summaries (Gemini / OpenRouter)
 - One-click integration with your daily notes
-- Curate your collection by removing videos directly from the sidebar
+- Curate your playlists by removing videos directly from the sidebar
 
 I'd appreciate your feedback. Open an issue for suggestions.
 
@@ -69,7 +69,7 @@ To use this plugin, you need to set up a project in Google Cloud Console and ena
 
 The YouTube Data API v3 operates on a quota system where different API calls consume a specific number of “units” or “points” from a daily allowance. Using the API is free of charge; the “cost” refers to these quota units, not a monetary fee.
 
-To use this plugin, you need to set up a project in Google Cloud Console and enable the YouTube Data API v3. 
+To use this plugin, you need to set up a project in Google Cloud Console and enable the YouTube Data API v3.
 
 Follow the steps below to set it up:
 
@@ -100,8 +100,8 @@ Follow the steps below to set it up:
 - Open **Google Cloud Console** for the project you created for this plugin.
 - Go to **Google Auth Platform → Audience** (this replaces the older “OAuth consent screen” UI).
 - Confirm:
-  - **Publishing status** = **Testing**
-  - **User type** = **External**
+    - **Publishing status** = **Testing**
+    - **User type** = **External**
 - Under **Test users**, click **Add users** and add the Google account you use in Obsidian (for example `yourname@gmail.com`).
 - Save.
 
@@ -115,7 +115,7 @@ Follow the steps below to set it up:
 
 - When the OAuth flow succeeds, your browser will open a page at a URL like: `http://127.0.0.1:42813/callback?code=...&scope=...`
 - The page will display:
-> **Authentication successful! Please return to Obsidian.**
+    > **Authentication successful! Please return to Obsidian.**
 - At that point you can close the tab and Obsidian should show that you are logged in.
 
 ### Troubleshooting
@@ -193,9 +193,9 @@ If you encounter any issues, consider the following steps:
 - **Daily note linking**: Option to automatically link new video notes to your daily note
 - **Full fetch mode**: New option to fetch all liked videos on every auto-fetch (with quota warnings and user confirmation)
 - **Template system**: Customize video notes with your own markdown templates
-  - Configure template folder and default template
-  - Fallback to built-in template option
-  - Create example templates with one click
+    - Configure template folder and default template
+    - Fallback to built-in template option
+    - Create example templates with one click
 
 ### 2.1.0
 
@@ -214,8 +214,6 @@ If you encounter any issues, consider the following steps:
 - **Performance optimization**: Video display limit for better performance
 - **Improved caching**: Enhanced cache management in PlaylistApi
 - **UI refinements**: Updated ribbon icon labels and command names for clarity
-
-
 
 ### Local video data
 
