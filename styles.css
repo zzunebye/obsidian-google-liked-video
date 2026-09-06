@@ -2587,6 +2587,12 @@ button.video-comment__toggle:focus-visible {
 	display: none;
 }
 
+.setting-item.geulo-settings-section {
+	display: block;
+	padding: 0;
+	border: 0;
+}
+
 .geulo-settings-details {
 	margin-bottom: var(--size-4-6);
 }

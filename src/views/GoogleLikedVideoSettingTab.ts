@@ -1,4 +1,5 @@
 import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
@@ -19,6 +20,84 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     constructor(app: App, plugin: GoogleLikedVideoPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+    }
+
+    getSettingDefinitions(): SettingDefinitionItem[] {
+        const refreshToken = googleTokenStorageService.getRefreshToken();
+        const isLoggedIn = refreshToken !== null && refreshToken !== '';
+        const definitions: SettingDefinitionItem[] = [
+            this.createSectionDefinition(
+                'Google connection',
+                ['Google account', 'Connect with Google', 'Client ID', 'Client secret', 'YouTube Data API'],
+                (containerEl) => this.renderSetupSection(containerEl, refreshToken),
+            ),
+            this.createSectionDefinition(
+                'Sync',
+                ['Stored videos', 'Fetch limit', 'Automatic fetch', 'Fetch interval', 'Full scan', 'Fetch recent videos', 'Fetch on startup'],
+                (containerEl) => this.renderSyncSection(containerEl, isLoggedIn),
+            ),
+            this.createSectionDefinition(
+                'Video display',
+                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags'],
+                (containerEl) => this.renderVideoDisplaySection(containerEl),
+            ),
+        ];
+
+        if (isLoggedIn) {
+            definitions.push(
+                this.createSectionDefinition(
+                    'Video notes',
+                    ['Video note location', 'Organize by channel', 'Automatically create notes', 'Link to daily note'],
+                    (containerEl) => this.renderVideoNotesSection(containerEl),
+                ),
+                this.createSectionDefinition(
+                    'Template system',
+                    ['Enable custom templates', 'Custom template'],
+                    (containerEl) => this.renderTemplateSection(containerEl),
+                ),
+                this.createSectionDefinition(
+                    'AI features',
+                    ['Enable AI Summary', 'AI Provider', 'Gemini API Key', 'OpenRouter API Key', 'Model ID', 'Summary Prompt'],
+                    (containerEl) => this.renderAISection(containerEl),
+                ),
+            );
+        }
+
+        definitions.push(
+            this.createSectionDefinition(
+                'Data management',
+                ['Clear saved liked videos'],
+                (containerEl) => this.renderDataManagementSection(containerEl),
+            ),
+        );
+
+        if (debugLogger.getConfig().enabled) {
+            definitions.push(
+                this.createSectionDefinition(
+                    'Debug settings',
+                    ['Log level', 'Log API calls', 'Log state changes', 'Log auto-fetch', 'Auto-fetch interval override', 'Force fetch now'],
+                    (containerEl) => this.renderDebugSection(containerEl),
+                ),
+            );
+        }
+
+        return definitions;
+    }
+
+    private createSectionDefinition(
+        name: string,
+        aliases: readonly string[],
+        renderSection: (containerEl: HTMLElement) => void,
+    ): SettingDefinitionItem {
+        return {
+            name,
+            aliases: [...aliases],
+            render: (setting) => {
+                setting.settingEl.empty();
+                setting.settingEl.addClass('geulo-settings-section');
+                renderSection(setting.settingEl);
+            },
+        };
     }
 
     async updateListPaneView(): Promise<void> {
@@ -47,10 +126,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         this.renderSetupSection(containerEl, refreshToken);
         this.renderSyncSection(containerEl, isLoggedIn);
-        new Setting(containerEl).setHeading().setName('Video display');
-        this.renderLikedVideoViewModeSetting(containerEl);
-        this.renderOpenInWebViewerSetting(containerEl);
-        this.renderVideoTagsSetting(containerEl);
+        this.renderVideoDisplaySection(containerEl);
 
         if (isLoggedIn) {
             this.renderVideoNotesSection(containerEl);
@@ -62,6 +138,13 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         this.renderDebugSection(containerEl);
     }
 
+    private renderVideoDisplaySection(containerEl: HTMLElement): void {
+        new Setting(containerEl).setHeading().setName('Video display');
+        this.renderLikedVideoViewModeSetting(containerEl);
+        this.renderOpenInWebViewerSetting(containerEl);
+        this.renderVideoTagsSetting(containerEl);
+    }
+
     private async saveSetting<K extends keyof ObsidianGoogleLikedVideoSettings>(
         key: K,
         value: ObsidianGoogleLikedVideoSettings[K],
@@ -70,7 +153,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         this.plugin.settings[key] = value;
         await this.plugin.saveSettings();
         if (refresh.display) {
-            this.display();
+            this.update();
         }
         if (refresh.listPane) {
             await this.updateListPaneView();
@@ -85,7 +168,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         notice: string
     ): Promise<void> {
         localStorageService.setLikedVideos(result.mergedVideos);
-        this.display();
+        this.update();
         await this.updateListPaneView();
         new Notice(notice);
 
@@ -565,7 +648,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         return;
                     }
                     localStorageService.setLikedVideos([]);
-                    this.display();
+                    this.update();
                     await this.updateListPaneView();
                     new Notice('Saved liked-video list cleared. YouTube likes and existing notes were kept.');
                 }));
@@ -588,7 +671,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .onClick(async (): Promise<void> => {
                     const refreshDisplay = async () => {
 						this.plugin.commentService.resetIdentityCache();
-                        this.display();
+                        this.update();
                         await this.updateListPaneView();
                     };
                     if (isLoggedIn) {
@@ -637,7 +720,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         } catch (error) {
                             if (error instanceof Error) {
                                 new Notice('Failed to save the Google client secret.');
-                                this.display();
+                                this.update();
                                 return;
                             }
                             throw error;
