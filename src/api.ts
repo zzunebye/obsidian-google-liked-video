@@ -169,7 +169,7 @@ export class PlaylistApi {
         }
 
         const response = await this.sendRequest('GET', url, {});
-        const data: YouTubeVideosResponse = await response.json();
+        const data: YouTubeVideosResponse = response.json;
 
         // Add pulled_at timestamp to each video
         data.items.forEach((video: YouTubeVideo) => {
@@ -192,7 +192,7 @@ export class PlaylistApi {
         }
 
         const response = await this.sendRequest('GET', url, {});
-        const playlistResponse = await response.json();
+        const playlistResponse = response.json;
 
         if (!playlistResponse.items || playlistResponse.items.length === 0) {
             return {
@@ -230,7 +230,7 @@ export class PlaylistApi {
             + `&id=${videoIds.join(',')}`;
 
         const videosResponse = await this.sendRequest('GET', videosUrl, {});
-        const videosData: YouTubeVideosResponse = await videosResponse.json();
+        const videosData: YouTubeVideosResponse = videosResponse.json;
 
         // Filter out any videos that don't have required properties and add pulled_at timestamp
         videosData.items = (videosData.items || []).filter((video: YouTubeVideo) => {
@@ -271,7 +271,7 @@ export class PlaylistApi {
             + '&mine=true';
 
         const response = await this.sendRequest('GET', url, {});
-        const data: unknown = await response.json();
+        const data: unknown = response.json;
 
         if (!isRecord(data) || !Array.isArray(data.items)) {
             return [];
@@ -310,7 +310,7 @@ export class PlaylistApi {
             + `&id=${cleanPlaylistId}`;
 
         const response = await this.sendRequest('GET', url, {});
-        const data = await response.json();
+        const data = response.json;
 
         if (!data.items || data.items.length === 0) {
             throw new Error(`Playlist not found or not accessible: ${cleanPlaylistId}`);
@@ -614,7 +614,7 @@ export class LikedVideoApi {
             url += `&pageToken=${pageToken}`;
         }
         const response = await this.sendRequest('GET', url, {});
-        const data: YouTubeVideosResponse = await response.json();
+        const data: YouTubeVideosResponse = response.json;
         debugLogger.api(`Fetched ${data.items?.length || 0} videos`);
         debugLogger.verbose('API Response:', data);
 
@@ -632,7 +632,7 @@ export class LikedVideoApi {
             + '&mine=true';
 
         const response = await this.sendRequest('GET', url, {});
-        const data = await response.json();
+        const data = response.json;
         return data;
     }
 
@@ -663,7 +663,7 @@ export class LikedVideoApi {
             + '&maxResults=1'
             + '&myRating=like';
         const response = await this.sendRequest('GET', url, {});
-        const data: YouTubeVideosResponse = await response.json();
+        const data: YouTubeVideosResponse = response.json;
         return data.pageInfo.totalResults;
     }
 
@@ -691,7 +691,7 @@ export class LikedVideoApi {
 
             const url = BASE_URL + 'videoCategories?part=snippet&regionCode=US';
             const response = await this.sendRequest('GET', url, {});
-            const data: YoutubeCategoriesResponse = await response.json();
+            const data: YoutubeCategoriesResponse = response.json;
 
             debugLogger.api(`Fetched ${data.items?.length || 0} video categories`);
             debugLogger.verbose('Categories API Response:', data);
