@@ -12,7 +12,9 @@ const BASE_URL = "https://youtube.googleapis.com/youtube/v3/";
 const CHANNEL_BATCH_SIZE = 50;
 const VIDEO_BATCH_SIZE = 50;
 const RECENT_VIDEOS_PER_CHANNEL = 10;
-const CHANNEL_CONCURRENCY = 4;
+const CHANNEL_DETAILS_CONCURRENCY = 4;
+const CHANNEL_UPLOADS_CONCURRENCY = 4;
+const VIDEO_DETAILS_CONCURRENCY = 4;
 
 type SubscriptionItem = {
 	id?: string;
@@ -80,6 +82,24 @@ function chunks<T>(items: T[], size: number): T[][] {
 		result.push(items.slice(index, index + size));
 	}
 	return result;
+}
+
+async function forEachConcurrent<T>(
+	items: T[],
+	concurrency: number,
+	task: (item: T) => Promise<void>,
+): Promise<void> {
+	let nextIndex = 0;
+	const worker = async (): Promise<void> => {
+		while (nextIndex < items.length) {
+			const item = items[nextIndex++];
+			await task(item);
+		}
+	};
+
+	await Promise.all(
+		Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+	);
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -266,9 +286,7 @@ export class SubscriptionService {
 		return { snapshot: nextSnapshot, succeededChannels, failedChannels };
 	}
 
-	private async request<T>(path: string, signal?: AbortSignal): Promise<T> {
-		throwIfAborted(signal);
-		const accessToken = await getValidAccessToken(this.settings.googleClientId);
+	private async request<T>(path: string, accessToken: string, signal?: AbortSignal): Promise<T> {
 		throwIfAborted(signal);
 		const response = await requestUrl({
 			url: BASE_URL + path,
@@ -284,6 +302,7 @@ export class SubscriptionService {
 	}
 
 	private async findSubscriptionId(channelId: string): Promise<string | null> {
+		const accessToken = await getValidAccessToken(this.settings.googleClientId);
 		const params = new URLSearchParams({
 			part: "id,snippet",
 			mine: "true",
@@ -292,6 +311,7 @@ export class SubscriptionService {
 		});
 		const data = await this.request<ListResponse<SubscriptionItem>>(
 			`subscriptions?${params.toString()}`,
+			accessToken,
 		);
 		return data.items?.find((item) => item.snippet?.resourceId?.channelId === channelId)?.id ?? null;
 	}
@@ -312,39 +332,34 @@ export class SubscriptionService {
 	}
 
 	private async fetchInternal(options: FetchOptions): Promise<SubscriptionSnapshot> {
-		const channels = options.channels ?? await this.fetchChannels(options.signal);
+		throwIfAborted(options.signal);
+		const accessToken = await getValidAccessToken(this.settings.googleClientId);
+		throwIfAborted(options.signal);
+		const channels = options.channels ?? await this.fetchChannels(accessToken, options.signal);
 		options.onProgress?.({ completedChannels: 0, totalChannels: channels.length });
 
 		const videoIds = new Set<string>();
 		const failedChannels: SubscriptionChannel[] = [];
 		const failureDetails: Record<string, SubscriptionFailureDetail> = {};
-		let nextChannelIndex = 0;
 		let completedChannels = 0;
-		const worker = async (): Promise<void> => {
-			while (nextChannelIndex < channels.length) {
-				throwIfAborted(options.signal);
-				const channel = channels[nextChannelIndex++];
-				try {
-					const ids = await this.fetchRecentVideoIds(channel, options.signal);
-					ids.forEach((id) => videoIds.add(id));
-				} catch (error) {
-					if (options.signal?.aborted) throw error;
-					failedChannels.push(channel);
-					failureDetails[channel.id] = getFailureDetail(error);
-					debugLogger.warn(`Failed to fetch subscription channel ${channel.id}:`, error);
-				} finally {
-					completedChannels += 1;
-					options.onProgress?.({ completedChannels, totalChannels: channels.length });
-				}
+		await forEachConcurrent(channels, CHANNEL_UPLOADS_CONCURRENCY, async (channel) => {
+			throwIfAborted(options.signal);
+			try {
+				const ids = await this.fetchRecentVideoIds(channel, accessToken, options.signal);
+				ids.forEach((id) => videoIds.add(id));
+			} catch (error) {
+				if (options.signal?.aborted) throw error;
+				failedChannels.push(channel);
+				failureDetails[channel.id] = getFailureDetail(error);
+				debugLogger.warn(`Failed to fetch subscription channel ${channel.id}:`, error);
+			} finally {
+				completedChannels += 1;
+				options.onProgress?.({ completedChannels, totalChannels: channels.length });
 			}
-		};
-
-		await Promise.all(
-			Array.from({ length: Math.min(CHANNEL_CONCURRENCY, channels.length) }, () => worker()),
-		);
+		});
 		throwIfAborted(options.signal);
 
-		const videos = await this.fetchVideoDetails([...videoIds], options.signal);
+		const videos = await this.fetchVideoDetails([...videoIds], accessToken, options.signal);
 		if (options.channels === undefined && this.snapshot && failedChannels.length > 0) {
 			const failedChannelIds = new Set(failedChannels.map((channel) => channel.id));
 			for (const video of this.snapshot.videos) {
@@ -373,7 +388,7 @@ export class SubscriptionService {
 		this.snapshot = snapshot;
 	}
 
-	private async fetchChannels(signal?: AbortSignal): Promise<SubscriptionChannel[]> {
+	private async fetchChannels(accessToken: string, signal?: AbortSignal): Promise<SubscriptionChannel[]> {
 		const subscriptions: Array<{
 			id: string;
 			title: string;
@@ -390,6 +405,7 @@ export class SubscriptionService {
 			if (pageToken) params.set("pageToken", pageToken);
 			const data = await this.request<ListResponse<SubscriptionItem>>(
 				`subscriptions?${params.toString()}`,
+				accessToken,
 				signal,
 			);
 			for (const item of data.items ?? []) {
@@ -408,7 +424,7 @@ export class SubscriptionService {
 		} while (pageToken);
 
 		const uploadsByChannel = new Map<string, string>();
-		for (const batch of chunks(subscriptions, CHANNEL_BATCH_SIZE)) {
+		await forEachConcurrent(chunks(subscriptions, CHANNEL_BATCH_SIZE), CHANNEL_DETAILS_CONCURRENCY, async (batch) => {
 			const params = new URLSearchParams({
 				part: "contentDetails",
 				id: batch.map((channel) => channel.id).join(","),
@@ -416,13 +432,14 @@ export class SubscriptionService {
 			});
 			const data = await this.request<ListResponse<ChannelItem>>(
 				`channels?${params.toString()}`,
+				accessToken,
 				signal,
 			);
 			for (const item of data.items ?? []) {
 				const uploads = item.contentDetails?.relatedPlaylists?.uploads;
 				if (item.id && uploads) uploadsByChannel.set(item.id, uploads);
 			}
-		}
+		});
 
 		return subscriptions.flatMap((channel) => {
 			const uploadsPlaylistId = uploadsByChannel.get(channel.id);
@@ -432,6 +449,7 @@ export class SubscriptionService {
 
 	private async fetchRecentVideoIds(
 		channel: SubscriptionChannel,
+		accessToken: string,
 		signal?: AbortSignal,
 	): Promise<string[]> {
 		const params = new URLSearchParams({
@@ -441,6 +459,7 @@ export class SubscriptionService {
 		});
 		const data = await this.request<ListResponse<PlaylistItem>>(
 			`playlistItems?${params.toString()}`,
+			accessToken,
 			signal,
 		);
 		return (data.items ?? []).flatMap((item) => {
@@ -449,9 +468,14 @@ export class SubscriptionService {
 		});
 	}
 
-	private async fetchVideoDetails(ids: string[], signal?: AbortSignal): Promise<YouTubeVideo[]> {
+	private async fetchVideoDetails(
+		ids: string[],
+		accessToken: string,
+		signal?: AbortSignal,
+	): Promise<YouTubeVideo[]> {
 		const videos: YouTubeVideo[] = [];
-		for (const batch of chunks(ids, VIDEO_BATCH_SIZE)) {
+		const pulledAt = new Date().toISOString();
+		await forEachConcurrent(chunks(ids, VIDEO_BATCH_SIZE), VIDEO_DETAILS_CONCURRENCY, async (batch) => {
 			const params = new URLSearchParams({
 				part: "snippet,contentDetails,statistics",
 				id: batch.join(","),
@@ -459,9 +483,9 @@ export class SubscriptionService {
 			});
 			const data = await this.request<ListResponse<YouTubeVideo>>(
 				`videos?${params.toString()}`,
+				accessToken,
 				signal,
 			);
-			const pulledAt = new Date().toISOString();
 			for (const video of data.items ?? []) {
 				if (!video.id || !video.snippet) continue;
 				video.pulled_at = pulledAt;
@@ -473,7 +497,7 @@ export class SubscriptionService {
 				};
 				videos.push(video);
 			}
-		}
+		});
 		return videos;
 	}
 }
