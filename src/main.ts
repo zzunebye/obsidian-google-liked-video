@@ -4,6 +4,7 @@ import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
 import { PlaylistVideosPane, VIEW_TYPE_PLAYLIST_VIDEOS } from 'src/views/PlaylistVideosPane';
+import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from 'src/views/SubscriptionPane';
 import { LikedVideoApi, PlaylistApi } from './api';
 import { localStorageService } from './storage';
 import { debugLogger } from './debug';
@@ -21,6 +22,7 @@ import { LikedVideoStorageService } from './services/likedVideoStorageService';
 import { googleTokenStorageService } from './services/googleTokenStorageService';
 import { migrateLegacyGoogleSecrets, splitGoogleSecretsFromPluginData } from './services/googleClientSecretMigration';
 import { CommentService } from './services/commentService';
+import { SubscriptionService } from './services/subscriptionService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -56,6 +58,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	likedVideoApi!: LikedVideoApi;
 	playlistApi!: PlaylistApi;
 	commentService!: CommentService;
+	subscriptionService!: SubscriptionService;
 	summaryStorage!: SummaryStorageService;
 	likedVideoStorage?: LikedVideoStorageService;
 	autoFetchInterval: ReturnType<typeof setInterval> | null = null;
@@ -84,6 +87,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.likedVideoApi = new LikedVideoApi(this.settings);
 		this.playlistApi = new PlaylistApi(this.settings);
 		this.commentService = new CommentService(this.settings);
+		this.subscriptionService = new SubscriptionService(this.settings);
 		debugLogger.debug('API clients initialized');
 
 		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, manifestDir, 500);
@@ -109,6 +113,11 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			}
 		);
 
+		this.registerView(
+			VIEW_TYPE_SUBSCRIPTIONS,
+			(leaf) => new SubscriptionPane(leaf, this),
+		);
+
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.settingTabRef = new GoogleLikedVideoSettingTab(this.app, this);
 		this.addSettingTab(this.settingTabRef);
@@ -120,6 +129,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.addRibbonIcon("list-video", "Geulo: Open YouTube Playlists View", () => {
 			void this.activatePlaylistsView();
+		});
+
+		this.addRibbonIcon("rss", "Geulo: Open YouTube Subscriptions View", () => {
+			void this.activateSubscriptionsView();
 		});
 
 		this.addCommand({
@@ -135,6 +148,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			name: 'Open YouTube Playlists View',
 			callback: () => {
 				void this.activatePlaylistsView();
+			}
+		});
+
+		this.addCommand({
+			id: 'open-subscriptions-view',
+			name: 'Open YouTube Subscriptions View',
+			callback: () => {
+				void this.activateSubscriptionsView();
 			}
 		});
 
@@ -188,6 +209,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.likedVideoApi?.cleanup();
 		this.playlistApi?.cleanup();
 		this.commentService?.cleanup();
+		this.subscriptionService?.clear();
 
 		// Cleanup summary storage
 		this.summaryStorage?.cleanup();
@@ -247,6 +269,16 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			// "Reveal" the leaf in case it is in a collapsed sidebar
 			void workspace.revealLeaf(leaf);
 		}
+	}
+
+	async activateSubscriptionsView(): Promise<void> {
+		const { workspace } = this.app;
+		const existingLeaf = workspace.getLeavesOfType(VIEW_TYPE_SUBSCRIPTIONS)[0];
+		const leaf = existingLeaf ?? workspace.getRightLeaf(false);
+		if (!existingLeaf) {
+			await leaf?.setViewState({ type: VIEW_TYPE_SUBSCRIPTIONS, active: true });
+		}
+		if (leaf) void workspace.revealLeaf(leaf);
 	}
 
 	async loadSettings(): Promise<void> {

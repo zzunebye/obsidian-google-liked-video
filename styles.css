@@ -450,6 +450,80 @@ If your plugin does not need CSS, delete this file.
 	padding: 0;
 }
 
+.subscription-view {
+	padding: 0;
+}
+
+.subscription-status,
+.subscription-progress,
+.subscription-warning,
+.subscription-filters {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.subscription-status {
+	justify-content: space-between;
+	padding: 0 4px;
+	font-size: 0.82em;
+	color: var(--text-muted);
+}
+
+.subscription-progress,
+.subscription-warning {
+	margin: 10px 0;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+}
+
+.subscription-progress progress {
+	flex: 1;
+	min-width: 100px;
+}
+
+.subscription-warning {
+	justify-content: space-between;
+	color: var(--text-warning);
+}
+
+.subscription-new-videos,
+.subscription-load-more {
+	display: block;
+	margin: 12px auto;
+}
+
+.subscription-search {
+	margin-top: 14px;
+}
+
+.subscription-filters {
+	margin: 8px 0 12px;
+}
+
+.subscription-filters select {
+	flex: 1 1 180px;
+	min-width: 0;
+}
+
+.subscription-filters span {
+	margin-left: auto;
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.subscription-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	min-height: 160px;
+	color: var(--text-muted);
+}
+
 /* View Header */
 
 .video-view-header {

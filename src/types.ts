@@ -103,6 +103,13 @@ export interface YouTubeVideo {
     };
 }
 
+export interface SubscriptionChannel {
+	id: string;
+	title: string;
+	thumbnailUrl?: string;
+	uploadsPlaylistId: string;
+}
+
 export interface YouTubeVideosResponse {
     kind: string;
     etag: string;

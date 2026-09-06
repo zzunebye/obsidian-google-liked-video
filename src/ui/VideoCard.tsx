@@ -36,7 +36,7 @@ import { debugLogger } from "../debug";
 import { VideoCommentsModal } from "./VideoCommentsModal";
 
 interface VideoCardProps {
-	source: "liked" | "playlist";
+	source: "liked" | "playlist" | "subscription";
 	videoInfo: YouTubeVideo;
 	id: string;
 	url: string;
@@ -328,7 +328,7 @@ export const VideoCard = ({
 					onUnlike();
 				});
 			});
-		} else if (source === "playlist") {
+		} else {
 			if (isLiked) {
 				menu.addItem((item) => {
 					item.setTitle("Unlike");
