@@ -11,6 +11,7 @@ import { confirmAction } from '../ui/ConfirmationModal';
 import { UI_TEXT } from '../constants/uiText';
 import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templateConstants';
 import { PlaylistVideosPane } from './PlaylistVideosPane';
+import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from './SubscriptionPane';
 import { createNotesForNewVideos, fetchAndMergeLikedVideos, FetchAndMergeLikedVideosResult } from '../services/likedVideoFetchService';
 import { addWideTextSetting, createCollapsibleReference, createMonospaceTextarea } from '../utils/settingUiUtils';
 
@@ -117,6 +118,18 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         void this.app.workspace.getActiveViewOfType(PlaylistVideosPane)?.onOpen();
     }
 
+    async updateSubscriptionPaneView(): Promise<void> {
+        const subscriptionViews = this.app.workspace
+            .getLeavesOfType(VIEW_TYPE_SUBSCRIPTIONS)
+            .map(leaf => leaf.view)
+            .filter((view): view is SubscriptionPane => view instanceof SubscriptionPane);
+
+        await Promise.all(subscriptionViews.map(async view => {
+            await view.onClose();
+            await view.onOpen();
+        }));
+    }
+
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -142,13 +155,14 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         new Setting(containerEl).setHeading().setName('Video display');
         this.renderLikedVideoViewModeSetting(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
+        this.renderShortVideoDurationSetting(containerEl);
         this.renderVideoTagsSetting(containerEl);
     }
 
     private async saveSetting<K extends keyof ObsidianGoogleLikedVideoSettings>(
         key: K,
         value: ObsidianGoogleLikedVideoSettings[K],
-        refresh: { display?: boolean; listPane?: boolean; playlistPane?: boolean } = {}
+        refresh: { display?: boolean; listPane?: boolean; playlistPane?: boolean; subscriptionPane?: boolean } = {}
     ): Promise<void> {
         this.plugin.settings[key] = value;
         await this.plugin.saveSettings();
@@ -160,6 +174,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
         if (refresh.playlistPane) {
             this.updatePlaylistVideosPaneView();
+        }
+        if (refresh.subscriptionPane) {
+            await this.updateSubscriptionPaneView();
         }
     }
 

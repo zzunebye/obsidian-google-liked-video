@@ -23,6 +23,7 @@ import { googleTokenStorageService } from './services/googleTokenStorageService'
 import { migrateLegacyGoogleSecrets, splitGoogleSecretsFromPluginData } from './services/googleClientSecretMigration';
 import { CommentService } from './services/commentService';
 import { SubscriptionService } from './services/subscriptionService';
+import { SubscriptionStorageService } from './services/subscriptionStorageService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -88,7 +89,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.likedVideoApi = new LikedVideoApi(this.settings);
 		this.playlistApi = new PlaylistApi(this.settings);
 		this.commentService = new CommentService(this.settings);
-		this.subscriptionService = new SubscriptionService(this.settings);
+		const subscriptionStorage = new SubscriptionStorageService(this.app.vault.adapter, manifestDir);
+		this.subscriptionService = new SubscriptionService(this.settings, subscriptionStorage);
+		try {
+			await this.subscriptionService.initialize();
+		} catch (error) {
+			debugLogger.error('[SubscriptionStorage] Failed to load subscriptions.json:', error);
+			new Notice('Geulo: Could not load subscriptions.json. The saved file was preserved; use Load subscriptions to replace it.', 10000);
+		}
 		debugLogger.debug('API clients initialized');
 
 		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, manifestDir, 500);

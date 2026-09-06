@@ -1,6 +1,6 @@
-import { Notice } from "obsidian";
+import { Modal, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, Loader2, RefreshCw, Rss, Search } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, Rss, Search, X } from "lucide-react";
 import { SearchBar } from "src/ui/SearchBar";
 import { VideoCard } from "src/ui/VideoCard";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
@@ -9,7 +9,12 @@ import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { localStorageService } from "src/storage";
 import { UI_TEXT } from "src/constants/uiText";
 import type { SubscriptionProgress, SubscriptionSnapshot } from "src/services/subscriptionService";
-import type { ContentTypeOption, ContentTypeSelection, YouTubeVideo } from "src/types";
+import type {
+	ContentTypeOption,
+	ContentTypeSelection,
+	SubscriptionChannel,
+	YouTubeVideo,
+} from "src/types";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { usePlugin } from "../store/pluginContext";
 
@@ -20,6 +25,7 @@ export interface SubscriptionViewState {
 	channelId: string;
 	period: SubscriptionPeriod;
 	contentTypes: ContentTypeSelection;
+	dismissedFailureUpdatedAt: number | null;
 }
 
 interface SubscriptionViewProps {
@@ -30,7 +36,6 @@ interface SubscriptionViewProps {
 }
 
 const VIDEOS_PER_BATCH = 30;
-const SHORT_VIDEO_MAX_DURATION_SECONDS = 90;
 
 function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === "AbortError";
@@ -58,6 +63,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	onStateChange,
 }) => {
 	const plugin = usePlugin();
+	const shortVideoMaxDurationSeconds = plugin.settings.shortVideoMaxDurationSeconds;
 	const cachedSnapshot = plugin.subscriptionService.getSnapshot();
 	const [snapshot, setSnapshot] = useState<SubscriptionSnapshot | null>(cachedSnapshot);
 	const [pendingSnapshot, setPendingSnapshot] = useState<SubscriptionSnapshot | null>(null);
@@ -65,19 +71,24 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const [channelId, setChannelId] = useState(initialState.channelId);
 	const [period, setPeriod] = useState<SubscriptionPeriod>(initialState.period);
 	const [contentTypes, setContentTypes] = useState<ContentTypeSelection>(initialState.contentTypes);
+	const [dismissedFailureUpdatedAt, setDismissedFailureUpdatedAt] = useState(
+		initialState.dismissedFailureUpdatedAt,
+	);
 	const [visibleCount, setVisibleCount] = useState(VIDEOS_PER_BATCH);
 	const [progress, setProgress] = useState<SubscriptionProgress | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
+	const [isUnsubscribing, setIsUnsubscribing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [likedVideoIds, setLikedVideoIds] = useState<Set<string>>(
 		() => new Set(localStorageService.getLikedVideos().map((video) => video.id)),
 	);
 	const abortControllerRef = useRef<AbortController | null>(null);
+	const endRef = useRef<HTMLParagraphElement>(null);
 
 	useEffect(() => {
-		onStateChange({ searchTerm, channelId, period, contentTypes });
+		onStateChange({ searchTerm, channelId, period, contentTypes, dismissedFailureUpdatedAt });
 		setVisibleCount(VIDEOS_PER_BATCH);
-	}, [searchTerm, channelId, period, contentTypes, onStateChange]);
+	}, [searchTerm, channelId, period, contentTypes, dismissedFailureUpdatedAt, onStateChange]);
 
 	const runFetch = async (stageResult: boolean): Promise<void> => {
 		abortControllerRef.current?.abort();
@@ -122,7 +133,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			if (periodStart !== null && Date.parse(video.snippet.publishedAt) < periodStart) return false;
 
 			const durationSeconds = parseDurationToSeconds(video.contentDetails?.duration) ?? 0;
-			const isShort = durationSeconds > 0 && durationSeconds <= SHORT_VIDEO_MAX_DURATION_SECONDS;
+			const isShort = durationSeconds > 0 && durationSeconds <= shortVideoMaxDurationSeconds;
 			const isMusic = video.snippet.categoryId === "10";
 			const isRegularVideo = !isShort && !isMusic;
 			if (contentTypes.length > 0 && contentTypes.length < 3) {
@@ -137,18 +148,38 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				|| video.snippet.channelTitle.toLowerCase().includes(normalizedSearch)
 				|| video.snippet.tags?.some((tag) => tag.toLowerCase().includes(normalizedSearch));
 		});
-	}, [snapshot, searchTerm, channelId, period, contentTypes]);
+	}, [snapshot, searchTerm, channelId, period, contentTypes, shortVideoMaxDurationSeconds]);
 
 	const displayedVideos = useMemo(
 		() => filteredVideos.slice(0, visibleCount),
 		[filteredVideos, visibleCount],
 	);
+
+	useEffect(() => {
+		const end = endRef.current;
+		const scrollElement = end?.closest<HTMLElement>(".view-content");
+		const ownerWindow = end?.ownerDocument.defaultView;
+		if (!end || !scrollElement || !ownerWindow || visibleCount >= filteredVideos.length) return;
+
+		const observer = new ownerWindow.IntersectionObserver((entries) => {
+			if (entries.some((entry) => entry.isIntersecting)) {
+				setVisibleCount((count) => Math.min(count + VIDEOS_PER_BATCH, filteredVideos.length));
+			}
+		}, { root: scrollElement, rootMargin: "0px 0px 600px 0px" });
+		observer.observe(end);
+
+		return () => observer.disconnect();
+	}, [filteredVideos.length, visibleCount]);
+
 	const noteExistenceMap = useNoteExistenceMap(plugin, displayedVideos);
 	const newVideoCount = useMemo(() => {
 		if (!snapshot || !pendingSnapshot) return 0;
 		const currentIds = new Set(snapshot.videos.map((video) => video.id));
 		return pendingSnapshot.videos.filter((video) => !currentIds.has(video.id)).length;
 	}, [snapshot, pendingSnapshot]);
+	const hasRetryableFailures = snapshot?.failedChannels.some(
+		(channel) => snapshot.failureDetails[channel.id]?.retryable !== false,
+	) ?? false;
 
 	const handleLikeVideo = async (video: YouTubeVideo): Promise<void> => {
 		try {
@@ -235,6 +266,58 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		);
 	};
 
+	const unsubscribeFailedChannels = async (channels: SubscriptionChannel[]): Promise<void> => {
+		setIsUnsubscribing(true);
+		try {
+			const result = await plugin.subscriptionService.unsubscribeChannels(channels);
+			setSnapshot(result.snapshot);
+			setPendingSnapshot(null);
+			if (result.succeededChannels.length > 0) {
+				new Notice(`Unsubscribed from ${result.succeededChannels.length} channel(s).`);
+			}
+			if (result.failedChannels.length > 0) {
+				new Notice(`Could not unsubscribe from ${result.failedChannels.length} channel(s).`, 8000);
+			}
+		} catch (unsubscribeError) {
+			new Notice(
+				unsubscribeError instanceof Error
+					? unsubscribeError.message
+					: "Failed to update the subscription cache.",
+				8000,
+			);
+		} finally {
+			setIsUnsubscribing(false);
+		}
+	};
+
+	const confirmUnsubscribeFailedChannels = (channels: SubscriptionChannel[]): void => {
+		const subscriptionLookupCount = channels.filter((channel) => !channel.subscriptionId).length;
+		const quotaUnits = channels.length * 50 + subscriptionLookupCount;
+		const modal = new Modal(plugin.app);
+		modal.setTitle(`Unsubscribe from ${channels.length} channel(s)?`);
+		modal.contentEl.createEl("p", {
+			text: "This removes the subscriptions from your YouTube account and removes their cached videos from this view.",
+		});
+		const channelList = modal.contentEl.createEl("ul");
+		channels.forEach((channel) => channelList.createEl("li", { text: channel.title }));
+		modal.contentEl.createEl("p", {
+			text: `YouTube API quota: ${quotaUnits} units.`,
+			cls: "subscription-unsubscribe__quota",
+		});
+		const actions = modal.contentEl.createDiv({ cls: "subscription-unsubscribe__actions" });
+		const cancelButton = actions.createEl("button", { text: "Cancel" });
+		cancelButton.addEventListener("click", () => modal.close());
+		const unsubscribeButton = actions.createEl("button", {
+			text: "Unsubscribe",
+			cls: "mod-warning",
+		});
+		unsubscribeButton.addEventListener("click", () => {
+			modal.close();
+			void unsubscribeFailedChannels(channels);
+		});
+		modal.open();
+	};
+
 	if (!snapshot && !isLoading && !error) {
 		return (
 			<div className="subscription-view">
@@ -312,10 +395,48 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				</button>
 			)}
 
-			{snapshot && snapshot.failedChannels.length > 0 && (
+			{snapshot && snapshot.failedChannels.length > 0
+				&& dismissedFailureUpdatedAt !== snapshot.updatedAt && (
 				<div className="subscription-warning">
-					<span>{snapshot.failedChannels.length} channels could not be updated.</span>
-					<button type="button" onClick={() => void retryFailedChannels()} disabled={isLoading}>Retry</button>
+					<div className="subscription-warning__header">
+						<span>{snapshot.failedChannels.length} channels could not be updated. Previous videos were kept.</span>
+						<div className="subscription-warning__actions">
+							{hasRetryableFailures && (
+								<button type="button" onClick={() => void retryFailedChannels()} disabled={isLoading}>Retry</button>
+							)}
+							<button
+								type="button"
+								className="subscription-warning__dismiss"
+								onClick={() => setDismissedFailureUpdatedAt(snapshot.updatedAt)}
+								aria-label="Dismiss failed channel notice"
+								title="Dismiss"
+							>
+								<X size={16} />
+							</button>
+						</div>
+					</div>
+					<details className="subscription-warning__details">
+						<summary>Show failed channels</summary>
+						<ul>
+							{snapshot.failedChannels.map((channel) => {
+								const detail = snapshot.failureDetails[channel.id];
+								return (
+									<li key={channel.id}>
+										<strong>{channel.title}</strong>
+										<span>{detail?.message ?? "Failure reason was not recorded. Retry once to check it."}</span>
+									</li>
+								);
+							})}
+						</ul>
+						<button
+							type="button"
+							className="subscription-unsubscribe"
+							onClick={() => confirmUnsubscribeFailedChannels(snapshot.failedChannels)}
+							disabled={isLoading || isUnsubscribing}
+						>
+							{isUnsubscribing ? "Unsubscribing…" : "Unsubscribe the channel(s)"}
+						</button>
+					</details>
 				</div>
 			)}
 
@@ -395,11 +516,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 							/>
 						))}
 					</div>
-					{visibleCount < filteredVideos.length && (
-						<button type="button" className="subscription-load-more" onClick={() => setVisibleCount((count) => count + VIDEOS_PER_BATCH)}>
-							Show more
-						</button>
-					)}
+					<p ref={endRef} className="liked-video-list-end">
+						{visibleCount < filteredVideos.length
+							? `${Math.min(visibleCount, filteredVideos.length)} of ${filteredVideos.length} videos`
+							: `End of ${filteredVideos.length} ${filteredVideos.length === 1 ? "video" : "videos"}`}
+					</p>
 				</>
 			)}
 		</div>

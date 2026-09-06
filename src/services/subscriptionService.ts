@@ -6,6 +6,7 @@ import type {
 	YouTubeVideo,
 } from "src/types";
 import { debugLogger } from "src/debug";
+import { SubscriptionStorageService } from "./subscriptionStorageService";
 
 const BASE_URL = "https://youtube.googleapis.com/youtube/v3/";
 const CHANNEL_BATCH_SIZE = 50;
@@ -14,6 +15,7 @@ const RECENT_VIDEOS_PER_CHANNEL = 10;
 const CHANNEL_CONCURRENCY = 4;
 
 type SubscriptionItem = {
+	id?: string;
 	snippet?: {
 		title?: string;
 		resourceId?: { channelId?: string };
@@ -45,13 +47,31 @@ export interface SubscriptionSnapshot {
 	channels: SubscriptionChannel[];
 	videos: YouTubeVideo[];
 	failedChannels: SubscriptionChannel[];
+	failureDetails: Record<string, SubscriptionFailureDetail>;
 	updatedAt: number;
+}
+
+export interface SubscriptionFailureDetail {
+	message: string;
+	retryable: boolean;
+}
+
+export interface UnsubscribeFailure {
+	channel: SubscriptionChannel;
+	message: string;
+}
+
+export interface UnsubscribeResult {
+	snapshot: SubscriptionSnapshot;
+	succeededChannels: SubscriptionChannel[];
+	failedChannels: UnsubscribeFailure[];
 }
 
 interface FetchOptions {
 	signal?: AbortSignal;
 	onProgress?: (progress: SubscriptionProgress) => void;
 	channels?: SubscriptionChannel[];
+	commit?: boolean;
 }
 
 function chunks<T>(items: T[], size: number): T[][] {
@@ -68,18 +88,88 @@ function throwIfAborted(signal?: AbortSignal): void {
 	}
 }
 
-function getErrorMessage(status: number): string {
-	if (status === 401) return "Google authentication expired";
-	if (status === 403) return "YouTube API quota exceeded or permission denied";
-	if (status >= 500) return "YouTube is temporarily unavailable";
-	return `YouTube API request failed (${status})`;
+class SubscriptionRequestError extends Error {
+	constructor(message: string, readonly retryable: boolean) {
+		super(message);
+		this.name = "SubscriptionRequestError";
+	}
+}
+
+function getYouTubeErrorReason(value: unknown): string | null {
+	if (typeof value !== "object" || value === null) return null;
+	const error = (value as Record<string, unknown>)["error"];
+	if (typeof error !== "object" || error === null) return null;
+	const errors = (error as Record<string, unknown>)["errors"];
+	if (!Array.isArray(errors)) return null;
+	const firstError = errors[0];
+	return typeof firstError === "object" && firstError !== null && "reason" in firstError
+		&& typeof firstError.reason === "string"
+		? firstError.reason
+		: null;
+}
+
+function getRequestFailure(status: number, body: unknown): SubscriptionFailureDetail {
+	const reason = getYouTubeErrorReason(body);
+	if (status === 401) return { message: "Google authentication expired.", retryable: true };
+	if (status === 404 || reason === "playlistNotFound") {
+		return { message: "The channel's uploads playlist is unavailable.", retryable: false };
+	}
+	if (status === 403) {
+		const quotaExceeded = reason === "quotaExceeded" || reason === "dailyLimitExceeded";
+		return {
+			message: quotaExceeded ? "YouTube API quota is currently exhausted." : "YouTube denied access to the uploads playlist.",
+			retryable: quotaExceeded,
+		};
+	}
+	if (status === 429 || status >= 500) {
+		return { message: "YouTube is temporarily unavailable.", retryable: true };
+	}
+	return { message: `YouTube API request failed (${status}).`, retryable: false };
+}
+
+function getFailureDetail(error: unknown): SubscriptionFailureDetail {
+	if (error instanceof SubscriptionRequestError) {
+		return { message: error.message, retryable: error.retryable };
+	}
+	return {
+		message: error instanceof Error ? error.message : "Unknown error while loading this channel.",
+		retryable: true,
+	};
+}
+
+function getDeleteFailure(status: number, body: unknown): SubscriptionFailureDetail {
+	const reason = getYouTubeErrorReason(body);
+	if (status === 401) return { message: "Google authentication expired.", retryable: true };
+	if (status === 404 || reason === "subscriptionNotFound") {
+		return { message: "The YouTube subscription could not be found.", retryable: false };
+	}
+	if (status === 403) {
+		const quotaExceeded = reason === "quotaExceeded" || reason === "dailyLimitExceeded";
+		return {
+			message: quotaExceeded
+				? "YouTube API quota is currently exhausted."
+				: "YouTube did not allow this subscription to be removed.",
+			retryable: quotaExceeded,
+		};
+	}
+	if (status === 429 || status >= 500) {
+		return { message: "YouTube is temporarily unavailable.", retryable: true };
+	}
+	return { message: `YouTube API request failed (${status}).`, retryable: false };
 }
 
 export class SubscriptionService {
 	private snapshot: SubscriptionSnapshot | null = null;
 	private activeRequest: Promise<SubscriptionSnapshot> | null = null;
 
-	constructor(private readonly settings: ObsidianGoogleLikedVideoSettings) {}
+	constructor(
+		private readonly settings: ObsidianGoogleLikedVideoSettings,
+		private readonly storage: SubscriptionStorageService,
+	) {}
+
+	async initialize(): Promise<void> {
+		this.snapshot = await this.storage.load();
+	}
 
 	getSnapshot(): SubscriptionSnapshot | null {
 		return this.snapshot;
@@ -106,19 +196,74 @@ export class SubscriptionService {
 			return current ?? this.fetch(options);
 		}
 
-		const retried = await this.fetch({ ...options, channels: current.failedChannels });
+		const permanentFailures = current.failedChannels.filter(
+			(channel) => current.failureDetails[channel.id]?.retryable === false,
+		);
+		const retryableFailures = current.failedChannels.filter(
+			(channel) => current.failureDetails[channel.id]?.retryable !== false,
+		);
+		if (retryableFailures.length === 0) return current;
+
+		const retried = await this.fetch({
+			...options,
+			channels: retryableFailures,
+			commit: false,
+		});
 		const videosById = new Map(current.videos.map((video) => [video.id, video]));
 		retried.videos.forEach((video) => videosById.set(video.id, video));
+		const failureDetails = { ...retried.failureDetails };
+		for (const channel of permanentFailures) {
+			const detail = current.failureDetails[channel.id];
+			if (detail) failureDetails[channel.id] = detail;
+		}
 		const combined: SubscriptionSnapshot = {
 			channels: current.channels,
 			videos: [...videosById.values()].sort((left, right) =>
 				right.snippet.publishedAt.localeCompare(left.snippet.publishedAt),
 			),
-			failedChannels: retried.failedChannels,
+			failedChannels: [...permanentFailures, ...retried.failedChannels],
+			failureDetails,
 			updatedAt: Date.now(),
 		};
-		this.snapshot = combined;
+		await this.commitSnapshot(combined);
 		return combined;
+	}
+
+	async unsubscribeChannels(channels: SubscriptionChannel[]): Promise<UnsubscribeResult> {
+		const current = this.snapshot;
+		if (!current) throw new Error("Subscriptions have not been loaded.");
+
+		const succeededChannels: SubscriptionChannel[] = [];
+		const failedChannels: UnsubscribeFailure[] = [];
+		for (const channel of channels) {
+			try {
+				const subscriptionId = channel.subscriptionId ?? await this.findSubscriptionId(channel.id);
+				if (subscriptionId) await this.deleteSubscription(subscriptionId);
+				succeededChannels.push(channel);
+			} catch (error) {
+				failedChannels.push({
+					channel,
+					message: error instanceof Error ? error.message : "Failed to unsubscribe from this channel.",
+				});
+			}
+		}
+
+		if (succeededChannels.length === 0) {
+			return { snapshot: current, succeededChannels, failedChannels };
+		}
+
+		const removedChannelIds = new Set(succeededChannels.map((channel) => channel.id));
+		const failureDetails = { ...current.failureDetails };
+		for (const channelId of removedChannelIds) delete failureDetails[channelId];
+		const nextSnapshot: SubscriptionSnapshot = {
+			channels: current.channels.filter((channel) => !removedChannelIds.has(channel.id)),
+			videos: current.videos.filter((video) => !removedChannelIds.has(video.snippet.channelId)),
+			failedChannels: current.failedChannels.filter((channel) => !removedChannelIds.has(channel.id)),
+			failureDetails,
+			updatedAt: current.updatedAt,
+		};
+		await this.commitSnapshot(nextSnapshot);
+		return { snapshot: nextSnapshot, succeededChannels, failedChannels };
 	}
 
 	private async request<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -131,8 +276,39 @@ export class SubscriptionService {
 			headers: { Authorization: `Bearer ${accessToken}` },
 			throw: false,
 		});
-		if (response.status >= 400) throw new Error(getErrorMessage(response.status));
+		if (response.status >= 400) {
+			const failure = getRequestFailure(response.status, response.json);
+			throw new SubscriptionRequestError(failure.message, failure.retryable);
+		}
 		return response.json as T;
+	}
+
+	private async findSubscriptionId(channelId: string): Promise<string | null> {
+		const params = new URLSearchParams({
+			part: "id,snippet",
+			mine: "true",
+			forChannelId: channelId,
+			maxResults: "5",
+		});
+		const data = await this.request<ListResponse<SubscriptionItem>>(
+			`subscriptions?${params.toString()}`,
+		);
+		return data.items?.find((item) => item.snippet?.resourceId?.channelId === channelId)?.id ?? null;
+	}
+
+	private async deleteSubscription(subscriptionId: string): Promise<void> {
+		const accessToken = await getValidAccessToken(this.settings.googleClientId);
+		const params = new URLSearchParams({ id: subscriptionId });
+		const response = await requestUrl({
+			url: `${BASE_URL}subscriptions?${params.toString()}`,
+			method: "DELETE",
+			headers: { Authorization: `Bearer ${accessToken}` },
+			throw: false,
+		});
+		if (response.status >= 400) {
+			const failure = getDeleteFailure(response.status, response.json);
+			throw new SubscriptionRequestError(failure.message, failure.retryable);
+		}
 	}
 
 	private async fetchInternal(options: FetchOptions): Promise<SubscriptionSnapshot> {
@@ -141,6 +317,7 @@ export class SubscriptionService {
 
 		const videoIds = new Set<string>();
 		const failedChannels: SubscriptionChannel[] = [];
+		const failureDetails: Record<string, SubscriptionFailureDetail> = {};
 		let nextChannelIndex = 0;
 		let completedChannels = 0;
 		const worker = async (): Promise<void> => {
@@ -153,6 +330,7 @@ export class SubscriptionService {
 				} catch (error) {
 					if (options.signal?.aborted) throw error;
 					failedChannels.push(channel);
+					failureDetails[channel.id] = getFailureDetail(error);
 					debugLogger.warn(`Failed to fetch subscription channel ${channel.id}:`, error);
 				} finally {
 					completedChannels += 1;
@@ -167,6 +345,14 @@ export class SubscriptionService {
 		throwIfAborted(options.signal);
 
 		const videos = await this.fetchVideoDetails([...videoIds], options.signal);
+		if (options.channels === undefined && this.snapshot && failedChannels.length > 0) {
+			const failedChannelIds = new Set(failedChannels.map((channel) => channel.id));
+			for (const video of this.snapshot.videos) {
+				if (failedChannelIds.has(video.snippet.channelId) && !videoIds.has(video.id)) {
+					videos.push(video);
+				}
+			}
+		}
 		videos.sort((left, right) =>
 			right.snippet.publishedAt.localeCompare(left.snippet.publishedAt),
 		);
@@ -175,14 +361,25 @@ export class SubscriptionService {
 			channels,
 			videos,
 			failedChannels,
+			failureDetails,
 			updatedAt: Date.now(),
 		};
-		this.snapshot = nextSnapshot;
+		if (options.commit !== false) await this.commitSnapshot(nextSnapshot);
 		return nextSnapshot;
 	}
 
+	private async commitSnapshot(snapshot: SubscriptionSnapshot): Promise<void> {
+		await this.storage.save(snapshot);
+		this.snapshot = snapshot;
+	}
+
 	private async fetchChannels(signal?: AbortSignal): Promise<SubscriptionChannel[]> {
-		const subscriptions: Array<{ id: string; title: string; thumbnailUrl?: string }> = [];
+		const subscriptions: Array<{
+			id: string;
+			title: string;
+			thumbnailUrl?: string;
+			subscriptionId?: string;
+		}> = [];
 		let pageToken: string | undefined;
 		do {
 			const params = new URLSearchParams({
@@ -199,11 +396,12 @@ export class SubscriptionService {
 				const id = item.snippet?.resourceId?.channelId;
 				const title = item.snippet?.title;
 				if (id && title) {
-					subscriptions.push({
-						id,
-						title,
-						thumbnailUrl: item.snippet?.thumbnails?.default?.url,
-					});
+						subscriptions.push({
+							id,
+							title,
+							thumbnailUrl: item.snippet?.thumbnails?.default?.url,
+							subscriptionId: item.id,
+						});
 				}
 			}
 			pageToken = data.nextPageToken;

@@ -12,6 +12,7 @@ const DEFAULT_VIEW_STATE: SubscriptionViewState = {
 	channelId: "all",
 	period: "all",
 	contentTypes: ["videos", "shorts", "music"],
+	dismissedFailureUpdatedAt: null,
 };
 
 export class SubscriptionPane extends ItemView {

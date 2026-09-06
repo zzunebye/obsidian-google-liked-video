@@ -11,8 +11,10 @@ export const AI_PROVIDER_LABELS: Record<AIProvider, string> = {
 export function isAIProvider(value: string): value is AIProvider {
     return (AI_PROVIDERS as readonly string[]).includes(value);
 }
+
 export const SHORT_VIDEO_MAX_DURATION_OPTIONS = [60, 90, 120, 180] as const;
 export type ShortVideoMaxDurationSeconds = typeof SHORT_VIDEO_MAX_DURATION_OPTIONS[number];
+
 export function isShortVideoMaxDurationSeconds(
     value: number,
 ): value is ShortVideoMaxDurationSeconds {
@@ -116,6 +118,7 @@ export interface SubscriptionChannel {
 	title: string;
 	thumbnailUrl?: string;
 	uploadsPlaylistId: string;
+	subscriptionId?: string;
 }
 
 export interface YouTubeVideosResponse {
