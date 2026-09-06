@@ -22,18 +22,19 @@ await build({
 	format: 'cjs',
 	platform: 'node',
 	outfile: outputPath,
-	plugins: [{
-		name: 'obsidian-verification-stub',
-		setup(builder) {
-			builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'obsidian', namespace: 'verification' }));
-			builder.onLoad({ filter: /.*/, namespace: 'verification' }, () => ({
-				contents: `
-					export const Platform = { isDesktop: true };
-					export class Notice { constructor() {} }
-					export const requestUrl = (request) => globalThis.requestUrl(request);
-				`,
-				loader: 'js',
-			}));
+		plugins: [{
+			name: 'obsidian-verification-stub',
+			setup(builder) {
+				builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'obsidian', namespace: 'verification' }));
+				builder.onResolve({ filter: /^http$/ }, () => ({ path: 'http', namespace: 'verification' }));
+				builder.onLoad({ filter: /.*/, namespace: 'verification' }, (args) => ({
+					contents: args.path === 'obsidian' ? `
+						export const Platform = { isDesktop: true };
+						export class Notice { constructor() {} }
+						export const requestUrl = (request) => globalThis.requestUrl(request);
+					` : `export const createServer = (...args) => globalThis.createVerificationHttpServer(...args);`,
+					loader: 'js',
+				}));
 		},
 	}],
 });
@@ -117,6 +118,8 @@ const httpVerification = {
 	},
 };
 
+globalThis.createVerificationHttpServer = httpVerification.createServer.bind(httpVerification);
+
 const originalRequestUrl = globalThis.requestUrl;
 globalThis.requestUrl = async (request) => {
 	const requestBody = String(request.body);
@@ -129,17 +132,8 @@ globalThis.requestUrl = async (request) => {
 	return { status: 200, json: { access_token: 'refreshed-access', expires_in: 3600 } };
 };
 
-const require = createRequire(import.meta.url);
-const nodeModule = require('node:module');
-const originalLoad = nodeModule._load;
-nodeModule._load = function(request, parent, isMain) {
-	if (request === 'http') {
-		return httpVerification;
-	}
-	return originalLoad.call(this, request, parent, isMain);
-};
-
 try {
+	const require = createRequire(import.meta.url);
 	const { handleGoogleLogin, refreshAccessToken, googleTokenStorageService } = require(outputPath);
 	googleTokenStorageService.initialize(new FakeSecretStorage(secrets));
 	let loginSuccessCount = 0;
@@ -184,8 +178,8 @@ try {
 	assert.equal(failedCallbackResponse.ended, true);
 	assert.equal(failedCallbackResponse.headers.get('Connection'), 'close');
 } finally {
-	nodeModule._load = originalLoad;
 	globalThis.requestUrl = originalRequestUrl;
+	delete globalThis.createVerificationHttpServer;
 }
 
 console.log('google-client-secret auth verification passed');

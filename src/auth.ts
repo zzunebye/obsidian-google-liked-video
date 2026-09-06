@@ -1,10 +1,13 @@
-import type { IncomingMessage, Server, ServerResponse } from 'http';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { Platform, Notice, requestUrl } from 'obsidian';
 import { ObsidianGoogleLikedVideoSettings } from './types';
 
-let serverSession: Server | undefined;
+interface ServerSession {
+	close(callback: () => void): void;
+}
+
+let serverSession: ServerSession | undefined;
 let serverSessionClose = Promise.resolve();
 
 const PORT = 42813;
@@ -40,7 +43,7 @@ function closeServerSession(): Promise<void> {
 	return serverSessionClose;
 }
 
-async function finishGoogleLoginFailure(response: ServerResponse): Promise<void> {
+async function finishGoogleLoginFailure(response: { statusCode: number; setHeader(name: string, value: string): void; end(content: string): void }): Promise<void> {
 	new Notice("Auth failed");
 	response.statusCode = 400;
 	response.setHeader('Connection', 'close');
@@ -81,17 +84,14 @@ export async function handleGoogleLogin(
         return;
     }
 
-	// eslint-disable-next-line @typescript-eslint/no-var-requires
-	const http = require("http");
-	// eslint-disable-next-line @typescript-eslint/no-var-requires
-	const url = require("url");
+	const http = await import("http");
 
 
-    serverSession = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
+	serverSession = http.createServer(async (req, res) => {
         try {
             if (!req.url || req.url.indexOf("/callback") < 0) return;
 
-            const queryString = new url.URL(req.url, `http://127.0.0.1:${PORT}`).searchParams;
+			const queryString = new URL(req.url, `http://127.0.0.1:${PORT}`).searchParams;
             const code = queryString.get("code");
             const tokenUrl = 'https://oauth2.googleapis.com/token';
             const tokenRequestBody = new URLSearchParams({

@@ -9,7 +9,7 @@ export class GeuloModal extends Modal {
 		this.title = title;
 		this.titleEl.setText(this.title);
 		this.message = message;
-		this.modalEl.style.width = '100%';
+		this.modalEl.addClass('geulo-modal--full-width');
 	}
 
 	onOpen() {

@@ -72,15 +72,13 @@ export function createCollapsibleReference(
 		cls: 'template-variables-reference',
 	});
 	detailsEl.createEl('summary', { text: summary });
-	const contentEl = detailsEl.createDiv();
-	contentEl.style.marginTop = '12px';
-	contentEl.style.fontSize = '12px';
-	contentEl.style.lineHeight = '1.6';
+	const contentEl = detailsEl.createDiv('template-variables-reference__content');
 
 	for (const section of sections) {
-		const headingEl = contentEl.createEl('h4', { text: section.title });
-		headingEl.style.margin = '12px 0 8px';
-		headingEl.style.color = 'var(--text-accent)';
+		contentEl.createEl('h4', {
+			cls: 'template-variables-reference__heading',
+			text: section.title,
+		});
 
 		for (const item of section.items) {
 			const itemEl = contentEl.createDiv();

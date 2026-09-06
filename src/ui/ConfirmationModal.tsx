@@ -94,7 +94,7 @@ export const openConfirmationModal = (
     app: App,
     options: ConfirmationModalProps & { title?: string; onClose?: () => void }
 ): ReactModal => {
-    // eslint-disable-next-line prefer-const
+	// eslint-disable-next-line prefer-const -- assigned after the callbacks that close it are created.
     let modalInstance: ReactModal;
 
     const handleConfirm = (rememberChoice?: boolean) => {

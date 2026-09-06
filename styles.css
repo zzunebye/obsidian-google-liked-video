@@ -2157,6 +2157,21 @@ button.video-comment__toggle:focus-visible {
 } */
 
 /* Feature Introduction Modal */
+.template-variables-reference__content {
+	margin-top: 12px;
+	font-size: 12px;
+	line-height: 1.6;
+}
+
+.template-variables-reference__heading {
+	margin: 12px 0 8px;
+	color: var(--text-accent);
+}
+
+.geulo-modal--full-width {
+	width: 100%;
+}
+
 .feature-intro-modal-container .modal-content {
 	padding: 0;
 	max-width: 600px;

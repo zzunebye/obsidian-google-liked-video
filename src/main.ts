@@ -63,7 +63,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	subscriptionService!: SubscriptionService;
 	summaryStorage!: SummaryStorageService;
 	likedVideoStorage?: LikedVideoStorageService;
-	autoFetchInterval: ReturnType<typeof setInterval> | null = null;
+	autoFetchInterval: number | null = null;
 	isFetching = false;
 	settingTabRef: GoogleLikedVideoSettingTab | null = null;
 	private featureAnnouncementModal: FeatureIntroModal | null = null;
@@ -336,9 +336,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 			debugLogger.autoFetch(`Setting up auto-fetch with interval: ${displayInterval}`);
 
-			this.autoFetchInterval = setInterval(async () => {
+			this.autoFetchInterval = window.setInterval(() => {
 				if (!this.isFetching) {
-					await this.performAutoFetch();
+					void this.performAutoFetch();
 				}
 			}, intervalMs);
 		}
@@ -346,7 +346,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	stopAutoFetch() {
 		if (this.autoFetchInterval) {
-			clearInterval(this.autoFetchInterval);
+			window.clearInterval(this.autoFetchInterval);
 			this.autoFetchInterval = null;
 		}
 	}
@@ -545,21 +545,19 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	/**
 	 * Initialize video categories in the background
 	 */
-	private async initializeCategories(): Promise<void> {
-		try {
-			// Load categories asynchronously without blocking plugin startup
-			window.setTimeout(async () => {
-				if (this.likedVideoApi && googleTokenStorageService.getAccessToken()) {
-					debugLogger.info('Initializing video categories...');
-					await categoriesService.loadCategories(this.likedVideoApi);
-					debugLogger.info('Video categories initialized');
-				} else {
-					debugLogger.debug('Skipping categories initialization - no access token');
-				}
-			}, 2000); // Wait 2 seconds after plugin load
-		} catch (error) {
-			debugLogger.error('Failed to initialize categories:', error);
-		}
+	private initializeCategories(): void {
+		window.setTimeout(() => {
+			if (this.likedVideoApi && googleTokenStorageService.getAccessToken()) {
+				debugLogger.info('Initializing video categories...');
+				void categoriesService.loadCategories(this.likedVideoApi)
+					.then(() => debugLogger.info('Video categories initialized'))
+					.catch((error: unknown) => {
+						debugLogger.error('Failed to initialize categories:', error);
+					});
+			} else {
+				debugLogger.debug('Skipping categories initialization - no access token');
+			}
+		}, 2000); // Wait 2 seconds after plugin load
 	}
 
 	/**

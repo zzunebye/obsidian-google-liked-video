@@ -693,12 +693,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 : 'Enter your Google API credentials below, then connect your account.')
             .addButton(button => button
                 .setButtonText(isLoggedIn ? 'Disconnect' : 'Connect with Google')
-                .onClick(async (): Promise<void> => {
-                    const refreshDisplay = async () => {
+				.onClick(async (): Promise<void> => {
+					const refreshDisplay = (): void => {
 						this.plugin.commentService.resetIdentityCache();
-                        this.update();
-                        await this.updateListPaneView();
-                    };
+						this.update();
+						void this.updateListPaneView();
+					};
                     if (isLoggedIn) {
                         await handleGoogleLogout(this.plugin.settings, refreshDisplay, refreshDisplay);
                     } else {
