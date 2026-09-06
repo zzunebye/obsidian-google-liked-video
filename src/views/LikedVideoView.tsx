@@ -34,7 +34,6 @@ import { ViewHeader } from "src/ui/ViewHeader";
 import { ActiveTagFilter } from "src/ui/ActiveTagFilter";
 import { createNotesForNewVideos, fetchAndMergeLikedVideos } from "src/services/likedVideoFetchService";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
-const SHORT_VIDEO_MAX_DURATION_SECONDS = 90;
 export const LikedVideoView: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -64,6 +63,7 @@ export const LikedVideoView: React.FC = () => {
 	const [videos, setVideos] = useContext(VideosContext);
 	const [isFetching, setIsFetching] = useState(false);
 	const plugin = usePlugin();
+	const shortVideoMaxDurationSeconds = plugin.settings.shortVideoMaxDurationSeconds;
 	const videosPerPage = 10;
 
 	// Get categories ready state
@@ -183,7 +183,7 @@ export const LikedVideoView: React.FC = () => {
 			const isMusic = video.snippet.categoryId === "10";
 			const isShort =
 				durationInSeconds > 0 &&
-				durationInSeconds <= SHORT_VIDEO_MAX_DURATION_SECONDS;
+				durationInSeconds <= shortVideoMaxDurationSeconds;
 			const isRegularVideo = !isShort && !isMusic;
 
 			let contentTypeMatch = true;
@@ -223,6 +223,7 @@ export const LikedVideoView: React.FC = () => {
 		selectedTag,
 		selectedCategory,
 		contentTypeSelection,
+		shortVideoMaxDurationSeconds,
 		videoDurations,
 		showAINoteOnly,
 	]);
@@ -354,9 +355,9 @@ export const LikedVideoView: React.FC = () => {
 	const getContentTypeTooltip = (type: ContentTypeOption): string => {
 		switch (type) {
 			case "videos":
-				return UI_TEXT.TOOLTIP_VIDEOS;
+				return UI_TEXT.TOOLTIP_VIDEOS(shortVideoMaxDurationSeconds);
 			case "shorts":
-				return UI_TEXT.TOOLTIP_SHORTS;
+				return UI_TEXT.TOOLTIP_SHORTS(shortVideoMaxDurationSeconds);
 			case "music":
 				return UI_TEXT.TOOLTIP_MUSIC;
 		}

@@ -3,7 +3,7 @@ import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
-import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, ObsidianGoogleLikedVideoSettings } from 'src/types';
+import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, SHORT_VIDEO_MAX_DURATION_OPTIONS } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from './LikedVideoListPane';
 import { debugLogger, DebugConfig } from 'src/debug';
@@ -38,7 +38,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             ),
             this.createSectionDefinition(
                 'Video display',
-                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags'],
+                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags', 'Short video maximum duration'],
                 (containerEl) => this.renderVideoDisplaySection(containerEl),
             ),
         ];
@@ -259,6 +259,27 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         playlistPane: true,
                     });
                 }));
+    }
+
+    private renderShortVideoDurationSetting(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setName('Short video maximum duration')
+            .setDesc('Choose the longest video included by the Shorts filter.')
+            .addDropdown(dropdown => {
+                SHORT_VIDEO_MAX_DURATION_OPTIONS.forEach(seconds => {
+                    dropdown.addOption(String(seconds), `${seconds} seconds`);
+                });
+                dropdown
+                    .setValue(String(this.plugin.settings.shortVideoMaxDurationSeconds))
+                    .onChange(async value => {
+                        const seconds = Number(value);
+                        if (!isShortVideoMaxDurationSeconds(seconds)) return;
+                        await this.saveSetting('shortVideoMaxDurationSeconds', seconds, {
+                            listPane: true,
+                            subscriptionPane: true,
+                        });
+                    });
+            });
     }
 
     private renderVideoNotesSection(containerEl: HTMLElement): void {

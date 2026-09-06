@@ -543,6 +543,7 @@ If your plugin does not need CSS, delete this file.
 .video-view-header__icon {
 	width: 1.25em;
 	height: 1.25em;
+	margin-right: 8px;
 }
 
 .video-view-header__title {

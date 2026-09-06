@@ -1,5 +1,5 @@
 import { Notice, Plugin, WorkspaceLeaf } from 'obsidian';
-import { isAIProvider, ObsidianGoogleLikedVideoSettings, YouTubeVideo } from 'src/types';
+import { isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, YouTubeVideo } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
@@ -42,6 +42,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	openInObsidianWebViewer: false,
 	openWebViewerInSplitPane: false,
 	showVideoTags: true,
+	shortVideoMaxDurationSeconds: 90,
 	enableAISummary: false,
 	geminiApiKey: '',
 	aiProvider: 'gemini',
@@ -292,6 +293,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, settingsData);
 		if (!isAIProvider(this.settings.aiProvider)) {
 			this.settings.aiProvider = DEFAULT_SETTINGS.aiProvider;
+		}
+		if (!isShortVideoMaxDurationSeconds(this.settings.shortVideoMaxDurationSeconds)) {
+			this.settings.shortVideoMaxDurationSeconds = DEFAULT_SETTINGS.shortVideoMaxDurationSeconds;
 		}
 
 		await migrateLegacyGoogleSecrets(splitData, {

@@ -48,7 +48,7 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 - **Structure:** icon, title, optional badge, action cluster.
 - **States:** action buttons support default, hover, focus, active, and disabled states through Obsidian button styles.
 - **Accessibility:** every icon-only action has a title and ARIA label.
-- **Layout:** horizontal cluster; actions never shrink.
+- **Layout:** horizontal cluster with 8px between the leading icon and title; actions never shrink.
 
 ### PlaylistCard
 

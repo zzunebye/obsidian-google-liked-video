@@ -94,7 +94,7 @@ export const UI_TEXT = {
     NOTICE_UNLIKE_FAILED: 'Failed to unlike video. Check console for details.',
 
     // Tooltips
-    TOOLTIP_VIDEOS: 'Regular videos (longer than 60 seconds, excludes music)',
-    TOOLTIP_SHORTS: 'Videos shorter than 90 seconds (does not categorize YouTube Shorts)',
+    TOOLTIP_VIDEOS: (seconds: number) => `Regular videos longer than ${seconds} seconds (excludes music)`,
+    TOOLTIP_SHORTS: (seconds: number) => `Videos up to and including ${seconds} seconds (does not categorize YouTube Shorts)`,
     TOOLTIP_MUSIC: 'Music videos (YouTube category: Music)',
 } as const;
