@@ -7,7 +7,7 @@ import {
 	ContentTypeSelection,
 } from "src/types";
 import {
-	Youtube,
+	TvMinimalPlay,
 	Settings,
 	RefreshCcw,
 	Filter,
@@ -461,7 +461,7 @@ export const LikedVideoView: React.FC = () => {
 	return (
 		<div className="liked-video-view" onKeyDown={handleViewKeyDown}>
 			<ViewHeader
-				icon={<Youtube className="video-view-header__icon" />}
+				icon={<TvMinimalPlay className="video-view-header__icon" />}
 				title={
 					<>
 						{" "}
@@ -787,7 +787,7 @@ export const LikedVideoView: React.FC = () => {
 									localStorageService.removeLikedVideo(video.id);
 
 									const fragment = new DocumentFragment();
-									fragment.createEl("span", { text: `Unliked "${video.snippet.title}" ` });
+									fragment.createSpan({ text: `Unliked "${video.snippet.title}" ` });
 									const undoBtn = fragment.createEl("button", {
 										text: "Undo",
 										cls: "geulo-undo-btn",

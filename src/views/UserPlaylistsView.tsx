@@ -5,7 +5,7 @@ import {
 	RefreshCw,
 	Video,
 	Plus,
-	Youtube,
+	ListVideo,
 } from "lucide-react";
 import { UI_TEXT } from "src/constants/uiText";
 import { SearchBar } from "src/ui/SearchBar";
@@ -179,7 +179,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 		return (
 			<div className="user-playlists-view">
 				<ViewHeader
-					icon={<Youtube className="video-view-header__icon" />}
+					icon={<ListVideo className="video-view-header__icon" />}
 					title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
 				/>
 
@@ -204,7 +204,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 		return (
 			<div className="user-playlists-view">
 				<ViewHeader
-					icon={<Youtube className="video-view-header__icon" />}
+					icon={<ListVideo className="video-view-header__icon" />}
 					title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
 				/>
 
@@ -231,7 +231,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 	return (
 		<div className="user-playlists-view">
 			<ViewHeader
-				icon={<Youtube className="video-view-header__icon" />}
+				icon={<ListVideo className="video-view-header__icon" />}
 				title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
 				actions={
 					<>
