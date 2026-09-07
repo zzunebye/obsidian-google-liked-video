@@ -7,11 +7,11 @@ class VaultLocalStorageService {
 		this.app = app;
 	}
 
-	load(key: string): unknown | null {
+	load(key: string): unknown {
 		return this.app?.loadLocalStorage(key) ?? null;
 	}
 
-	save(key: string, value: unknown | null): void {
+	save(key: string, value: unknown): void {
 		this.app?.saveLocalStorage(key, value);
 	}
 }
