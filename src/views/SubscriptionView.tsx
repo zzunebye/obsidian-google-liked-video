@@ -16,6 +16,7 @@ import { SearchBar } from "src/ui/SearchBar";
 import { VideoCard } from "src/ui/VideoCard";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { ViewHeader } from "src/ui/ViewHeader";
+import { OpenYouTubeButton } from "src/ui/OpenYouTubeButton";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { localStorageService } from "src/storage";
 import { UI_TEXT } from "src/constants/uiText";
@@ -403,7 +404,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 					actions={settingsAction}
 				/>
 				<div className="no-videos-found">
-					<Rss size={48} />
+					<Rss size={32} aria-hidden="true" />
 					<div className="no-videos-found__title">Subscriptions are not loaded</div>
 					<div className="no-videos-found__text">Load the latest 10 uploads from each subscribed channel when you are ready.</div>
 					<button type="button" className="videos-error__retry-button" onClick={() => void runFetch(false)}>
@@ -612,15 +613,16 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 			{snapshot?.channels.length === 0 ? (
 				<div className="no-videos-found">
-					<Rss size={48} />
+					<Rss size={32} aria-hidden="true" />
 					<div className="no-videos-found__title">No subscriptions found</div>
 					<div className="no-videos-found__text">Subscribe to channels on YouTube to see their latest videos here.</div>
 				</div>
 			) : filteredVideos.length === 0 ? (
 				<div className="no-videos-found">
-					<Search size={48} />
+					<Search size={32} aria-hidden="true" />
 					<div className="no-videos-found__title">No matching videos</div>
 					<div className="no-videos-found__text">No collected videos match these filters.</div>
+					<OpenYouTubeButton query={searchTerm} />
 				</div>
 			) : (
 				<>

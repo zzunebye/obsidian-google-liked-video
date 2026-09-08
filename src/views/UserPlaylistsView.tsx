@@ -324,31 +324,32 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 			)}
 
 			{playlists.length === 0 ? (
-				<div className="no-playlists-found">
-					<div className="no-playlists-found__icon">
-						<Video size={48} />
+				<div className="no-videos-found">
+					<div className="no-videos-found__icon">
+						<Video size={32} aria-hidden="true" />
 					</div>
-					<div className="no-playlists-found__title">
+					<div className="no-videos-found__title">
 						No playlists found
 					</div>
-					<div className="no-playlists-found__text">
+					<div className="no-videos-found__text">
 						Create playlists on YouTube to see them here.
 					</div>
 				</div>
 			) : sortedAndFilteredPlaylists.length === 0 ? (
-				<div className="no-playlists-found">
-					<div className="no-playlists-found__icon">
-						<Search size={48} />
+				<div className="no-videos-found">
+					<div className="no-videos-found__icon">
+						<Search size={32} aria-hidden="true" />
 					</div>
-					<div className="no-playlists-found__title">
+					<div className="no-videos-found__title">
 						No matching playlists
 					</div>
-					<div className="no-playlists-found__text">
+					<div className="no-videos-found__text">
 						No playlists match "{searchTerm}". Try a different
 						search term.
 					</div>
 					<button
-						className="no-playlists-found__clear-button"
+						type="button"
+						className="no-videos-found__clear-button"
 						onClick={() => setSearchTerm("")}
 					>
 						Clear search

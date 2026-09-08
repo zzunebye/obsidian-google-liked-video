@@ -475,7 +475,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 			{filteredVideos.length === 0 ? (
 				<div className="no-videos-found">
 					<div className="no-videos-found__icon">
-						<Search size={48} />
+						<Search size={32} aria-hidden="true" />
 					</div>
 					<div className="no-videos-found__title">
 						{debouncedSearchTerm || selectedTag
@@ -493,6 +493,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 					</div>
 					{debouncedSearchTerm && (
 						<button
+							type="button"
 							className="no-videos-found__clear-button"
 							onClick={() => setSearchTerm("")}
 						>

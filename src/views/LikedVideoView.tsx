@@ -8,6 +8,7 @@ import {
 } from "src/types";
 import {
 	TvMinimalPlay,
+	Search,
 	Settings,
 	RefreshCcw,
 	Filter,
@@ -32,6 +33,7 @@ import { categoriesService } from "src/categoriesService";
 import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { LikedVideoCollection } from "src/ui/LikedVideoCollection";
 import { ViewHeader } from "src/ui/ViewHeader";
+import { OpenYouTubeButton } from "src/ui/OpenYouTubeButton";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 
@@ -738,13 +740,18 @@ export const LikedVideoView: React.FC = () => {
 			</div>}
 			{sortedVideos.length === 0 && (
 				<div className="no-videos-found">
+					<Search size={32} aria-hidden="true" />
+					<div className="no-videos-found__title">
+						{hasActiveQuery ? "No matching videos" : "No videos yet"}
+					</div>
 					<div className="no-videos-found__text">
 						{hasActiveQuery
 							? "No videos match the active filters"
 							: UI_TEXT.NO_VIDEOS_FOUND}
 					</div>
+					<OpenYouTubeButton query={searchTerm} />
 					{hasActiveQuery && (
-						<button type="button" className="no-videos-found__fetch-all-button" onClick={clearAllFilters}>
+						<button type="button" className="no-videos-found__clear-button" onClick={clearAllFilters}>
 							Clear search and filters
 						</button>
 					)}

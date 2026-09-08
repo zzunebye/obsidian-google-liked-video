@@ -1,3 +1,5 @@
+import { OpenYouTubeButton } from "./OpenYouTubeButton";
+
 interface ViewHeaderProps {
 	icon: React.ReactNode;
 	title: React.ReactNode;
@@ -11,6 +13,7 @@ export const ViewHeader: React.FC<ViewHeaderProps> = ({
 	badge,
 	actions,
 }) => {
+
 	return (
 		<div className="video-view-header">
 			<div className="video-view-header__title">
@@ -18,9 +21,10 @@ export const ViewHeader: React.FC<ViewHeaderProps> = ({
 				{title}
 				{badge && <span className="video-count-badge">{badge}</span>}
 			</div>
-			{actions && (
-				<div className="video-view-header__actions">{actions}</div>
-			)}
+			<div className="video-view-header__actions">
+				<OpenYouTubeButton />
+				{actions}
+			</div>
 		</div>
 	);
 };
