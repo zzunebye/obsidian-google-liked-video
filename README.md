@@ -134,7 +134,7 @@ Existing liked videos in localStorage migrate automatically after the new file i
 
 ## Release Notes
 
-### Latest changes
+### 4.3
 
 - Load up to 5 recent uploads per subscribed channel for lighter refreshes.
 - Continue on YouTube when no videos match your search, using your preferred browser or Obsidian Web Viewer.
