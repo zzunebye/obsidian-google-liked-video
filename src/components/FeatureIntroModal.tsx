@@ -4,12 +4,12 @@ import { createRoot, Root } from 'react-dom/client';
 export const LEGACY_ANNOUNCEMENT_ID = 'ai-summaries-intro';
 
 export const FEATURE_ANNOUNCEMENT = {
-	id: '4-2-latest-update-notes',
+	id: '4-3',
 	title: 'Geulo update notes',
 	description: 'Catch up on subscription browsing and the latest improvements. Earlier updates are included below.',
 	releases: [
 		{
-			version: 'Latest changes',
+			version: '4.3',
 			title: 'A lighter subscription feed and easier YouTube search',
 			notes: [
 				'Subscriptions now loads up to 5 recent uploads per channel to keep refreshes lighter. This is a snapshot of recent uploads, not the complete channel history.',
