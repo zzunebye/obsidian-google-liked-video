@@ -4,10 +4,28 @@ import { createRoot, Root } from 'react-dom/client';
 export const LEGACY_ANNOUNCEMENT_ID = 'ai-summaries-intro';
 
 export const FEATURE_ANNOUNCEMENT = {
-	id: '3-4-update-notes',
+	id: '4-2-latest-update-notes',
 	title: 'Geulo update notes',
-	description: 'Key changes since 3.0, with tips on where to find them.',
+	description: 'Catch up on subscription browsing and the latest improvements. Earlier updates are included below.',
 	releases: [
+		{
+			version: 'Latest changes',
+			title: 'A lighter subscription feed and easier YouTube search',
+			notes: [
+				'Subscriptions now loads up to 5 recent uploads per channel to keep refreshes lighter. This is a snapshot of recent uploads, not the complete channel history.',
+				'When no videos match your search, use the YouTube search button to continue searching on YouTube. It follows your settings for opening videos in a browser or Obsidian Web Viewer.'
+			]
+		},
+		{
+			version: '4.0–4.2.2',
+			title: 'Browse and manage your YouTube subscriptions',
+			notes: [
+				'Open the Subscriptions view to collect recent uploads from the channels you follow. Load them when you are ready, then refresh to check for newer videos.',
+				'Find videos by search, channel, upload date, or content type. Sort uploads newest or oldest first, and keep scrolling to see more of the collected videos.',
+				'Unsubscribe from individual channels or selected channels directly in Geulo. The confirmation shows the API quota cost before you proceed. This changes your YouTube subscriptions and removes those channels’ cached videos from the view.',
+				'Subscription refreshes now load multiple channels at once to reduce waiting time.'
+			]
+		},
 		{
 			version: '3.4',
 			title: 'Smoother browsing and more dependable notes',

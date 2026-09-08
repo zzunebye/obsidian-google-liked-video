@@ -134,6 +134,17 @@ Existing liked videos in localStorage migrate automatically after the new file i
 
 ## Release Notes
 
+### Latest changes
+
+- Load up to 5 recent uploads per subscribed channel for lighter refreshes.
+- Continue on YouTube when no videos match your search, using your preferred browser or Obsidian Web Viewer.
+
+### 4.0–4.2.2
+
+- Browse subscriptions with search, channel/date/content-type filters, sorting, and infinite scroll.
+- Unsubscribe from individual or selected channels with a quota confirmation. This changes your YouTube subscriptions.
+- Refresh subscriptions faster by loading multiple channels at once.
+
 ### 3.4
 
 **Smoother browsing and more dependable notes**
