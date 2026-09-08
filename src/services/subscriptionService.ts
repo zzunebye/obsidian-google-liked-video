@@ -11,10 +11,10 @@ import { SubscriptionStorageService } from "./subscriptionStorageService";
 const BASE_URL = "https://youtube.googleapis.com/youtube/v3/";
 const CHANNEL_BATCH_SIZE = 50;
 const VIDEO_BATCH_SIZE = 50;
-const RECENT_VIDEOS_PER_CHANNEL = 10;
+const RECENT_VIDEOS_PER_CHANNEL = 5;
 const CHANNEL_DETAILS_CONCURRENCY = 4;
-const CHANNEL_UPLOADS_CONCURRENCY = 4;
-const VIDEO_DETAILS_CONCURRENCY = 4;
+const CHANNEL_UPLOADS_CONCURRENCY = 6;
+const VIDEO_DETAILS_CONCURRENCY = 6;
 
 type SubscriptionItem = {
 	id?: string;

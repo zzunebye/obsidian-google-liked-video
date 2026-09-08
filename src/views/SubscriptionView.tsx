@@ -406,7 +406,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				<div className="no-videos-found">
 					<Rss size={32} aria-hidden="true" />
 					<div className="no-videos-found__title">Subscriptions are not loaded</div>
-					<div className="no-videos-found__text">Load the latest 10 uploads from each subscribed channel when you are ready.</div>
+					<div className="no-videos-found__text">Load the latest 5 uploads from each subscribed channel when you are ready.</div>
 					<button type="button" className="videos-error__retry-button" onClick={() => void runFetch(false)}>
 						<RefreshCw size={16} /> Load subscriptions
 					</button>
@@ -470,7 +470,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 			<div className="subscription-status">
 				<span>{snapshot ? formatUpdatedAt(snapshot.updatedAt) : "Not updated"}</span>
-				<span>Latest 10 uploads per channel</span>
+				<span>Latest 5 uploads per channel</span>
 			</div>
 
 			{isLoading && progress && (
