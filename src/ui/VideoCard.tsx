@@ -34,6 +34,7 @@ import type { SummarySnapshot } from "./SummarySection";
 import { ResponsiveVideoTags } from "./VideoTags";
 import { debugLogger } from "../debug";
 import { VideoCommentsModal } from "./VideoCommentsModal";
+import { AddToPlaylistModal } from "./AddToPlaylistModal";
 
 interface VideoCardProps {
 	source: "liked" | "playlist" | "subscription";
@@ -359,6 +360,16 @@ export const VideoCard = ({
 					});
 				});
 			}
+		}
+
+		if (source === "liked") {
+			menu.addItem((item) => {
+				item.setTitle("Add to playlist");
+				item.setIcon("list-plus");
+				item.onClick(() => {
+					new AddToPlaylistModal(plugin.app, plugin.playlistApi, videoInfo.id, videoInfo.snippet.title).open();
+				});
+			});
 		}
 
 		if (source === "subscription" && onUnsubscribeChannel) {

@@ -48,6 +48,7 @@ async function requestUrlWithTimeout(request: RequestUrlParam): Promise<RequestU
 
 // Generic Playlist API that can handle different playlist sources
 export class PlaylistApi {
+	private pendingPlaylistAdditions = new Set<string>();
     private paginationCache = new Map<string, PlaylistCache>();
     private static readonly MAX_CACHE_SIZE = 50; // Maximum number of cached playlists
     private static readonly DEFAULT_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -264,32 +265,75 @@ export class PlaylistApi {
         return videosData;
     }
 
-    async fetchUserPlaylists(): Promise<PlaylistInfo[]> {
-        const url = BASE_URL + 'playlists?'
-            + 'part=snippet,contentDetails'
-            + '&maxResults=50'
-            + '&mine=true';
+	async fetchUserPlaylists(): Promise<PlaylistInfo[]> {
+		const baseUrl = BASE_URL + 'playlists?'
+			+ 'part=snippet,contentDetails'
+			+ '&maxResults=50'
+			+ '&mine=true';
 
-        const response = await this.sendRequest('GET', url, {});
-        const data: unknown = response.json;
+		const playlists: PlaylistInfo[] = [];
+		let pageToken = '';
+		do {
+			const url = baseUrl + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
+			const response = await this.sendRequest('GET', url, {});
+			const data: unknown = response.json;
 
-        if (!isRecord(data) || !Array.isArray(data.items)) {
-            return [];
-        }
+			if (!isRecord(data) || !Array.isArray(data.items)) {
+				throw new Error('Invalid YouTube playlist response');
+			}
 
-        // Filter and map with type validation
-        return data.items
-            .filter((playlist: unknown) => this.validatePlaylistResponse(playlist))
-            .map((playlist: YouTubePlaylistResponse): PlaylistInfo => ({
-                id: playlist.id,
-                title: playlist.snippet.title,
-                description: playlist.snippet.description || '',
-                itemCount: playlist.contentDetails.itemCount,
-                thumbnailUrl: playlist.snippet.thumbnails?.medium?.url,
-                publishedAt: playlist.snippet.publishedAt,
-                isOwnedByUser: true
-            }));
-    }
+			// Filter and map with type validation
+			playlists.push(...data.items
+				.filter((playlist: unknown) => this.validatePlaylistResponse(playlist))
+				.map((playlist: YouTubePlaylistResponse): PlaylistInfo => ({
+					id: playlist.id,
+					title: playlist.snippet.title,
+					description: playlist.snippet.description || '',
+					itemCount: playlist.contentDetails.itemCount,
+					thumbnailUrl: playlist.snippet.thumbnails?.medium?.url,
+					publishedAt: playlist.snippet.publishedAt,
+					isOwnedByUser: true
+				})));
+			pageToken = typeof data.nextPageToken === 'string' ? data.nextPageToken : '';
+		} while (pageToken);
+		return playlists;
+	}
+
+	async addVideoToPlaylist(playlistId: string, videoId: string): Promise<'added' | 'already-exists'> {
+		const key = JSON.stringify([playlistId, videoId]);
+		if (this.pendingPlaylistAdditions.has(key)) {
+			throw new Error('This video is already being added to this playlist. Please wait.');
+		}
+		this.pendingPlaylistAdditions.add(key);
+		try {
+			// Check YouTube directly: a cached playlist may be incomplete or stale.
+			const params = new URLSearchParams({ part: 'id', playlistId, videoId, maxResults: '1' });
+			const response = await this.sendRequest('GET', `${BASE_URL}playlistItems?${params.toString()}`, {});
+			const data: unknown = response.json;
+			if (!isRecord(data) || !Array.isArray(data.items)) {
+				throw new Error('Could not check whether this video is already in the playlist. Please try again.');
+			}
+			if (data.items.length > 0) {
+				this.clearCache({ type: 'playlist', playlistId });
+				return 'already-exists';
+			}
+			try {
+				await this.sendRequest('POST', `${BASE_URL}playlistItems?part=snippet`, {}, {
+					contentType: 'application/json',
+					body: JSON.stringify({ snippet: {
+						playlistId,
+						resourceId: { kind: 'youtube#video', videoId },
+					} }),
+				});
+			} finally {
+				// A timed-out write may still have reached YouTube; do not reuse the old snapshot.
+				this.clearCache({ type: 'playlist', playlistId });
+			}
+			return 'added';
+		} finally {
+			this.pendingPlaylistAdditions.delete(key);
+		}
+	}
 
     async deletePlaylist(playlistId: string): Promise<void> {
         const url = BASE_URL + 'playlists?'

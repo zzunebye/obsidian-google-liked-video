@@ -31,6 +31,7 @@ Mobile version is still experimental!
 
 - **Video retrieval**: Access your entire YouTube liked video history
 - **Playlist browsing**: Browse your YouTube playlists and add custom playlists by ID
+- **Add liked videos to playlists**: Right-click a liked video, choose **Add to playlist**, then search and select one of your YouTube playlists. Existing entries are checked before adding; your like is kept.
 - **Searching and Content type filtering**: Search, filter, and sort your videos with multiple options. Search is based on the video title, channel title, and tags. Filter videos by type — Videos, Shorts, or Music.
 - **Create Video Notes**: Create video notes with a single click and write your own notes. You can also organize them by channel.
 - **Daily note integration**: Add videos to your daily notes with a single click

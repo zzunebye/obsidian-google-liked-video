@@ -2930,3 +2930,179 @@ button.video-channel-link:focus-visible {
 .no-videos-found .youtube-search-button:hover {
 	background: var(--interactive-accent-hover);
 }
+
+/* Add a liked video to a YouTube playlist */
+.modal.geulo-add-playlist-modal {
+	width: min(560px, 92vw);
+}
+
+.geulo-add-playlist {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+}
+
+.geulo-add-playlist__video {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	padding: var(--size-4-3);
+	background: var(--background-secondary);
+	border-radius: var(--radius-m);
+}
+
+.geulo-add-playlist__video-icon {
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.geulo-add-playlist__eyebrow,
+.geulo-add-playlist__meta,
+.geulo-add-playlist__description,
+.geulo-add-playlist__status,
+.geulo-add-playlist__selection,
+.geulo-add-playlist__note {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.geulo-add-playlist__video-title {
+	margin-top: var(--size-2-1);
+	font-weight: var(--font-medium);
+	overflow-wrap: anywhere;
+}
+
+.geulo-add-playlist__search .search-input-container,
+.geulo-add-playlist__search input {
+	width: 100%;
+}
+
+.geulo-add-playlist__list {
+	min-height: 160px;
+	max-height: min(340px, 40vh);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+}
+
+.geulo-add-playlist__row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	padding: var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	cursor: pointer;
+}
+
+.geulo-add-playlist__row:hover {
+	background: var(--background-modifier-hover);
+}
+
+.geulo-add-playlist__row:has(input:checked) {
+	border-color: var(--interactive-accent);
+	background: var(--background-modifier-active-hover);
+}
+
+.geulo-add-playlist__row:focus-within {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+.geulo-add-playlist__row:has(input:disabled) {
+	cursor: wait;
+	opacity: 0.65;
+}
+
+.geulo-add-playlist__row input {
+	flex-shrink: 0;
+	margin: 0;
+	accent-color: var(--interactive-accent);
+}
+
+.geulo-add-playlist__thumbnail {
+	position: relative;
+	width: 64px;
+	height: 42px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--background-secondary);
+	border-radius: var(--radius-s);
+	overflow: hidden;
+	color: var(--text-muted);
+}
+
+.geulo-add-playlist__thumbnail img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.geulo-add-playlist__info {
+	min-width: 0;
+	flex: 1;
+}
+
+.geulo-add-playlist__title {
+	font-weight: var(--font-medium);
+	overflow-wrap: anywhere;
+}
+
+.geulo-add-playlist__description {
+	margin-top: var(--size-2-1);
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+}
+
+.geulo-add-playlist__footer {
+	border-top: 1px solid var(--background-modifier-border);
+	padding-top: var(--size-4-3);
+}
+
+.geulo-add-playlist__selection {
+	margin-bottom: var(--size-4-3);
+	overflow-wrap: anywhere;
+}
+
+.geulo-add-playlist__actions {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--size-4-2);
+	flex-wrap: wrap;
+}
+
+.geulo-add-playlist__actions .mod-cta {
+	margin-inline-start: auto;
+}
+
+.geulo-add-playlist__note {
+	font-size: var(--font-ui-smaller);
+}
+
+.geulo-add-playlist__empty {
+	margin: auto;
+	padding: var(--size-4-4);
+	text-align: center;
+	color: var(--text-muted);
+}
+
+.geulo-add-playlist__empty strong {
+	display: block;
+	margin-top: var(--size-4-2);
+	color: var(--text-normal);
+}
+
+.geulo-add-playlist__empty p {
+	margin-bottom: 0;
+	font-size: var(--font-ui-small);
+}
