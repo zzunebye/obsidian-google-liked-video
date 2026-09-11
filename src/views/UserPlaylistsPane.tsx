@@ -10,6 +10,7 @@ import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
 import { localStorageService } from "src/storage";
 import { PlaylistInfo } from "src/types";
+import { YouTubeRequestError } from "src/services/youtubeApiClient";
 import { confirmDangerousAction } from "src/utils/confirmationUtils";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
@@ -98,24 +99,20 @@ export class UserPlaylistsPane
 			// Load both user playlists from YouTube and saved playlists from local storage
 			const [userPlaylists, savedPlaylists] = await Promise.all([
 				this.plugin.playlistApi.fetchUserPlaylists().catch((error) => {
-					// Show user-friendly error message for authentication issues
-					if (
-						error.message.includes("403") ||
-						error.message.includes("quota")
-					) {
+					if (error instanceof YouTubeRequestError
+						&& error.reasons.some((reason) => reason === "quotaExceeded" || reason === "dailyLimitExceeded")) {
 						new Notice(
 							"YouTube API quota exceeded. Please try again later.",
 						);
-					} else if (
-						error.message.includes("401") ||
-						error.message.includes("token")
-					) {
+					} else if (error instanceof YouTubeRequestError && error.kind === "auth") {
 						new Notice(
 							"Authentication expired. Please refresh your login.",
 						);
+					} else if (error instanceof YouTubeRequestError && error.status === 403) {
+						new Notice("YouTube did not allow access to these playlists.");
 					} else {
 						new Notice(
-							`Failed to load YouTube playlists: ${error.message}`,
+							`Failed to load YouTube playlists: ${error instanceof Error ? error.message : "Unknown error"}`,
 						);
 					}
 					return [];
