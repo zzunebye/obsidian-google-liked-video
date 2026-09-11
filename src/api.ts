@@ -1,13 +1,10 @@
-import { Notice, requestUrl } from "obsidian";
-import type { RequestUrlParam, RequestUrlResponse } from "obsidian";
-import { getGoogleAccessTokenFromLocal, getValidAccessToken } from "./auth";
-import { ObsidianGoogleLikedVideoSettings, YouTubeVideo, YouTubeVideosResponse, YouTubeCategory, YoutubeCategoriesResponse, PlaylistCache, YouTubePlaylistResponse, PlaylistSource, PaginatedResult, PlaylistInfo } from "./types";
+import type { RequestUrlResponse } from "obsidian";
+import { YouTubeVideo, YouTubeVideosResponse, YouTubeCategory, YoutubeCategoriesResponse, PlaylistCache, YouTubePlaylistResponse, PlaylistSource, PaginatedResult, PlaylistInfo } from "./types";
 import { debugLogger } from "./debug";
+import { YouTubeApiClient } from "./services/youtubeApiClient";
+import type { YouTubeRequestOptions } from "./services/youtubeApiClient";
 
-const BASE_URL = 'https://youtube.googleapis.com/youtube/v3/';
-const REQUEST_TIMEOUT_MS = 90000;
-
-type RequestOptions = Pick<RequestUrlParam, 'body' | 'contentType'>;
+type RequestOptions = Pick<YouTubeRequestOptions, 'body' | 'contentType'>;
 
 type PlaylistItemResponse = {
     snippet: {
@@ -21,31 +18,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
 
-function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === 'AbortError';
-}
-
-function getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
-}
-
-async function requestUrlWithTimeout(request: RequestUrlParam): Promise<RequestUrlResponse> {
-    let timeoutId: number | undefined;
-    const timeout = new Promise<never>((_, reject) => {
-        timeoutId = window.setTimeout(() => {
-            reject(new DOMException('Request timed out', 'AbortError'));
-        }, REQUEST_TIMEOUT_MS);
-    });
-
-    try {
-        return await Promise.race([requestUrl(request), timeout]);
-    } finally {
-        if (timeoutId !== undefined) {
-            window.clearTimeout(timeoutId);
-        }
-    }
-}
-
 // Generic Playlist API that can handle different playlist sources
 export class PlaylistApi {
 	private pendingPlaylistAdditions = new Set<string>();
@@ -53,7 +25,7 @@ export class PlaylistApi {
     private static readonly MAX_CACHE_SIZE = 50; // Maximum number of cached playlists
     private static readonly DEFAULT_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-    constructor(private pluginSettings: ObsidianGoogleLikedVideoSettings) { }
+    constructor(private readonly client: YouTubeApiClient) { }
 
     /**
      * Cleanup resources when plugin is unloaded
@@ -96,52 +68,7 @@ export class PlaylistApi {
     }
 
     async sendRequest(method: 'GET' | 'POST' | 'DELETE', url: string, headers: Record<string, string>, options: RequestOptions = {}): Promise<RequestUrlResponse> {
-        let accessToken = getGoogleAccessTokenFromLocal();
-        debugLogger.api(`${method} request to: ${url}`);
-
-        try {
-            accessToken = await getValidAccessToken(
-                this.pluginSettings.googleClientId
-            );
-            const response = await requestUrlWithTimeout({
-                url,
-                method: method,
-                headers: {
-                    ...headers,
-                    'Authorization': `Bearer ${accessToken}`,
-                },
-                throw: false,
-                ...options,
-            });
-
-            debugLogger.api(`Response status: ${response.status}`);
-
-            // Handle different HTTP error types
-            if (response.status >= 400) {
-                let errorMessage = `HTTP ${response.status}`;
-
-                if (response.status === 403) {
-                    errorMessage = 'API quota exceeded or insufficient permissions';
-                } else if (response.status === 404) {
-                    errorMessage = 'Playlist not found or has been deleted';
-                } else if (response.status >= 500) {
-                    errorMessage = 'YouTube service temporarily unavailable';
-                }
-
-                throw new Error(errorMessage);
-            }
-
-            return response;
-        } catch (error: unknown) {
-            if (isAbortError(error)) {
-                debugLogger.error('Request timeout');
-                new Notice("Request timeout - please try again");
-                throw new Error('Request timeout - please try again');
-            }
-            debugLogger.error('API request failed:', error);
-            new Notice("API request failed: " + getErrorMessage(error));
-            throw error;
-        }
+        return this.client.request(method, url, { ...options, headers });
     }
 
     async fetchVideos(source: PlaylistSource, limit = 50, pageToken?: string): Promise<YouTubeVideosResponse> {
@@ -160,7 +87,7 @@ export class PlaylistApi {
     }
 
     private async fetchLikedVideos(limit: number, pageToken?: string): Promise<YouTubeVideosResponse> {
-        let url = BASE_URL + 'videos?'
+        let url = 'videos?'
             + 'part=snippet,contentDetails,statistics'
             + `&maxResults=${limit}`
             + '&myRating=like';
@@ -183,7 +110,7 @@ export class PlaylistApi {
 
 
     private async fetchPlaylistVideos(playlistId: string, limit: number, pageToken?: string): Promise<YouTubeVideosResponse> {
-        let url = BASE_URL + 'playlistItems?'
+        let url = 'playlistItems?'
             + 'part=snippet,contentDetails'
             + `&playlistId=${playlistId}`
             + `&maxResults=${limit}`;
@@ -226,7 +153,7 @@ export class PlaylistApi {
         }
 
         // Fetch detailed video information
-        const videosUrl = BASE_URL + 'videos?'
+        const videosUrl = 'videos?'
             + 'part=snippet,contentDetails,statistics'
             + `&id=${videoIds.join(',')}`;
 
@@ -266,7 +193,7 @@ export class PlaylistApi {
     }
 
 	async fetchUserPlaylists(): Promise<PlaylistInfo[]> {
-		const baseUrl = BASE_URL + 'playlists?'
+		const baseUrl = 'playlists?'
 			+ 'part=snippet,contentDetails'
 			+ '&maxResults=50'
 			+ '&mine=true';
@@ -308,7 +235,7 @@ export class PlaylistApi {
 		try {
 			// Check YouTube directly: a cached playlist may be incomplete or stale.
 			const params = new URLSearchParams({ part: 'id', playlistId, videoId, maxResults: '1' });
-			const response = await this.sendRequest('GET', `${BASE_URL}playlistItems?${params.toString()}`, {});
+			const response = await this.sendRequest('GET', `playlistItems?${params.toString()}`, {});
 			const data: unknown = response.json;
 			if (!isRecord(data) || !Array.isArray(data.items)) {
 				throw new Error('Could not check whether this video is already in the playlist. Please try again.');
@@ -318,7 +245,7 @@ export class PlaylistApi {
 				return 'already-exists';
 			}
 			try {
-				await this.sendRequest('POST', `${BASE_URL}playlistItems?part=snippet`, {}, {
+				await this.sendRequest('POST', 'playlistItems?part=snippet', {}, {
 					contentType: 'application/json',
 					body: JSON.stringify({ snippet: {
 						playlistId,
@@ -336,7 +263,7 @@ export class PlaylistApi {
 	}
 
     async deletePlaylist(playlistId: string): Promise<void> {
-        const url = BASE_URL + 'playlists?'
+        const url = 'playlists?'
             + `id=${encodeURIComponent(playlistId)}`;
 
         await this.sendRequest('DELETE', url, {});
@@ -349,7 +276,7 @@ export class PlaylistApi {
         // Clean playlist ID (remove URL parts if user pasted a full YouTube URL)
         const cleanPlaylistId = this.extractPlaylistId(playlistId);
 
-        const url = BASE_URL + 'playlists?'
+        const url = 'playlists?'
             + 'part=snippet,contentDetails'
             + `&id=${cleanPlaylistId}`;
 
@@ -605,9 +532,7 @@ export class PlaylistApi {
 }
 
 export class LikedVideoApi {
-    constructor(private pluginSettings: ObsidianGoogleLikedVideoSettings) {
-        this.pluginSettings = pluginSettings;
-    }
+    constructor(private readonly client: YouTubeApiClient) { }
 
     /**
      * Cleanup resources when plugin is unloaded
@@ -621,46 +546,12 @@ export class LikedVideoApi {
     // 2. If the access token is expired, it will refresh the access token with the refresh token
     // 3. It will add the access token to the request headers
     async sendRequest(method: 'GET' | 'POST', url: string, headers: Record<string, string>, options: RequestOptions = {}): Promise<RequestUrlResponse> {
-        let accessToken = getGoogleAccessTokenFromLocal();
-        debugLogger.api(`${method} request to: ${url}`);
-
-        try {
-            accessToken = await getValidAccessToken(
-                this.pluginSettings.googleClientId
-            );
-            const response = await requestUrl({
-                url,
-                method: method,
-                headers: {
-                    ...headers,
-                    'Authorization': `Bearer ${accessToken}`,
-                },
-                throw: false,
-                ...options
-            });
-            debugLogger.api(`Response status: ${response.status}`);
-
-            if (response.status >= 400) {
-                let errorMessage = `YouTube API request failed (${response.status})`;
-                if (isRecord(response.json)
-                    && isRecord(response.json.error)
-                    && typeof response.json.error.message === 'string') {
-                    errorMessage = response.json.error.message;
-                }
-                throw new Error(errorMessage);
-            }
-
-            return response;
-        } catch (error: unknown) {
-            debugLogger.error('API request failed:', error);
-            new Notice("YouTube API request failed: " + getErrorMessage(error));
-            throw error;
-        }
+        return this.client.request(method, url, { ...options, headers });
     }
 
     async fetchLikedVideos(limit = 50, pageToken?: string): Promise<YouTubeVideosResponse> {
         debugLogger.api(`Fetching liked videos - limit: ${limit}, pageToken: ${pageToken || 'none'}`);
-        let url = BASE_URL + 'videos?'
+        let url = 'videos?'
             + 'part=snippet,contentDetails,statistics'
             + `&maxResults=${limit}`
             + '&myRating=like';
@@ -681,7 +572,7 @@ export class LikedVideoApi {
     }
 
     async fetchPlaylists(): Promise<unknown> {
-        const url = BASE_URL + 'playlists?'
+        const url = 'playlists?'
             + 'part=snippet,contentDetails'
             + '&maxResults=5'
             + '&mine=true';
@@ -713,7 +604,7 @@ export class LikedVideoApi {
     }
 
     async fetchTotalLikedVideoCount(): Promise<number> {
-        const url = BASE_URL + 'videos?'
+        const url = 'videos?'
             + 'part=snippet,statistics'
             + '&maxResults=1'
             + '&myRating=like';
@@ -723,14 +614,14 @@ export class LikedVideoApi {
     }
 
     async likeVideo(videoId: string): Promise<void> {
-        const url = BASE_URL + 'videos/rate?id=' + videoId + '&rating=like';
+        const url = 'videos/rate?id=' + videoId + '&rating=like';
         await this.sendRequest('POST', url, {
             'Content-Type': 'application/json'
         });
     }
 
     async unlikeVideo(videoId: string): Promise<void> {
-        const url = BASE_URL + 'videos/rate?id=' + videoId + '&rating=none';
+        const url = 'videos/rate?id=' + videoId + '&rating=none';
         await this.sendRequest('POST', url, {
             'Content-Type': 'application/json'
         });
@@ -744,7 +635,7 @@ export class LikedVideoApi {
         try {
             debugLogger.api('Fetching video categories for US region');
 
-            const url = BASE_URL + 'videoCategories?part=snippet&regionCode=US';
+            const url = 'videoCategories?part=snippet&regionCode=US';
             const response = await this.sendRequest('GET', url, {});
             const data: YoutubeCategoriesResponse = response.json;
 

@@ -1,9 +1,5 @@
-import { requestUrl } from "obsidian";
-import type { RequestUrlResponse } from "obsidian";
-import { getValidAccessToken } from "../auth";
-import type { ObsidianGoogleLikedVideoSettings } from "../types";
+import { YouTubeApiClient, YouTubeRequestError } from "./youtubeApiClient";
 
-const YOUTUBE_API_BASE_URL = "https://youtube.googleapis.com/youtube/v3/";
 export const COMMENT_LIMIT = 30;
 
 type JsonRecord = Record<string, unknown>;
@@ -90,54 +86,11 @@ function parseCommentThread(value: unknown): VideoComment | null {
 	};
 }
 
-function readApiErrorReason(value: unknown): string | undefined {
-	if (!isRecord(value) || !isRecord(value.error)) return undefined;
-	const errors = value.error.errors;
-	if (!Array.isArray(errors)) return undefined;
-	for (const error of errors) {
-		if (isRecord(error)) {
-			const reason = readString(error, "reason");
-			if (reason) return reason;
-		}
-	}
-	return undefined;
-}
-
-function createAbortError(): DOMException {
-	return new DOMException("Request aborted", "AbortError");
-}
-
-function requestComments(url: URL, accessToken: string, signal: AbortSignal): Promise<RequestUrlResponse> {
-	if (signal.aborted) return Promise.reject(createAbortError());
-
-	const request = requestUrl({
-		url: url.toString(),
-		method: "GET",
-		headers: { Authorization: `Bearer ${accessToken}` },
-		throw: false,
-	});
-
-	return new Promise((resolve, reject) => {
-		const abort = () => reject(createAbortError());
-		signal.addEventListener("abort", abort, { once: true });
-		void request.then(
-			(response) => {
-				signal.removeEventListener("abort", abort);
-				resolve(response);
-			},
-			(error: unknown) => {
-				signal.removeEventListener("abort", abort);
-				reject(error instanceof Error ? error : new Error("YouTube request failed"));
-			},
-		);
-	});
-}
-
 export class CommentService {
 	private myChannelIdPromise: Promise<string | null> | null = null;
 	private identityController: AbortController | null = null;
 
-	constructor(private readonly settings: ObsidianGoogleLikedVideoSettings) {}
+	constructor(private readonly client: YouTubeApiClient) {}
 
 	resetIdentityCache(): void {
 		this.identityController?.abort();
@@ -169,13 +122,14 @@ export class CommentService {
 	}
 
 	private async fetchTopLevelComments(videoId: string, signal: AbortSignal): Promise<readonly VideoComment[]> {
-		const url = new URL(YOUTUBE_API_BASE_URL + "commentThreads");
-		url.searchParams.set("part", "snippet");
-		url.searchParams.set("videoId", videoId);
-		url.searchParams.set("order", "relevance");
-		url.searchParams.set("maxResults", String(COMMENT_LIMIT));
-		url.searchParams.set("textFormat", "plainText");
-		const body = await this.get(url, signal);
+		const params = new URLSearchParams({
+			part: "snippet",
+			videoId,
+			order: "relevance",
+			maxResults: String(COMMENT_LIMIT),
+			textFormat: "plainText",
+		});
+		const body = await this.get(`commentThreads?${params.toString()}`, signal);
 		if (!isRecord(body) || !Array.isArray(body.items)) {
 			throw new CommentServiceError("invalid-response", "YouTube returned an invalid comments response.");
 		}
@@ -209,10 +163,8 @@ export class CommentService {
 	}
 
 	private async fetchMyChannelId(signal: AbortSignal): Promise<string | null> {
-		const url = new URL(YOUTUBE_API_BASE_URL + "channels");
-		url.searchParams.set("part", "id");
-		url.searchParams.set("mine", "true");
-		const body = await this.get(url, signal);
+		const params = new URLSearchParams({ part: "id", mine: "true" });
+		const body = await this.get(`channels?${params.toString()}`, signal);
 		if (!isRecord(body) || !Array.isArray(body.items)) {
 			throw new CommentServiceError("invalid-response", "YouTube returned an invalid channel response.");
 		}
@@ -225,28 +177,24 @@ export class CommentService {
 		return null;
 	}
 
-	private async get(url: URL, signal: AbortSignal): Promise<unknown> {
-		const accessToken = await getValidAccessToken(this.settings.googleClientId);
-		let response: RequestUrlResponse;
+	private async get(path: string, signal: AbortSignal): Promise<unknown> {
 		try {
-			response = await requestComments(url, accessToken, signal);
+			return (await this.client.request("GET", path, { signal })).json;
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "AbortError") throw error;
+			if (error instanceof YouTubeRequestError) {
+				if (error.reasons.includes("commentsDisabled")) {
+					throw new CommentServiceError("comments-disabled", "Comments are disabled for this video.");
+				}
+				if (error.status === 404) {
+					throw new CommentServiceError("not-found", "This video is no longer available.");
+				}
+				if (error.status === 403) {
+					throw new CommentServiceError("forbidden", "YouTube could not return comments. Check your connection or API quota.");
+				}
+				throw new CommentServiceError("network", error.message);
+			}
 			throw new CommentServiceError("network", "Could not connect to YouTube.");
 		}
-
-		const body: unknown = response.json;
-		if (response.status >= 200 && response.status < 300) return body;
-		const reason = readApiErrorReason(body);
-		if (reason === "commentsDisabled") {
-			throw new CommentServiceError("comments-disabled", "Comments are disabled for this video.");
-		}
-		if (response.status === 404) {
-			throw new CommentServiceError("not-found", "This video is no longer available.");
-		}
-		if (response.status === 403) {
-			throw new CommentServiceError("forbidden", "YouTube could not return comments. Check your connection or API quota.");
-		}
-		throw new CommentServiceError("network", `YouTube request failed (${response.status}).`);
 	}
 }

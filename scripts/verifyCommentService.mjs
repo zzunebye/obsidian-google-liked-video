@@ -11,7 +11,10 @@ const outputPath = path.join(outputDirectory, 'comment-service-verification.cjs'
 
 await build({
 	stdin: {
-		contents: `export { CommentService, CommentServiceError } from './src/services/commentService.ts';`,
+		contents: `
+			export { CommentService, CommentServiceError } from './src/services/commentService.ts';
+			export { YouTubeApiClient } from './src/services/youtubeApiClient.ts';
+		`,
 		resolveDir: process.cwd(),
 		sourcefile: 'comment-service-verification-entry.ts',
 	},
@@ -26,14 +29,14 @@ await build({
 				path: 'obsidian',
 				namespace: 'verification',
 			}));
-			builder.onResolve({ filter: /^\.\.\/auth$/ }, () => ({
-				path: 'auth',
+			builder.onResolve({ filter: /^src\/debug$/ }, () => ({
+				path: 'debug',
 				namespace: 'verification',
 			}));
 			builder.onLoad({ filter: /.*/, namespace: 'verification' }, (args) => ({
 				contents: args.path === 'obsidian'
 					? `export const requestUrl = (request) => globalThis.requestUrl(request);`
-					: `export const getValidAccessToken = async () => 'access-token';`,
+					: `export const debugLogger = { api() {} };`,
 				loader: 'js',
 			}));
 		},
@@ -41,7 +44,7 @@ await build({
 });
 
 const require = createRequire(import.meta.url);
-const { CommentService, CommentServiceError } = require(outputPath);
+const { CommentService, CommentServiceError, YouTubeApiClient } = require(outputPath);
 const requests = [];
 let commentsResponse = {
 	status: 200,
@@ -74,8 +77,12 @@ globalThis.requestUrl = async (request) => {
 	}
 	return commentsResponse;
 };
+globalThis.window = {
+	setTimeout: globalThis.setTimeout.bind(globalThis),
+	clearTimeout: globalThis.clearTimeout.bind(globalThis),
+};
 
-const service = new CommentService({ googleClientId: 'client-id' });
+const service = new CommentService(new YouTubeApiClient(async () => 'access-token'));
 const result = await service.fetchVideoComments('video-id', new AbortController().signal);
 assert.equal(result.comments.length, 1);
 assert.equal(result.comments[0].id, 'comment-id');

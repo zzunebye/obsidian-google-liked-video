@@ -10,13 +10,27 @@ interface ServerSession {
 
 let serverSession: ServerSession | undefined;
 let serverSessionClose = Promise.resolve();
+let googleAuthVersion = 0;
+let latestRefreshId = 0;
+let activeRefresh: {
+	clientId: string;
+	refreshToken: string;
+	clientSecret: string;
+	promise: Promise<GoogleRefreshTokenResponse>;
+} | null = null;
 
 const PORT = 42813;
 const AUTH_REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`;
+const REFRESH_TIMEOUT_MS = 90000;
 
 type GoogleOAuthTokenResponse = {
 	readonly access_token: string;
 	readonly refresh_token: string;
+	readonly expires_in: number;
+};
+
+type GoogleRefreshTokenResponse = {
+	readonly access_token: string;
 	readonly expires_in: number;
 };
 
@@ -29,6 +43,23 @@ function isGoogleOAuthTokenResponse(value: unknown): value is GoogleOAuthTokenRe
 		&& typeof value.access_token === 'string'
 		&& typeof value.refresh_token === 'string'
 		&& typeof value.expires_in === 'number';
+}
+
+function isGoogleRefreshTokenResponse(value: unknown): value is GoogleRefreshTokenResponse {
+	return isRecord(value)
+		&& typeof value.access_token === 'string'
+		&& value.access_token.length > 0
+		&& typeof value.expires_in === 'number'
+		&& Number.isFinite(value.expires_in)
+		&& value.expires_in > 0;
+}
+
+function invalidateGoogleAuth(): void {
+	googleAuthVersion += 1;
+	latestRefreshId += 1;
+	googleTokenStorageService.setRefreshToken("");
+	googleTokenStorageService.setAccessToken("");
+	localStorageService.setAccessTokenExpirationTime(0);
 }
 
 function closeServerSession(): Promise<void> {
@@ -63,9 +94,7 @@ export async function handleGoogleLogin(
 
 	await serverSessionClose;
 
-    googleTokenStorageService.setRefreshToken("");
-    googleTokenStorageService.setAccessToken("");
-    localStorageService.setAccessTokenExpirationTime(0);
+	invalidateGoogleAuth();
 
     const userClientID = pluginSettings.googleClientId;
     const userClientSecret = googleTokenStorageService.getClientSecret();
@@ -146,28 +175,24 @@ export async function handleGoogleLogout(
     pluginSettings: ObsidianGoogleLikedVideoSettings,
     onSuccess: () => void,
     onError: () => void,
-) {
+): Promise<void> {
     if (!Platform.isDesktop) {
         new Notice("Can't use this OAuth method on this device");
         return;
     }
 
     const accessToken = googleTokenStorageService.getAccessToken();
-    if (accessToken) {
-        const success = await revokeGoogleToken(accessToken);
-        googleTokenStorageService.setRefreshToken("");
-        googleTokenStorageService.setAccessToken("");
-        localStorageService.setAccessTokenExpirationTime(0);
-        localStorageService.setLikedVideos([]);
-        if (success) {
-            onSuccess();
-        } else {
-            onError();
-        }
+    const success = accessToken ? await revokeGoogleToken(accessToken) : true;
+    invalidateGoogleAuth();
+    localStorageService.setLikedVideos([]);
+    if (success) {
+        onSuccess();
+    } else {
+        onError();
     }
 }
 
-export async function revokeGoogleToken(token: string) {
+export async function revokeGoogleToken(token: string): Promise<boolean> {
     const revokeUrl = `https://oauth2.googleapis.com/revoke?token=${token}`;
     const response = await requestUrl({
         url: revokeUrl,
@@ -192,31 +217,61 @@ export async function refreshAccessToken(userClientId: string)
     const userClientSecret = googleTokenStorageService.getClientSecret();
 
     if (!refreshToken || refreshToken == "") {
-        new Notice("Refresh token for Google API is missing or expired");
         throw new Error("Refresh token for Google API is missing or expired");
     }
+	const clientId = userClientId.trim();
+	if (activeRefresh
+		&& activeRefresh.clientId === clientId
+		&& activeRefresh.refreshToken === refreshToken
+		&& activeRefresh.clientSecret === userClientSecret) {
+		return activeRefresh.promise;
+	}
+
+	const authVersion = googleAuthVersion;
+	const refreshId = ++latestRefreshId;
 
     const refreshTokenRequestBody = {
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        client_id: userClientId,
+        client_id: clientId,
         client_secret: userClientSecret,
     }
 
-    const response = await requestUrl({
-        url: 'https://oauth2.googleapis.com/token',
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(refreshTokenRequestBody),
-    });
-
-    const token: { access_token: string, expires_in: number } = response.json;
-
-    googleTokenStorageService.setAccessToken(token.access_token);
-    localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
-
-
-    return token;
+	let timeoutId: number | undefined;
+	const request = requestUrl({
+		url: 'https://oauth2.googleapis.com/token',
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(refreshTokenRequestBody),
+		throw: false,
+	});
+	const timeout = new Promise<never>((_, reject) => {
+		timeoutId = window.setTimeout(() => reject(new Error('Google token refresh timed out')), REFRESH_TIMEOUT_MS);
+	});
+	const refresh = (async (): Promise<GoogleRefreshTokenResponse> => {
+		try {
+			const response = await Promise.race([request, timeout]);
+			if (response.status >= 400) throw new Error(`Google token refresh failed (${response.status})`);
+			const token: unknown = response.json;
+			if (!isGoogleRefreshTokenResponse(token)) throw new Error('Google returned an invalid token response');
+			if (googleAuthVersion !== authVersion
+				|| latestRefreshId !== refreshId
+				|| googleTokenStorageService.getRefreshToken() !== refreshToken
+				|| googleTokenStorageService.getClientSecret() !== userClientSecret) {
+				throw new Error('Google authentication changed during token refresh');
+			}
+			googleTokenStorageService.setAccessToken(token.access_token);
+			localStorageService.setAccessTokenExpirationTime(Date.now() + token.expires_in * 1000);
+			return token;
+		} finally {
+			if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+		}
+	})();
+	const trackedRefresh = refresh.finally(() => {
+		if (activeRefresh?.promise === trackedRefresh) activeRefresh = null;
+	});
+	activeRefresh = { clientId, refreshToken, clientSecret: userClientSecret, promise: trackedRefresh };
+	return trackedRefresh;
 }
 
 export async function getValidAccessToken(userClientId: string): Promise<string> {
@@ -232,20 +287,6 @@ export async function getValidAccessToken(userClientId: string): Promise<string>
     if (!accessToken) {
         const token = await refreshAccessToken(userClientId);
         return token.access_token;
-    }
-
-    return accessToken;
-}
-
-
-export function getGoogleAccessTokenFromLocal(): string {
-    const accessToken = googleTokenStorageService.getAccessToken();
-    /// Check if the access token is set
-    if (!accessToken || accessToken == "") {
-        new Notice(
-            "Access token for Google API is missing or expired"
-        );
-        return "";
     }
 
     return accessToken;

@@ -6,6 +6,7 @@ import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlayl
 import { PlaylistVideosPane, VIEW_TYPE_PLAYLIST_VIDEOS } from 'src/views/PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from 'src/views/SubscriptionPane';
 import { LikedVideoApi, PlaylistApi } from './api';
+import { getValidAccessToken } from './auth';
 import { localStorageService } from './storage';
 import { debugLogger } from './debug';
 import { UI_TEXT } from './constants/uiText';
@@ -26,6 +27,7 @@ import { SubscriptionService } from './services/subscriptionService';
 import { SubscriptionStorageService } from './services/subscriptionStorageService';
 import { vaultLocalStorageService } from './services/vaultLocalStorageService';
 import { VideoNoteIndexService } from './services/videoNoteIndexService';
+import { YouTubeApiClient } from './services/youtubeApiClient';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -94,11 +96,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			debugLogger.error('[LikedVideoStorage] Failed to save liked-videos.json:', error);
 			new Notice('Geulo: Could not save the liked video list. Recent changes are only in memory. Check disk access before closing Obsidian.', 10000);
 		});
-		this.likedVideoApi = new LikedVideoApi(this.settings);
-		this.playlistApi = new PlaylistApi(this.settings);
-		this.commentService = new CommentService(this.settings);
+		const youtubeApiClient = new YouTubeApiClient(
+			() => getValidAccessToken(this.settings.googleClientId),
+		);
+		this.likedVideoApi = new LikedVideoApi(youtubeApiClient);
+		this.playlistApi = new PlaylistApi(youtubeApiClient);
+		this.commentService = new CommentService(youtubeApiClient);
 		const subscriptionStorage = new SubscriptionStorageService(this.app.vault.adapter, manifestDir);
-		this.subscriptionService = new SubscriptionService(this.settings, subscriptionStorage);
+		this.subscriptionService = new SubscriptionService(youtubeApiClient, subscriptionStorage);
 		try {
 			await this.subscriptionService.initialize();
 		} catch (error) {
@@ -443,6 +448,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		} catch (error) {
 			debugLogger.error('Auto-fetch failed:', error);
 			console.error('Auto-fetch failed:', error);
+			new Notice(`Geulo: Could not fetch liked videos. ${error instanceof Error ? error.message : 'Please try again.'}`);
 		} finally {
 			debugLogger.timeEnd('auto-fetch');
 			this.setFetchStatus('idle');

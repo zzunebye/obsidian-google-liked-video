@@ -1,14 +1,11 @@
-import { requestUrl } from "obsidian";
-import { getValidAccessToken } from "src/auth";
 import type {
-	ObsidianGoogleLikedVideoSettings,
 	SubscriptionChannel,
 	YouTubeVideo,
 } from "src/types";
 import { debugLogger } from "src/debug";
 import { SubscriptionStorageService } from "./subscriptionStorageService";
+import { YouTubeApiClient, YouTubeRequestError } from "./youtubeApiClient";
 
-const BASE_URL = "https://youtube.googleapis.com/youtube/v3/";
 const CHANNEL_BATCH_SIZE = 50;
 const VIDEO_BATCH_SIZE = 50;
 const RECENT_VIDEOS_PER_CHANNEL = 5;
@@ -115,36 +112,29 @@ class SubscriptionRequestError extends Error {
 	}
 }
 
-function getYouTubeErrorReason(value: unknown): string | null {
-	if (typeof value !== "object" || value === null) return null;
-	const error = (value as Record<string, unknown>)["error"];
-	if (typeof error !== "object" || error === null) return null;
-	const errors = (error as Record<string, unknown>)["errors"];
-	if (!Array.isArray(errors)) return null;
-	const firstError = errors[0];
-	return typeof firstError === "object" && firstError !== null && "reason" in firstError
-		&& typeof firstError.reason === "string"
-		? firstError.reason
-		: null;
+function hasReason(error: YouTubeRequestError, ...reasons: string[]): boolean {
+	return error.reasons.some((reason) => reasons.includes(reason));
 }
 
-function getRequestFailure(status: number, body: unknown): SubscriptionFailureDetail {
-	const reason = getYouTubeErrorReason(body);
-	if (status === 401) return { message: "Google authentication expired.", retryable: true };
-	if (status === 404 || reason === "playlistNotFound") {
+function getRequestFailure(error: YouTubeRequestError): SubscriptionFailureDetail {
+	if (error.kind === "auth") return { message: "Google authentication expired.", retryable: true };
+	if (error.kind === "network" || error.kind === "timeout") {
+		return { message: error.message, retryable: true };
+	}
+	if (error.status === 404 || hasReason(error, "playlistNotFound")) {
 		return { message: "The channel's uploads playlist is unavailable.", retryable: false };
 	}
-	if (status === 403) {
-		const quotaExceeded = reason === "quotaExceeded" || reason === "dailyLimitExceeded";
+	if (error.status === 403) {
+		const quotaExceeded = hasReason(error, "quotaExceeded", "dailyLimitExceeded");
 		return {
 			message: quotaExceeded ? "YouTube API quota is currently exhausted." : "YouTube denied access to the uploads playlist.",
 			retryable: quotaExceeded,
 		};
 	}
-	if (status === 429 || status >= 500) {
+	if (error.status === 429 || (error.status !== undefined && error.status >= 500)) {
 		return { message: "YouTube is temporarily unavailable.", retryable: true };
 	}
-	return { message: `YouTube API request failed (${status}).`, retryable: false };
+	return { message: error.message, retryable: false };
 }
 
 function getFailureDetail(error: unknown): SubscriptionFailureDetail {
@@ -157,14 +147,16 @@ function getFailureDetail(error: unknown): SubscriptionFailureDetail {
 	};
 }
 
-function getDeleteFailure(status: number, body: unknown): SubscriptionFailureDetail {
-	const reason = getYouTubeErrorReason(body);
-	if (status === 401) return { message: "Google authentication expired.", retryable: true };
-	if (status === 404 || reason === "subscriptionNotFound") {
+function getDeleteFailure(error: YouTubeRequestError): SubscriptionFailureDetail {
+	if (error.kind === "auth") return { message: "Google authentication expired.", retryable: true };
+	if (error.kind === "network" || error.kind === "timeout") {
+		return { message: error.message, retryable: true };
+	}
+	if (error.status === 404 || hasReason(error, "subscriptionNotFound")) {
 		return { message: "The YouTube subscription could not be found.", retryable: false };
 	}
-	if (status === 403) {
-		const quotaExceeded = reason === "quotaExceeded" || reason === "dailyLimitExceeded";
+	if (error.status === 403) {
+		const quotaExceeded = hasReason(error, "quotaExceeded", "dailyLimitExceeded");
 		return {
 			message: quotaExceeded
 				? "YouTube API quota is currently exhausted."
@@ -172,18 +164,19 @@ function getDeleteFailure(status: number, body: unknown): SubscriptionFailureDet
 			retryable: quotaExceeded,
 		};
 	}
-	if (status === 429 || status >= 500) {
+	if (error.status === 429 || (error.status !== undefined && error.status >= 500)) {
 		return { message: "YouTube is temporarily unavailable.", retryable: true };
 	}
-	return { message: `YouTube API request failed (${status}).`, retryable: false };
+	return { message: error.message, retryable: false };
 }
 
 export class SubscriptionService {
 	private snapshot: SubscriptionSnapshot | null = null;
-	private activeRequest: Promise<SubscriptionSnapshot> | null = null;
+	private activeRequest: { promise: Promise<SubscriptionSnapshot>; signal?: AbortSignal } | null = null;
+	private commitQueue: Promise<void> = Promise.resolve();
 
 	constructor(
-		private readonly settings: ObsidianGoogleLikedVideoSettings,
+		private readonly client: YouTubeApiClient,
 		private readonly storage: SubscriptionStorageService,
 	) {}
 
@@ -201,12 +194,12 @@ export class SubscriptionService {
 	}
 
 	fetch(options: FetchOptions = {}): Promise<SubscriptionSnapshot> {
-		if (this.activeRequest) return this.activeRequest;
+		if (this.activeRequest && !this.activeRequest.signal?.aborted) return this.activeRequest.promise;
 
 		const request = this.fetchInternal(options).finally(() => {
-			if (this.activeRequest === request) this.activeRequest = null;
+			if (this.activeRequest?.promise === request) this.activeRequest = null;
 		});
-		this.activeRequest = request;
+		this.activeRequest = { promise: request, signal: options.signal };
 		return request;
 	}
 
@@ -229,6 +222,7 @@ export class SubscriptionService {
 			channels: retryableFailures,
 			commit: false,
 		});
+		throwIfAborted(options.signal);
 		const videosById = new Map(current.videos.map((video) => [video.id, video]));
 		retried.videos.forEach((video) => videosById.set(video.id, video));
 		const failureDetails = { ...retried.failureDetails };
@@ -286,23 +280,17 @@ export class SubscriptionService {
 		return { snapshot: nextSnapshot, succeededChannels, failedChannels };
 	}
 
-	private async request<T>(path: string, accessToken: string, signal?: AbortSignal): Promise<T> {
-		throwIfAborted(signal);
-		const response = await requestUrl({
-			url: BASE_URL + path,
-			method: "GET",
-			headers: { Authorization: `Bearer ${accessToken}` },
-			throw: false,
-		});
-		if (response.status >= 400) {
-			const failure = getRequestFailure(response.status, response.json);
+	private async request<T>(path: string, signal?: AbortSignal): Promise<T> {
+		try {
+			return (await this.client.request("GET", path, { signal })).json as T;
+		} catch (error) {
+			if (!(error instanceof YouTubeRequestError)) throw error;
+			const failure = getRequestFailure(error);
 			throw new SubscriptionRequestError(failure.message, failure.retryable);
 		}
-		return response.json as T;
 	}
 
 	private async findSubscriptionId(channelId: string): Promise<string | null> {
-		const accessToken = await getValidAccessToken(this.settings.googleClientId);
 		const params = new URLSearchParams({
 			part: "id,snippet",
 			mine: "true",
@@ -311,31 +299,25 @@ export class SubscriptionService {
 		});
 		const data = await this.request<ListResponse<SubscriptionItem>>(
 			`subscriptions?${params.toString()}`,
-			accessToken,
 		);
 		return data.items?.find((item) => item.snippet?.resourceId?.channelId === channelId)?.id ?? null;
 	}
 
 	private async deleteSubscription(subscriptionId: string): Promise<void> {
-		const accessToken = await getValidAccessToken(this.settings.googleClientId);
 		const params = new URLSearchParams({ id: subscriptionId });
-		const response = await requestUrl({
-			url: `${BASE_URL}subscriptions?${params.toString()}`,
-			method: "DELETE",
-			headers: { Authorization: `Bearer ${accessToken}` },
-			throw: false,
-		});
-		if (response.status >= 400) {
-			const failure = getDeleteFailure(response.status, response.json);
+		try {
+			await this.client.request("DELETE", `subscriptions?${params.toString()}`);
+		} catch (error) {
+			if (!(error instanceof YouTubeRequestError)) throw error;
+			const failure = getDeleteFailure(error);
 			throw new SubscriptionRequestError(failure.message, failure.retryable);
 		}
 	}
 
 	private async fetchInternal(options: FetchOptions): Promise<SubscriptionSnapshot> {
 		throwIfAborted(options.signal);
-		const accessToken = await getValidAccessToken(this.settings.googleClientId);
+		const channels = options.channels ?? await this.fetchChannels(options.signal);
 		throwIfAborted(options.signal);
-		const channels = options.channels ?? await this.fetchChannels(accessToken, options.signal);
 		options.onProgress?.({ completedChannels: 0, totalChannels: channels.length });
 
 		const videoIds = new Set<string>();
@@ -345,7 +327,7 @@ export class SubscriptionService {
 		await forEachConcurrent(channels, CHANNEL_UPLOADS_CONCURRENCY, async (channel) => {
 			throwIfAborted(options.signal);
 			try {
-				const ids = await this.fetchRecentVideoIds(channel, accessToken, options.signal);
+				const ids = await this.fetchRecentVideoIds(channel, options.signal);
 				ids.forEach((id) => videoIds.add(id));
 			} catch (error) {
 				if (options.signal?.aborted) throw error;
@@ -353,13 +335,15 @@ export class SubscriptionService {
 				failureDetails[channel.id] = getFailureDetail(error);
 				debugLogger.warn(`Failed to fetch subscription channel ${channel.id}:`, error);
 			} finally {
-				completedChannels += 1;
-				options.onProgress?.({ completedChannels, totalChannels: channels.length });
+				if (!options.signal?.aborted) {
+					completedChannels += 1;
+					options.onProgress?.({ completedChannels, totalChannels: channels.length });
+				}
 			}
 		});
 		throwIfAborted(options.signal);
 
-		const videos = await this.fetchVideoDetails([...videoIds], accessToken, options.signal);
+		const videos = await this.fetchVideoDetails([...videoIds], options.signal);
 		if (options.channels === undefined && this.snapshot && failedChannels.length > 0) {
 			const failedChannelIds = new Set(failedChannels.map((channel) => channel.id));
 			for (const video of this.snapshot.videos) {
@@ -379,16 +363,22 @@ export class SubscriptionService {
 			failureDetails,
 			updatedAt: Date.now(),
 		};
-		if (options.commit !== false) await this.commitSnapshot(nextSnapshot);
+		throwIfAborted(options.signal);
+		if (options.commit !== false) await this.commitSnapshot(nextSnapshot, options.signal);
 		return nextSnapshot;
 	}
 
-	private async commitSnapshot(snapshot: SubscriptionSnapshot): Promise<void> {
-		await this.storage.save(snapshot);
-		this.snapshot = snapshot;
+	private async commitSnapshot(snapshot: SubscriptionSnapshot, signal?: AbortSignal): Promise<void> {
+		const commit = this.commitQueue.then(async () => {
+			throwIfAborted(signal);
+			await this.storage.save(snapshot);
+			if (!signal?.aborted) this.snapshot = snapshot;
+		});
+		this.commitQueue = commit.catch(() => {});
+		await commit;
 	}
 
-	private async fetchChannels(accessToken: string, signal?: AbortSignal): Promise<SubscriptionChannel[]> {
+	private async fetchChannels(signal?: AbortSignal): Promise<SubscriptionChannel[]> {
 		const subscriptions: Array<{
 			id: string;
 			title: string;
@@ -405,7 +395,6 @@ export class SubscriptionService {
 			if (pageToken) params.set("pageToken", pageToken);
 			const data = await this.request<ListResponse<SubscriptionItem>>(
 				`subscriptions?${params.toString()}`,
-				accessToken,
 				signal,
 			);
 			for (const item of data.items ?? []) {
@@ -432,7 +421,6 @@ export class SubscriptionService {
 			});
 			const data = await this.request<ListResponse<ChannelItem>>(
 				`channels?${params.toString()}`,
-				accessToken,
 				signal,
 			);
 			for (const item of data.items ?? []) {
@@ -449,7 +437,6 @@ export class SubscriptionService {
 
 	private async fetchRecentVideoIds(
 		channel: SubscriptionChannel,
-		accessToken: string,
 		signal?: AbortSignal,
 	): Promise<string[]> {
 		const params = new URLSearchParams({
@@ -459,7 +446,6 @@ export class SubscriptionService {
 		});
 		const data = await this.request<ListResponse<PlaylistItem>>(
 			`playlistItems?${params.toString()}`,
-			accessToken,
 			signal,
 		);
 		return (data.items ?? []).flatMap((item) => {
@@ -470,7 +456,6 @@ export class SubscriptionService {
 
 	private async fetchVideoDetails(
 		ids: string[],
-		accessToken: string,
 		signal?: AbortSignal,
 	): Promise<YouTubeVideo[]> {
 		const videos: YouTubeVideo[] = [];
@@ -483,7 +468,6 @@ export class SubscriptionService {
 			});
 			const data = await this.request<ListResponse<YouTubeVideo>>(
 				`videos?${params.toString()}`,
-				accessToken,
 				signal,
 			);
 			for (const video of data.items ?? []) {
