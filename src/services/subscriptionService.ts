@@ -204,6 +204,8 @@ export class SubscriptionService {
 	}
 
 	async retryFailed(options: Omit<FetchOptions, "channels"> = {}): Promise<SubscriptionSnapshot> {
+		await this.commitQueue;
+		throwIfAborted(options.signal);
 		const current = this.snapshot;
 		if (!current || current.failedChannels.length === 0) {
 			return current ?? this.fetch(options);
@@ -244,6 +246,7 @@ export class SubscriptionService {
 	}
 
 	async unsubscribeChannels(channels: SubscriptionChannel[]): Promise<UnsubscribeResult> {
+		await this.commitQueue;
 		const current = this.snapshot;
 		if (!current) throw new Error("Subscriptions have not been loaded.");
 
@@ -315,6 +318,7 @@ export class SubscriptionService {
 	}
 
 	private async fetchInternal(options: FetchOptions): Promise<SubscriptionSnapshot> {
+		await this.commitQueue;
 		throwIfAborted(options.signal);
 		const channels = options.channels ?? await this.fetchChannels(options.signal);
 		throwIfAborted(options.signal);
@@ -372,7 +376,7 @@ export class SubscriptionService {
 		const commit = this.commitQueue.then(async () => {
 			throwIfAborted(signal);
 			await this.storage.save(snapshot);
-			if (!signal?.aborted) this.snapshot = snapshot;
+			this.snapshot = snapshot;
 		});
 		this.commitQueue = commit.catch(() => {});
 		await commit;

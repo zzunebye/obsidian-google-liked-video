@@ -126,6 +126,62 @@ export async function requestUrl(options) {
 		assert.equal(oldProgress.length, progressCountAfterAbort);
 		assert.equal(service.getSnapshot().channels[0].id, 'new-channel');
 	});
+	await check('keep memory and later operations aligned when cancellation happens during persistence', async () => {
+		let releaseFirstSave;
+		let markFirstSaveStarted;
+		let resolveNextSubscriptions;
+		let persisted = structuredClone(snapshot);
+		let saveCount = 0;
+		const firstSaveStarted = new Promise((resolve) => { markFirstSaveStarted = resolve; });
+		const firstSaveGate = new Promise((resolve) => { releaseFirstSave = resolve; });
+		const nextSubscriptions = new Promise((resolve) => { resolveNextSubscriptions = resolve; });
+		const controlledStorage = {
+			load: async () => structuredClone(persisted),
+			save: async (next) => {
+				saveCount += 1;
+				if (saveCount === 1) {
+					markFirstSaveStarted();
+					await firstSaveGate;
+				}
+				persisted = structuredClone(next);
+			},
+		};
+		const service = new SubscriptionService(youtubeApiClient, controlledStorage);
+		await service.initialize();
+		setResponses([
+			{ path: '/subscriptions?', body: { items: [{ id: 'persisted-subscription', snippet: { title: 'Persisted channel', resourceId: { channelId: 'persisted-channel' } } }] } },
+			{ path: '/channels?', body: { items: [{ id: 'persisted-channel', contentDetails: { relatedPlaylists: { uploads: 'persisted-uploads' } } }] } },
+			{ path: '/playlistItems?', body: { items: [] } },
+		]);
+		const stoppedController = new AbortController();
+		const stoppedFetch = service.fetch({ signal: stoppedController.signal });
+		await firstSaveStarted;
+		stoppedController.abort();
+
+		setResponses([
+			{ path: '/subscriptions?', response: nextSubscriptions },
+			{ path: '/channels?', body: { items: [{ id: 'next-channel', contentDetails: { relatedPlaylists: { uploads: 'next-uploads' } } }] } },
+			{ path: '/playlistItems?', body: { items: [] } },
+		]);
+		const nextFetch = service.fetch({ signal: new AbortController().signal });
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(getRequestCount(), 0);
+
+		releaseFirstSave();
+		await stoppedFetch;
+		assert.equal(service.getSnapshot().channels[0].id, 'persisted-channel');
+		assert.deepEqual(service.getSnapshot(), persisted);
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(getRequestCount(), 1);
+
+		resolveNextSubscriptions({
+			status: 200,
+			json: { items: [{ id: 'next-subscription', snippet: { title: 'Next channel', resourceId: { channelId: 'next-channel' } } }] },
+		});
+		const next = await nextFetch;
+		assert.equal(next.channels[0].id, 'next-channel');
+		assert.deepEqual(service.getSnapshot(), persisted);
+	});
 	await check('preserve subscription failure policy from structured YouTube reasons', async () => {
 		setResponses([
 			{ path: '/subscriptions?', body: { items: [{ id: 'subscription', snippet: { title: 'Channel', resourceId: { channelId: 'channel' } } }] } },
