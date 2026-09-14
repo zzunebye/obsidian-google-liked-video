@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { SearchBar } from "src/ui/SearchBar";
 import { VideoCard } from "src/ui/VideoCard";
-import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
+import { classifyVideoContent } from "src/utils/videoUtils";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { OpenYouTubeButton } from "src/ui/OpenYouTubeButton";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
@@ -29,6 +29,7 @@ import type {
 } from "src/types";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { usePlugin } from "../store/pluginContext";
+import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
 
 export type SubscriptionPeriod = "all" | "day" | "week" | "month";
 export type SubscriptionSortOrder = "ASC" | "DESC";
@@ -186,10 +187,10 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			if (channelId !== "all" && video.snippet.channelId !== channelId) return false;
 			if (periodStart !== null && Date.parse(video.snippet.publishedAt) < periodStart) return false;
 
-			const durationSeconds = parseDurationToSeconds(video.contentDetails?.duration) ?? 0;
-			const isShort = durationSeconds > 0 && durationSeconds <= shortVideoMaxDurationSeconds;
-			const isMusic = video.snippet.categoryId === "10";
-			const isRegularVideo = !isShort && !isMusic;
+			const { isShort, isMusic, isRegularVideo } = classifyVideoContent(
+				video,
+				shortVideoMaxDurationSeconds,
+			);
 			if (contentTypes.length > 0 && contentTypes.length < 3) {
 				const contentTypeMatch = (contentTypes.includes("videos") && isRegularVideo)
 					|| (contentTypes.includes("shorts") && isShort)
@@ -248,8 +249,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 	const handleLikeVideo = async (video: YouTubeVideo): Promise<void> => {
 		try {
-			await plugin.likedVideoApi.likeVideo(video.id);
-				localStorageService.restoreLikedVideo(video);
+			await likeVideoAndPersist(plugin.likedVideoApi, video);
 			setLikedVideoIds((current) => new Set(current).add(video.id));
 			new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
 		} catch (likeError) {
@@ -260,8 +260,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 	const handleUnlikeVideo = async (video: YouTubeVideo): Promise<void> => {
 		try {
-			await plugin.likedVideoApi.unlikeVideo(video.id);
-				localStorageService.removeLikedVideo(video.id);
+			await unlikeVideoAndPersist(plugin.likedVideoApi, video.id);
 			setLikedVideoIds((current) => {
 				const next = new Set(current);
 				next.delete(video.id);
