@@ -120,6 +120,12 @@ function segment(start: number, duration: number, text: string): TranscriptSegme
 	return { start, duration, text: text.trim() };
 }
 
+function decodeHtmlEntities(text: string): string {
+	// Escape literal markup so captions stay text during the extra entity decode.
+	const document = new DOMParser().parseFromString(`<body>${text.replace(/</g, "&lt;")}`, "text/html");
+	return document.body.textContent ?? "";
+}
+
 function parseTranscript(text: string): TranscriptSegment[] {
 	if (!text.trim()) {
 		throw new TranscriptServiceError("blocked", "YouTube returned no caption text. Transcript requests may be temporarily blocked. Try again later.");
@@ -152,7 +158,7 @@ function parseTranscript(text: string): TranscriptSegment[] {
 			const content = Array.from(element.childNodes).map((node) =>
 				node.nodeName.toLowerCase() === "br" ? "\n" : node.textContent ?? "",
 			).join("");
-			return segment(Number(start) / (milliseconds ? 1000 : 1), Number(duration) / (milliseconds ? 1000 : 1), content);
+			return segment(Number(start) / (milliseconds ? 1000 : 1), Number(duration) / (milliseconds ? 1000 : 1), decodeHtmlEntities(content));
 		});
 	}
 	segments = segments.filter((entry) => entry.text.length > 0);

@@ -5,6 +5,10 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { build } from 'esbuild';
+import { JSDOM } from 'jsdom';
+
+const dom = new JSDOM();
+globalThis.DOMParser = dom.window.DOMParser;
 
 const outputDirectory = await mkdtemp(path.join(tmpdir(), 'geulo-transcript-service-'));
 const outputPath = path.join(outputDirectory, 'transcript-service.cjs');
@@ -88,6 +92,37 @@ fixture([], response(captionBody), `<script>var ytInitialPlayerResponse = ${JSON
 assert.equal((await service.fetchTranscript(videoId)).segments.length, 2);
 assert.equal(requests.length, 2);
 
+const xmlCases = [
+	{
+		name: 'legacy nested numeric and named HTML entities',
+		xml: '<transcript><text start="1.25" dur="2.4">You&amp;#39;re &amp;quot;ready&amp;quot; &amp;amp; set&amp;nbsp;go &amp;#x1F600;</text></transcript>',
+		text: 'You\'re "ready" & set\u00a0go 😀',
+	},
+	{
+		name: 'literal markup, XML entities and line breaks remain text',
+		xml: '<transcript><text start="1.25" dur="2.4">&lt;script&gt;alert(1)&lt;/script&gt; &amp;lt;img src=x onerror=alert(1)&amp;gt; &lt;/body&gt; &lt;!--keep--&gt;<br/>안녕 &amp; world</text></transcript>',
+		text: '<script>alert(1)</script> <img src=x onerror=alert(1)> </body> <!--keep-->\n안녕 & world',
+	},
+	{
+		name: 'only one additional entity layer is decoded',
+		xml: '<transcript><text start="1.25" dur="2.4">Keep &amp;amp;#39; and &amp;amp;lt;b&amp;amp;gt;</text></transcript>',
+		text: 'Keep &#39; and &lt;b&gt;',
+	},
+	{
+		name: 'srv3 XML retains millisecond timing and joined text',
+		xml: '<timedtext><body><p t="1250" d="2400"><s>It&amp;#39;s</s><s> ready</s><br/>now</p></body></timedtext>',
+		text: 'It\'s ready\nnow',
+	},
+];
+for (const { name, xml, text } of xmlCases) {
+	fixture([makeTrack('en')], response(xml));
+	assert.deepEqual((await service.fetchTranscript(videoId)).segments, [{ start: 1.25, duration: 2.4, text }], name);
+}
+fixture([makeTrack('en')], response({ events: [{ tStartMs: 0, segs: [{ utf8: '&#39; &amp; <b>literal</b>' }] }] }));
+assert.equal((await service.fetchTranscript(videoId)).segments[0].text, '&#39; &amp; <b>literal</b>');
+fixture([makeTrack('en')], response('<transcript><text start="0">broken</transcript>'));
+await assert.rejects(service.fetchTranscript(videoId), rejectsWith('invalid-response'));
+
 fixture([]);
 await assert.rejects(service.fetchTranscript(videoId), rejectsWith('unavailable'));
 fixture([makeTrack('en')], response(''));
@@ -140,5 +175,6 @@ try {
 } finally {
 	globalThis.setTimeout = realSetTimeout;
 }
-console.log('Transcript service: language selection, JSON3 parsing, HTML fallback, request safety, errors, abort and timeout passed.');
-console.log('XML parsing and actual caption fetching require the Obsidian runtime QA.');
+dom.window.close();
+console.log('Transcript service: language selection, JSON3/XML parsing, nested entities, literal markup, HTML fallback, request safety, errors, abort and timeout passed.');
+console.log('Actual caption fetching requires the Obsidian runtime QA.');
