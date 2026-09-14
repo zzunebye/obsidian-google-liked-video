@@ -87,6 +87,17 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 
 ## 6. Motion & Interaction
 
+### Transcript reading
+
+- Liked videos, playlists, and subscriptions share a transcript workspace. The captions button and `Read transcript` card menu open the reader immediately with a loading state, then show the fetched captions. The button shows its text label when the card's details area is at least 380px wide and collapses to an icon on narrower cards, with a single short tooltip.
+- At pane widths of at least 900px the list occupies 40% and the reader 60%. Narrower panes show the reader with a back button. The mounted list retains its filters, pagination, and scroll position; it is inert and hidden from assistive technology while covered.
+- Caption fragments are grouped into paragraphs with their original wording and timing. Sentence endings after 15 seconds, pauses, and a 30-second/500-character bound provide breaks without generating punctuation.
+- Search filters paragraphs and highlights matches. `Copy all` always copies the complete transcript, with an optional timestamp format. `Save as note` uses `Channel Name - Video Title Transcript.md` in the configured video-note folder, starts the body with `# Transcript`, and opens an existing transcript note without overwriting it. Video IDs remain in source links, not note titles.
+- `Video display → Transcript language` chooses the preferred caption language for newly opened readers, defaulting to Obsidian's language. Selection prefers an exact language, then its base language, then English, then the first available track; manual captions win within each match group.
+- `Open transcript in new pane` transfers loaded captions to an independent Obsidian view. Workspace restoration retains the video identity and fetches captions again.
+- On desktop WebViewer, an optional, capability-checked Electron bridge reads the matching video's position and seeks without reloading. Origin and video identity are checked before and inside each request; advertisements are excluded. Other environments retain timestamp URL navigation.
+- Playback highlights the current paragraph with a subtle background only, without a left stripe. Manual scrolling or searching pauses automatic following; `Follow playback` resumes it. Closing a reader cancels its fetch and stops its playback polling.
+
 ### Liked-video browsing
 
 - A labelled native View Mode select inside the Filter box switches Pagination / Infinite scroll; Pagination is the default and the preference is saved locally. It collapses together with the other filters.

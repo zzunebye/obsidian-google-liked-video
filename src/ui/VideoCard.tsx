@@ -15,6 +15,7 @@ import {
 	FileCheck,
 	Bot,
 	ChevronDown,
+	Captions,
 } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal } from "src/ui/VideoInfoModal";
@@ -35,7 +36,7 @@ import { ResponsiveVideoTags } from "./VideoTags";
 import { debugLogger } from "../debug";
 import { VideoCommentsModal } from "./VideoCommentsModal";
 import { AddToPlaylistModal } from "./AddToPlaylistModal";
-import { VideoTranscriptModal } from "./VideoTranscriptModal";
+import { useTranscriptWorkspace } from "./TranscriptWorkspace";
 import { formatVideoCount, formatVideoDuration } from "src/utils/videoUtils";
 
 interface VideoCardProps {
@@ -83,6 +84,7 @@ export const VideoCard = ({
 	onSummarySnapshotChange,
 }: VideoCardProps) => {
 	const plugin = usePlugin();
+	const transcriptWorkspace = useTranscriptWorkspace();
 	const isAIEnabled = plugin.settings?.enableAISummary ?? false;
 	const showVideoTags = plugin.settings?.showVideoTags ?? true;
 	const [localSummaryExpanded, setLocalSummaryExpanded] = useState(false);
@@ -96,6 +98,13 @@ export const VideoCard = ({
 	);
 	const [, setPreviewVersion] = useState(0);
 	const [regenerateTrigger, setRegenerateTrigger] = useState(0);
+	const openTranscript = (trigger: HTMLElement): void => {
+		if (transcriptWorkspace) transcriptWorkspace.openTranscript(videoInfo, trigger);
+		else void plugin.openTranscriptPane(videoInfo).catch(error => {
+			debugLogger.error("[Transcript] Could not open pane", error);
+			new Notice("Could not open the transcript pane.");
+		});
+	};
 
 	const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
 		e.dataTransfer.setData(
@@ -426,13 +435,9 @@ export const VideoCard = ({
 		});
 
 		menu.addItem((item) => {
-			item.setTitle("Fetch transcript");
+			item.setTitle("Read transcript");
 			item.setIcon("captions");
-			item.onClick(() => {
-				new VideoTranscriptModal(plugin.app, videoInfo.id, videoInfo.snippet.title, () => {
-					if (trigger.isConnected) trigger.focus({ preventScroll: true });
-				}).open();
-			});
+			item.onClick(() => openTranscript(trigger));
 		});
 
 		if (isAIEnabled) {
@@ -504,11 +509,12 @@ export const VideoCard = ({
 					)}
 				</div>
 				<div className="video-bottom-row">
-					<p className="video-pulled-at">
-						Pulled at{" "}
-						{moment(videoInfo.pulled_at).format("ll")}
-					</p>
 					<div className="video-statistics">
+						<button type="button" className="video-stat video-stat--button video-stat--transcript" aria-label="Read transcript"
+							onClick={event => { event.preventDefault(); event.stopPropagation(); openTranscript(event.currentTarget); }}>
+							<Captions size={16} aria-hidden="true" />
+							<span className="video-stat__transcript-label">Transcript</span>
+						</button>
 						<div className="video-stat">
 							<Eye size={16} className="video-stat-icon" />
 							<span className="video-stat-count">
@@ -643,7 +649,7 @@ export const VideoCard = ({
 	if (isAIEnabled) {
 		return (
 			<div
-				className={`video-card__container video-card__container--ai ${isSummaryExpanded ? "video-card__container--expanded" : ""}`}
+				className={`video-card__container video-card__container--ai ${isSummaryExpanded ? "video-card__container--expanded" : ""}${transcriptWorkspace?.selectedVideoId === videoInfo.id ? " video-card__container--transcript-selected" : ""}`}
 				onClick={handleCardClick}
 				tabIndex={0}
 				aria-label={`Open ${videoInfo.snippet.title}`}
@@ -718,7 +724,7 @@ export const VideoCard = ({
 
 	return (
 		<div
-			className="video-card__container"
+			className={`video-card__container${transcriptWorkspace?.selectedVideoId === videoInfo.id ? " video-card__container--transcript-selected" : ""}`}
 			onClick={() => onLinkClick(url)}
 			tabIndex={0}
 			aria-label={`Open ${videoInfo.snippet.title}`}

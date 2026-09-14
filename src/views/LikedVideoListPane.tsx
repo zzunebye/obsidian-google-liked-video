@@ -6,6 +6,7 @@ import { YouTubeVideo } from "src/types";
 import GoogleLikedVideoPlugin from "../main";
 import { VideosProvider } from "../store/videoContext";
 import { PluginContext } from "../store/pluginContext";
+import { TranscriptWorkspace } from "src/ui/TranscriptWorkspace";
 interface ILikedVideoListViewPersistedState {
     videos: YouTubeVideo[];
 }
@@ -59,7 +60,7 @@ export class LikedVideoListPane
         this.root.render(
             <StrictMode>
                 <PluginContext.Provider value={this.plugin}>
-                    <VideosProvider videos={this.videos} />
+                    <TranscriptWorkspace label="liked videos"><VideosProvider videos={this.videos} /></TranscriptWorkspace>
                 </PluginContext.Provider>
             </StrictMode>
         );

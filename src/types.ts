@@ -1,5 +1,24 @@
 export type LikedVideoPaginationMode = 'pagination' | 'infinite';
 
+export const TRANSCRIPT_LANGUAGE_OPTIONS: Record<string, string> = {
+	auto: 'Follow Obsidian language',
+	ko: 'Korean (한국어)',
+	en: 'English',
+	ja: 'Japanese (日本語)',
+	'zh-Hans': 'Chinese, simplified (简体中文)',
+	'zh-Hant': 'Chinese, traditional (繁體中文)',
+	es: 'Spanish (Español)',
+	fr: 'French (Français)',
+	de: 'German (Deutsch)',
+	pt: 'Portuguese (Português)',
+	ru: 'Russian (Русский)',
+	hi: 'Hindi (हिन्दी)',
+	ar: 'Arabic (العربية)',
+	id: 'Indonesian (Bahasa Indonesia)',
+	th: 'Thai (ไทย)',
+	vi: 'Vietnamese (Tiếng Việt)',
+};
+
 export const AI_PROVIDERS = ['gemini', 'openrouter'] as const;
 export type AIProvider = typeof AI_PROVIDERS[number];
 
@@ -39,6 +58,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     customTemplate: string;
     openInObsidianWebViewer: boolean;
     openWebViewerInSplitPane: boolean;
+	transcriptLanguage: string;
     showVideoTags: boolean;
     shortVideoMaxDurationSeconds: ShortVideoMaxDurationSeconds;
     enableAISummary: boolean;

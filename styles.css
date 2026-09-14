@@ -1073,6 +1073,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 .video-details {
+	container: geulo-video-details / inline-size;
 	flex: 1;
 	min-width: 0;
 	display: flex;
@@ -1197,7 +1198,7 @@ button.video-tag-chip {
 
 .video-bottom-row {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
 	align-items: center;
 	flex-wrap: wrap;
 	gap: 4px 8px;
@@ -1209,6 +1210,7 @@ button.video-tag-chip {
 
 .video-statistics {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 2px;
 	align-items: center;
 	flex-shrink: 1;
@@ -1261,67 +1263,109 @@ button.video-stat--comment {
 	margin-right: 0;
 }
 
+button.video-stat--transcript {
+	flex: 0 0 auto;
+	gap: 6px;
+	height: 32px;
+	min-width: 32px;
+	padding: 4px 8px;
+	border-radius: 4px;
+}
+
+button.video-stat--transcript:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.video-stat__transcript-label { display: none; }
+@container geulo-video-details (min-width: 380px) {
+	.video-stat__transcript-label { display: inline; }
+}
+
+.is-mobile button.video-stat--transcript { min-width: 44px; height: 44px; }
+
 button.video-stat--button:focus-visible {
 	outline: none;
 	box-shadow: inset 0 0 0 2px var(--interactive-accent);
 }
 
-.geulo-video-transcript-dialog {
-	max-width: calc(100vw - 32px);
-}
-
-.geulo-video-transcript-dialog .modal-content {
-	overflow: hidden;
-}
-
-.geulo-video-transcript-dialog .react-modal-wrapper,
-.video-transcript-modal {
+.view-content.geulo-transcript-host { padding: 0; overflow: hidden; }
+.geulo-transcript-workspace {
+	container: geulo-transcript / inline-size;
+	display: flex;
+	position: relative;
 	height: 100%;
 	min-height: 0;
+	min-width: 0;
+	overflow: hidden;
 }
-
-.video-transcript-modal {
+.geulo-transcript-workspace > .geulo-transcript-workspace__list {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	padding: 12px;
+	overflow-y: auto;
+}
+.geulo-transcript-workspace--open > .geulo-transcript-workspace__list {
+	position: absolute;
+	inset: 0;
+	visibility: hidden;
+	pointer-events: none;
+}
+.geulo-transcript-workspace__detail { flex: 1; min-width: 0; height: 100%; }
+@container geulo-transcript (min-width: 900px) {
+	.geulo-transcript-workspace--open > .geulo-transcript-workspace__list {
+		position: relative;
+		flex: 0 0 40%;
+		visibility: visible;
+		pointer-events: auto;
+		border-right: 1px solid var(--background-modifier-border);
+	}
+}
+.geulo-transcript-reader {
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
-}
-
-.video-transcript-modal__title {
-	margin: 0;
-	font-weight: 600;
-}
-
-.video-transcript-modal__toolbar {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
-}
-
-.video-transcript-modal__segments {
-	flex: 1;
+	height: 100%;
 	min-height: 0;
-	overflow-y: auto;
-	user-select: text;
+	min-width: 0;
+	background: var(--background-primary);
+	color: var(--text-normal);
 }
-
-.video-transcript-modal__segment {
+.geulo-transcript-reader__header { padding: 16px 20px 12px; flex-shrink: 0; }
+.geulo-transcript-reader__navigation, .geulo-transcript-reader__actions, .geulo-transcript-reader__follow {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+.geulo-transcript-reader__navigation { justify-content: space-between; color: var(--text-muted); font-size: var(--font-ui-small); }
+.geulo-transcript-reader button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; }
+.geulo-transcript-reader__header h2 { font-size: 18px; line-height: 1.4; margin: 16px 0 8px; overflow-wrap: anywhere; }
+.geulo-transcript-reader__metadata { color: var(--text-muted); font-size: var(--font-ui-small); margin: 0 0 16px; }
+.geulo-transcript-reader__actions { font-size: var(--font-ui-small); }
+.geulo-transcript-reader__tools { padding: 0 20px 12px; border-bottom: 1px solid var(--background-modifier-border); }
+.geulo-transcript-reader__search { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+.geulo-transcript-reader__search input { flex: 1; min-width: 0; width: 100%; }
+.geulo-transcript-reader__follow { justify-content: space-between; margin-top: 12px; min-height: 32px; font-size: var(--font-ui-smaller); color: var(--text-muted); }
+.geulo-transcript-reader__follow button[aria-pressed="true"] { color: var(--text-on-accent); background: var(--interactive-accent); }
+.geulo-transcript-reader__paragraphs { flex: 1; min-height: 0; overflow-y: auto; position: relative; padding: 12px; user-select: text; overscroll-behavior: contain; }
+.geulo-transcript-reader__paragraph {
 	display: grid;
-	grid-template-columns: 64px minmax(0, 1fr);
+	grid-template-columns: 52px minmax(0, 1fr);
 	gap: 12px;
-	margin: 0 0 12px;
-	line-height: 1.6;
-	white-space: pre-wrap;
+	margin: 0 0 8px;
+	padding: 12px 8px;
+	border-radius: 4px;
+	line-height: 1.8;
 	overflow-wrap: anywhere;
 }
-
-.video-transcript-modal__segment a {
-	font-variant-numeric: tabular-nums;
-	color: var(--text-accent);
-}
+.geulo-transcript-reader__paragraph[aria-current="true"] { background: var(--background-secondary); }
+.geulo-transcript-reader__paragraph a { color: var(--text-accent); font-size: var(--font-ui-small); font-variant-numeric: tabular-nums; text-decoration: underline; }
+.geulo-transcript-reader mark { background: var(--interactive-accent); color: var(--text-on-accent); border-radius: 2px; }
+.geulo-transcript-reader__status { padding: 12px 20px; }
+.geulo-transcript-reader :is(button, a, input, [tabindex="0"]):focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.video-card__container--transcript-selected { border-color: var(--interactive-accent); }
+.is-mobile .geulo-transcript-reader button { min-height: 44px; }
 
 .geulo-video-comments-dialog {
 	max-width: min(640px, calc(100vw - 32px));
@@ -1617,19 +1661,6 @@ button.geulo-undo-btn:focus-visible {
 	color: var(--text-normal);
 }
 
-.video-pulled-at {
-	margin-block-start: 0px;
-	margin-block-end: 0px;
-	font-size: 10px;
-	align-self: flex-end;
-	color: var(--text-faint);
-	opacity: 0.6;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .video-card-options {
 	display: flex;
 	align-items: center;
@@ -1664,6 +1695,24 @@ button.geulo-undo-btn:focus-visible {
 
 .video-card-options button:hover {
 	background-color: var(--interactive-hover);
+	border-color: currentColor;
+	box-shadow: 0 2px 6px var(--background-modifier-box-shadow);
+	transform: translateY(-2px) scale(1.06);
+}
+
+.video-card-options button:active {
+	transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.video-card-options button {
+		transition: none;
+	}
+
+	.video-card-options button:hover,
+	.video-card-options button:active {
+		transform: none;
+	}
 }
 
 .video-card__container:hover .video-card-options {
@@ -2010,7 +2059,7 @@ button.geulo-undo-btn:focus-visible {
 .video-view__video-grid {
 	position: relative;
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(500px, 100%), 1fr));
+	grid-template-columns: minmax(0, 1fr);
 	align-items: start;
 	gap: 16px;
 	padding-top: 16px;

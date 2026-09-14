@@ -3,7 +3,7 @@ import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
-import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, SHORT_VIDEO_MAX_DURATION_OPTIONS } from 'src/types';
+import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, SHORT_VIDEO_MAX_DURATION_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
 import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
@@ -65,7 +65,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             ),
             this.createSectionDefinition(
                 'Video display',
-                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags', 'Maximum Shorts duration'],
+                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags', 'Maximum Shorts duration', 'Transcript language', 'Captions'],
                 (containerEl) => this.renderVideoDisplaySection(containerEl),
             ),
         ];
@@ -153,6 +153,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         new Setting(containerEl).setHeading().setName('Video display');
         this.renderLikedVideoViewModeSetting(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
+		this.renderTranscriptLanguageSetting(containerEl);
         this.renderShortVideoDurationSetting(containerEl);
         this.renderVideoTagsSetting(containerEl);
     }
@@ -238,6 +239,18 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     await this.updateListPaneView();
                 }));
     }
+
+	private renderTranscriptLanguageSetting(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('Transcript language')
+			.setDesc('Preferred caption language when opening a transcript. Falls back to English, then the first available language. Reopen an existing transcript to apply changes.')
+			.addDropdown(dropdown => dropdown
+				.addOptions(TRANSCRIPT_LANGUAGE_OPTIONS)
+				.setValue(this.plugin.settings.transcriptLanguage)
+				.onChange(async value => {
+					await this.saveSetting('transcriptLanguage', value);
+				}));
+	}
 
     private renderVideoTagsSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)

@@ -7,6 +7,7 @@ import { confirmDangerousAction } from "src/utils/confirmationUtils";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { PlaylistVideosView } from "./PlaylistVideosView";
+import { TranscriptWorkspace } from "src/ui/TranscriptWorkspace";
 
 interface IPlaylistVideosViewPersistedState {
     playlistSource?: PlaylistSource;
@@ -88,11 +89,13 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         this.root.render(
             <StrictMode>
                 <PluginContext.Provider value={this.plugin}>
+                    <TranscriptWorkspace label="playlist videos">
                     <PlaylistVideosView
                         playlistSource={this.playlistSource}
                         playlistInfo={this.playlistInfo}
                         onDeletePlaylist={() => this.handleDeletePlaylist()}
                     />
+                    </TranscriptWorkspace>
                 </PluginContext.Provider>
             </StrictMode>
         );

@@ -39,7 +39,7 @@ export function LikedVideoCollection({ videos, mode, currentPage, resetKey, note
 	const heights = useRef(new Map<string, number>());
 	const scrollAnchor = useRef<{ id: string; offset: number; key: string } | null>(null);
 	const previousPage = useRef(currentPage);
-	const columns = Math.max(1, Math.min(videos.length || 1, Math.floor((geometry.width + GAP) / (500 + GAP))));
+	const columns = 1;
 	const infinite = mode === "infinite";
 	const exposedCount = Math.min(videos.length, batch.key === resetKey ? batch.count : INFINITE_BATCH_SIZE);
 	const rowCount = Math.ceil(exposedCount / columns);
@@ -93,11 +93,6 @@ export function LikedVideoCollection({ videos, mode, currentPage, resetKey, note
 			container.ownerDocument.removeEventListener("focusin", clearOutsideFocus);
 		};
 	}, []);
-
-	useLayoutEffect(() => {
-		heights.current.clear();
-		virtualizer.measure();
-	}, [geometry.width, columns, virtualizer]);
 
 	useLayoutEffect(() => {
 		setBatch(previous => previous.key === resetKey ? previous : { key: resetKey, count: INFINITE_BATCH_SIZE });
@@ -185,6 +180,7 @@ export function LikedVideoCollection({ videos, mode, currentPage, resetKey, note
 		const container = containerRef.current;
 		const ownerWindow = container?.ownerDocument.defaultView;
 		if (!infinite || !container || !ownerWindow) return;
+		// Keep offscreen height estimates on resize; only remeasure mounted cards.
 		const measure = () => {
 			const rows = new Set<number>();
 			container.querySelectorAll<HTMLElement>("[data-video-index]").forEach(element => {

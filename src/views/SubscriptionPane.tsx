@@ -4,6 +4,7 @@ import { Root, createRoot } from "react-dom/client";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { SubscriptionView, SubscriptionViewState } from "./SubscriptionView";
+import { TranscriptWorkspace } from "src/ui/TranscriptWorkspace";
 
 export const VIEW_TYPE_SUBSCRIPTIONS = "subscriptions";
 
@@ -80,6 +81,7 @@ export class SubscriptionPane extends ItemView {
 		this.root.render(
 			<StrictMode>
 				<PluginContext.Provider value={this.plugin}>
+					<TranscriptWorkspace label="subscriptions">
 					<SubscriptionView
 						initialState={this.viewState}
 						refreshVersion={this.refreshVersion}
@@ -88,6 +90,7 @@ export class SubscriptionPane extends ItemView {
 							this.viewState = state;
 						}}
 					/>
+					</TranscriptWorkspace>
 				</PluginContext.Provider>
 			</StrictMode>,
 		);

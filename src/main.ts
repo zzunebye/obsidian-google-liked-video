@@ -1,10 +1,12 @@
 import { Notice, Plugin, WorkspaceLeaf } from 'obsidian';
-import { isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, YouTubeVideo } from 'src/types';
+import { isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, TRANSCRIPT_LANGUAGE_OPTIONS, YouTubeVideo } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
 import { PlaylistVideosPane, VIEW_TYPE_PLAYLIST_VIDEOS } from 'src/views/PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from 'src/views/SubscriptionPane';
+import { TranscriptPane, VIEW_TYPE_TRANSCRIPT } from 'src/views/TranscriptPane';
+import type { VideoTranscript } from 'src/services/transcriptService';
 import { LikedVideoApi, PlaylistApi } from './api';
 import { getValidAccessToken } from './auth';
 import { localStorageService } from './storage';
@@ -46,6 +48,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	customTemplate: DEFAULT_TEMPLATE,
 	openInObsidianWebViewer: false,
 	openWebViewerInSplitPane: false,
+	transcriptLanguage: 'auto',
 	showVideoTags: true,
 	shortVideoMaxDurationSeconds: 90,
 	enableAISummary: false,
@@ -140,6 +143,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			VIEW_TYPE_SUBSCRIPTIONS,
 			(leaf) => new SubscriptionPane(leaf, this),
 		);
+		this.registerView(VIEW_TYPE_TRANSCRIPT, (leaf) => new TranscriptPane(leaf, this));
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.settingTabRef = new GoogleLikedVideoSettingTab(this.app, this);
@@ -215,6 +219,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		void this.initializeCategories();
 
 		await this.checkFeatureAnnouncement();
+	}
+
+	async openTranscriptPane(video: YouTubeVideo, transcript?: VideoTranscript): Promise<void> {
+		const leaf = this.app.workspace.getLeaf('split');
+		await leaf.setViewState({ type: VIEW_TYPE_TRANSCRIPT, state: { video, transcript }, active: true });
+		await this.app.workspace.revealLeaf(leaf);
 	}
 
 	onunload() {
@@ -308,6 +318,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 		if (!isShortVideoMaxDurationSeconds(this.settings.shortVideoMaxDurationSeconds)) {
 			this.settings.shortVideoMaxDurationSeconds = DEFAULT_SETTINGS.shortVideoMaxDurationSeconds;
+		}
+		if (typeof this.settings.transcriptLanguage !== 'string'
+			|| !Object.prototype.hasOwnProperty.call(TRANSCRIPT_LANGUAGE_OPTIONS, this.settings.transcriptLanguage)) {
+			this.settings.transcriptLanguage = DEFAULT_SETTINGS.transcriptLanguage;
 		}
 
 		await migrateLegacyGoogleSecrets(splitData, {
