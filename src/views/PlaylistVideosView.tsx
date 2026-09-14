@@ -19,6 +19,7 @@ import { ViewHeader } from "src/ui/ViewHeader";
 import { ActiveTagFilter } from "src/ui/ActiveTagFilter";
 import { usePlugin } from "../store/pluginContext";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
+import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
 
 interface PlaylistVideosViewProps {
 	playlistSource: PlaylistSource;
@@ -335,8 +336,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 
 	const handleLikeVideo = async (video: YouTubeVideo) => {
 		try {
-			await plugin.likedVideoApi.likeVideo(video.id);
-				localStorageService.restoreLikedVideo(video);
+			await likeVideoAndPersist(plugin.likedVideoApi, video);
 			setLikedVideoIds((prev) => {
 				const next = new Set(prev);
 				next.add(video.id);
@@ -351,8 +351,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 
 	const handleUnlikeVideo = async (video: YouTubeVideo) => {
 		try {
-			await plugin.likedVideoApi.unlikeVideo(video.id);
-				localStorageService.removeLikedVideo(video.id);
+			await unlikeVideoAndPersist(plugin.likedVideoApi, video.id);
 			setLikedVideoIds((prev) => {
 				const next = new Set(prev);
 				next.delete(video.id);

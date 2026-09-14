@@ -30,12 +30,13 @@ import { Menu, Notice } from "obsidian";
 import { VideosContext } from "src/store/videoContext";
 import { UI_TEXT } from "src/constants/uiText";
 import { categoriesService } from "src/categoriesService";
-import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
+import { classifyVideoContent, parseDurationToSeconds } from "src/utils/videoUtils";
 import { LikedVideoCollection } from "src/ui/LikedVideoCollection";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { OpenYouTubeButton } from "src/ui/OpenYouTubeButton";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
+import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
 
 interface ActiveChannelFilter {
 	id: string;
@@ -126,16 +127,10 @@ export const LikedVideoView: React.FC = () => {
 	const videoDurations = useMemo(() => {
 		const durations = new Map<string, number>();
 		videos.forEach((video) => {
-			if (video.contentDetails?.duration) {
-				const seconds = parseDurationToSeconds(
-					video.contentDetails.duration,
-				);
-				// Use 0 as fallback if parsing fails
-				durations.set(video.id, seconds ?? 0);
-			} else {
-				// Set 0 for videos without duration info
-				durations.set(video.id, 0);
-			}
+			durations.set(
+				video.id,
+				parseDurationToSeconds(video.contentDetails?.duration) ?? 0,
+			);
 		});
 		return durations;
 	}, [videos]);
@@ -214,12 +209,10 @@ export const LikedVideoView: React.FC = () => {
 				video.snippet.categoryId === selectedCategory;
 
 			// Content type filter (OR logic - show if matches ANY selected type)
-			const durationInSeconds = videoDurations.get(video.id) || 0;
-			const isMusic = video.snippet.categoryId === "10";
-			const isShort =
-				durationInSeconds > 0 &&
-				durationInSeconds <= shortVideoMaxDurationSeconds;
-			const isRegularVideo = !isShort && !isMusic;
+			const { isMusic, isShort, isRegularVideo } = classifyVideoContent(
+				video,
+				shortVideoMaxDurationSeconds,
+			);
 
 			let contentTypeMatch = true;
 			// If no selection or all selected, show everything
@@ -265,7 +258,6 @@ export const LikedVideoView: React.FC = () => {
 		selectedCategory,
 		contentTypeSelection,
 		shortVideoMaxDurationSeconds,
-		videoDurations,
 		showAINoteOnly,
 		videoNoteFilter,
 		noteExistenceMap,
@@ -790,8 +782,7 @@ export const LikedVideoView: React.FC = () => {
 								const index = videos.findIndex((v) => v.id === video.id);
 								const previousVideoId = index > 0 ? videos[index - 1].id : null;
 								try {
-									await plugin.likedVideoApi.unlikeVideo(video.id);
-									localStorageService.removeLikedVideo(video.id);
+									await unlikeVideoAndPersist(plugin.likedVideoApi, video.id);
 
 									const fragment = new DocumentFragment();
 									fragment.createSpan({ text: `Unliked "${video.snippet.title}" ` });
@@ -803,15 +794,19 @@ export const LikedVideoView: React.FC = () => {
 									undoBtn.addEventListener("click", () => {
 										void (async () => {
 											try {
-												await plugin.likedVideoApi.likeVideo(video.id);
-												const current = localStorageService.getLikedVideos();
-												const previousIndex = previousVideoId
-													? current.findIndex((item) => item.id === previousVideoId)
-													: -1;
-												const insertIndex = previousIndex >= 0
-													? previousIndex + 1
-													: Math.min(index, current.length);
-												localStorageService.restoreLikedVideo(video, insertIndex);
+												await likeVideoAndPersist(
+													plugin.likedVideoApi,
+													video,
+													() => {
+														const current = localStorageService.getLikedVideos();
+														const previousIndex = previousVideoId
+															? current.findIndex((item) => item.id === previousVideoId)
+															: -1;
+														return previousIndex >= 0
+															? previousIndex + 1
+															: Math.min(index, current.length);
+													},
+												);
 												notice.hide();
 											} catch (error) {
 												console.error("Failed to undo unlike:", error);

@@ -13,7 +13,7 @@ import { AIServiceError, AIServiceResult } from "../services/geminiService";
 import { createAIService, getActiveApiKey } from "../services/aiServiceFactory";
 import { usePlugin } from "../store/pluginContext";
 import { debugLogger } from "../debug";
-import { parseDurationToSeconds } from "./VideoInfoModal";
+import { parseDurationToSeconds } from "../utils/videoUtils";
 import { confirmLongVideoSummary } from "../utils/confirmationUtils";
 
 const LONG_VIDEO_THRESHOLD_SECONDS = 30 * 60; // 30 minutes

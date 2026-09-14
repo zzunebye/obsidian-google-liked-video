@@ -3,51 +3,12 @@ import { App } from 'obsidian';
 import { YouTubeVideo } from 'src/types';
 import { ReactModal, openReactModal } from './ReactModal';
 import { VideoTagChips } from './VideoTags';
+import { parseDurationToSeconds } from '../utils/videoUtils';
 
 interface VideoInfoModalProps {
     videoInfo: YouTubeVideo;
     getCategoryDisplay?: (categoryId: string) => string;
 }
-
-// Parse YouTube ISO 8601 duration format to seconds
-export const parseDurationToSeconds = (duration: string | undefined): number | null => {
-    if (!duration || typeof duration !== 'string') {
-        return null;
-    }
-    
-    // Handle duration that doesn't start with P
-    if (!duration.startsWith('P')) {
-        return null;
-    }
-    
-    try {
-        // Extract weeks, days, hours, minutes, and seconds
-        // Format: P[n]W[n]DT[n]H[n]M[n]S
-        const match = duration.match(/^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
-        if (!match) {
-            return null;
-        }
-        
-        const weeks = match[1] ? parseInt(match[1]) : 0;
-        const days = match[2] ? parseInt(match[2]) : 0;
-        const hours = match[3] ? parseInt(match[3]) : 0;
-        const minutes = match[4] ? parseInt(match[4]) : 0;
-        const seconds = match[5] ? parseInt(match[5]) : 0;
-        
-        // Convert all to seconds
-        const totalSeconds = 
-            weeks * 7 * 24 * 3600 +
-            days * 24 * 3600 +
-            hours * 3600 + 
-            minutes * 60 + 
-            seconds;
-        
-        return totalSeconds;
-    } catch (error) {
-        console.error(`Error parsing duration: ${duration}`, error);
-        return null;
-    }
-};
 
 // Parse YouTube ISO 8601 duration format for display
 const parseDuration = (duration: string): string => {
@@ -61,20 +22,12 @@ const parseDuration = (duration: string): string => {
     }
     
     try {
-        // Extract weeks, days, hours, minutes, and seconds
-        const match = duration.match(/^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
-        if (!match) {
-            return duration;
-        }
-        
-        const weeks = match[1] ? parseInt(match[1]) : 0;
-        const days = match[2] ? parseInt(match[2]) : 0;
-        const hours = match[3] ? parseInt(match[3]) : 0;
-        const minutes = match[4] ? parseInt(match[4]) : 0;
-        const seconds = match[5] ? parseInt(match[5]) : 0;
-        
-        // Calculate total days (including weeks)
-        const totalDays = weeks * 7 + days;
+        const totalSeconds = parseDurationToSeconds(duration);
+        if (totalSeconds === null) return duration;
+        const totalDays = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
         
         // Format the output
         const parts = [];
