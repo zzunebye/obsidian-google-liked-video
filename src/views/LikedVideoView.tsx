@@ -212,6 +212,7 @@ export const LikedVideoView: React.FC = () => {
 			const { isMusic, isShort, isRegularVideo } = classifyVideoContent(
 				video,
 				shortVideoMaxDurationSeconds,
+				videoDurations.get(video.id) ?? 0,
 			);
 
 			let contentTypeMatch = true;
@@ -258,6 +259,7 @@ export const LikedVideoView: React.FC = () => {
 		selectedCategory,
 		contentTypeSelection,
 		shortVideoMaxDurationSeconds,
+		videoDurations,
 		showAINoteOnly,
 		videoNoteFilter,
 		noteExistenceMap,

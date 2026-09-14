@@ -55,8 +55,8 @@ export function formatVideoCount(
 export function classifyVideoContent(
 	video: YouTubeVideo,
 	shortVideoMaxDurationSeconds: number,
+	durationSeconds = parseDurationToSeconds(video.contentDetails?.duration) ?? 0,
 ): VideoContentClassification {
-	const durationSeconds = parseDurationToSeconds(video.contentDetails?.duration) ?? 0;
 	const isShort = durationSeconds > 0 && durationSeconds <= shortVideoMaxDurationSeconds;
 	const isMusic = video.snippet.categoryId === "10";
 
