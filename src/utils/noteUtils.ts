@@ -1,10 +1,10 @@
 import { moment, TFile, Notice, normalizePath } from "obsidian";
 import type { App } from "obsidian";
 import { YouTubeVideo } from "src/types";
-import { parseDurationToSeconds } from "src/ui/VideoInfoModal";
 import { getAllDailyNotes, getDailyNote, createDailyNote } from "obsidian-daily-notes-interface";
 import { TemplateService } from "src/services/templateService";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
+import { formatVideoCount, formatVideoDuration, parseDurationToSeconds } from "src/utils/videoUtils";
 
 export const sanitizeFileName = (title: string): string => {
     return title
@@ -62,34 +62,6 @@ export const sanitizeForYAML = (value: string): string => {
         .trim();
 };
 
-export const formatDurationForYAML = (duration: string): string => {
-    const seconds = parseDurationToSeconds(duration);
-    if (!seconds) return '';
-
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-};
-
-export const formatCount = (count: number | string): string => {
-    const num = typeof count === 'string' ? parseInt(count) : count;
-    if (isNaN(num)) return '0';
-
-    if (num >= 1000000000) {
-        return (num / 1000000000).toFixed(1) + 'B';
-    } else if (num >= 1000000) {
-        return (num / 1000000).toFixed(1) + 'M';
-    } else if (num >= 1000) {
-        return (num / 1000).toFixed(1) + 'K';
-    }
-    return num.toString();
-};
-
 export const escapeYAMLString = (str: string): string => {
     return str.replace(/"/g, '\\"');
 };
@@ -140,7 +112,7 @@ export const buildTemplateVariables = (
         'category_underscored': category.replace(/\s*\(\d+\)\s*/g, '').trim().replace(/[\s&]+/g, '_'),
 
         // Time & duration
-        'duration': formatDurationForYAML(videoInfo.contentDetails?.duration || ''),
+        'duration': formatVideoDuration(videoInfo.contentDetails?.duration),
         'duration_seconds': String(parseDurationToSeconds(videoInfo.contentDetails?.duration || '')),
         'published_at': videoInfo.snippet.publishedAt,
         'published_date': moment(videoInfo.snippet.publishedAt).format('YYYY-MM-DD'),
@@ -151,11 +123,11 @@ export const buildTemplateVariables = (
 
         // Statistics
         'view_count': String(videoInfo.statistics?.viewCount || 0),
-        'view_count_formatted': formatCount(videoInfo.statistics?.viewCount || 0),
+        'view_count_formatted': formatVideoCount(videoInfo.statistics?.viewCount || 0),
         'like_count': String(videoInfo.statistics?.likeCount || 0),
-        'like_count_formatted': formatCount(videoInfo.statistics?.likeCount || 0),
+        'like_count_formatted': formatVideoCount(videoInfo.statistics?.likeCount || 0),
         'comment_count': String(videoInfo.statistics?.commentCount || 0),
-        'comment_count_formatted': formatCount(videoInfo.statistics?.commentCount || 0),
+        'comment_count_formatted': formatVideoCount(videoInfo.statistics?.commentCount || 0),
 
         // Tags & language
         'tags_comma_separated': (videoInfo.snippet.tags || [])
@@ -269,7 +241,7 @@ export const generateVideoNoteContent = async (
     // Built-in template (existing code)
     const title = videoInfo.snippet.title;
     const channel = videoInfo.snippet.channelTitle;
-    const duration = formatDurationForYAML(videoInfo.contentDetails?.duration || '');
+    const duration = formatVideoDuration(videoInfo.contentDetails?.duration);
     const published = moment(videoInfo.snippet.publishedAt).format('YYYY-MM-DD');
     const category = getCategoryDisplay ? getCategoryDisplay(videoInfo.snippet.categoryId) : videoInfo.snippet.categoryId;
 

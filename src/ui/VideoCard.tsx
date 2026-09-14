@@ -17,7 +17,7 @@ import {
 	ChevronDown,
 } from "lucide-react";
 import { YouTubeVideo } from "src/types";
-import { VideoInfoModal, parseDurationToSeconds } from "src/ui/VideoInfoModal";
+import { VideoInfoModal } from "src/ui/VideoInfoModal";
 import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
 import {
@@ -35,6 +35,7 @@ import { ResponsiveVideoTags } from "./VideoTags";
 import { debugLogger } from "../debug";
 import { VideoCommentsModal } from "./VideoCommentsModal";
 import { AddToPlaylistModal } from "./AddToPlaylistModal";
+import { formatVideoCount, formatVideoDuration } from "src/utils/videoUtils";
 
 interface VideoCardProps {
 	source: "liked" | "playlist" | "subscription";
@@ -94,36 +95,6 @@ export const VideoCard = ({
 	);
 	const [, setPreviewVersion] = useState(0);
 	const [regenerateTrigger, setRegenerateTrigger] = useState(0);
-
-	// Format duration from seconds to display format
-	const formatDuration = (duration: string | undefined): string => {
-		if (!duration) return "";
-
-		const seconds = parseDurationToSeconds(duration);
-		if (seconds === null || seconds === 0) return "";
-
-		const hours = Math.floor(seconds / 3600);
-		const minutes = Math.floor((seconds % 3600) / 60);
-		const secs = seconds % 60;
-
-		if (hours > 0) {
-			return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-		}
-		return `${minutes}:${secs.toString().padStart(2, "0")}`;
-	};
-
-	// Utility function to format large numbers
-	const formatCount = (count: number | string): string => {
-		const num = typeof count === "string" ? parseInt(count) : count;
-		if (isNaN(num)) return "0";
-
-		if (num >= 1000000) {
-			return (num / 1000000).toFixed(1) + "M";
-		} else if (num >= 1000) {
-			return (num / 1000).toFixed(1) + "K";
-		}
-		return num.toString();
-	};
 
 	const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
 		e.dataTransfer.setData(
@@ -490,7 +461,7 @@ export const VideoCard = ({
 				/>
 				{videoInfo.contentDetails?.duration && (
 					<span className="video-duration-badge">
-						{formatDuration(videoInfo.contentDetails.duration)}
+						{formatVideoDuration(videoInfo.contentDetails.duration)}
 					</span>
 				)}
 			</div>
@@ -529,7 +500,7 @@ export const VideoCard = ({
 						<div className="video-stat">
 							<Eye size={16} className="video-stat-icon" />
 							<span className="video-stat-count">
-								{formatCount(videoInfo.statistics.viewCount)}
+								{formatVideoCount(videoInfo.statistics.viewCount, false)}
 							</span>
 						</div>
 						<button
@@ -577,7 +548,7 @@ export const VideoCard = ({
 								className={`video-stat-icon${source === "liked" || isLiked ? " video-stat-icon--liked" : ""}`}
 							/>
 							<span className="video-stat-count">
-								{formatCount(videoInfo.statistics.likeCount)}
+								{formatVideoCount(videoInfo.statistics.likeCount, false)}
 							</span>
 						</button>
 						<button
@@ -606,7 +577,7 @@ export const VideoCard = ({
 								className="video-stat-icon"
 							/>
 							<span className="video-stat-count">
-								{formatCount(videoInfo.statistics.commentCount)}
+								{formatVideoCount(videoInfo.statistics.commentCount, false)}
 							</span>
 						</button>
 					</div>
