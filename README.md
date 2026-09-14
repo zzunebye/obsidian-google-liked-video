@@ -38,6 +38,7 @@ Mobile version is still experimental!
 - **Collection curation**: Remove videos from your liked list directly within Obsidian
 - **AI video summaries**: Generate video summaries using Google Gemini or OpenRouter with Gemini's video_url parameter. Summaries stream in real-time, with a collapsible one-liner preview and full expandable summary.
 - **Add summary to note**: Append AI-generated summaries to your video notes
+- **Fetch transcripts**: Choose **Fetch transcript** from a video card's menu in liked videos, playlists, or subscriptions. Read existing YouTube captions with timestamp links and copy the text. No extra API key is needed. Geulo prefers captions in your app's language, then English, then the first available language. Transcript access uses unofficial YouTube endpoints and may be unavailable for some videos or temporarily blocked. Captions are fetched on demand and are not saved automatically.
 - **Video info display**: Display video info with a single click
 - **Search by channel name**: Search by channel title when channel is clicked in the video card
 

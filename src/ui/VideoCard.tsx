@@ -35,6 +35,7 @@ import { ResponsiveVideoTags } from "./VideoTags";
 import { debugLogger } from "../debug";
 import { VideoCommentsModal } from "./VideoCommentsModal";
 import { AddToPlaylistModal } from "./AddToPlaylistModal";
+import { VideoTranscriptModal } from "./VideoTranscriptModal";
 
 interface VideoCardProps {
 	source: "liked" | "playlist" | "subscription";
@@ -318,6 +319,7 @@ export const VideoCard = ({
 	const handleContextMenu = (e: React.MouseEvent<HTMLElement>): void => {
 		e.preventDefault();
 		e.stopPropagation();
+		const trigger = e.currentTarget;
 		const menu = new Menu();
 		menu.addItem((item) => {
 			item.setTitle("Open in external browser");
@@ -450,6 +452,16 @@ export const VideoCard = ({
 			item.setTitle(noteExists ? "Open video note" : "Create note");
 			item.setIcon(noteExists ? "file-check" : "file-plus");
 			item.onClick(async () => handleCreateVideoNote(e));
+		});
+
+		menu.addItem((item) => {
+			item.setTitle("Fetch transcript");
+			item.setIcon("captions");
+			item.onClick(() => {
+				new VideoTranscriptModal(plugin.app, videoInfo.id, videoInfo.snippet.title, () => {
+					if (trigger.isConnected) trigger.focus({ preventScroll: true });
+				}).open();
+			});
 		});
 
 		if (isAIEnabled) {
