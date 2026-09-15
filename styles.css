@@ -1278,6 +1278,8 @@ button.video-stat--button:focus-visible {
 	overflow: hidden;
 }
 .geulo-transcript-workspace {
+	--geulo-view-duration: 220ms;
+	--geulo-view-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
 	container: geulo-transcript / inline-size;
 	display: flex;
 	position: relative;
@@ -1287,30 +1289,47 @@ button.video-stat--button:focus-visible {
 	overflow: hidden;
 }
 .geulo-transcript-workspace > .geulo-transcript-workspace__list {
-	flex: 1;
+	flex: 0 0 100%;
+	box-sizing: border-box;
 	min-width: 0;
 	height: 100%;
 	padding: 12px;
 	overflow-y: auto;
-}
-.geulo-transcript-workspace--open > .geulo-transcript-workspace__list {
-	position: absolute;
-	inset: 0;
-	visibility: hidden;
-	pointer-events: none;
+	transition: flex-basis var(--geulo-view-duration) var(--geulo-view-easing);
 }
 .geulo-transcript-workspace__detail {
-	flex: 1;
+	position: absolute;
+	inset: 0;
+	z-index: 1;
 	min-width: 0;
 	height: 100%;
+	background: var(--background-primary);
+	box-shadow: -8px 0 24px var(--background-modifier-box-shadow);
+	opacity: 0;
+	transform: translateX(32px);
+	transition: opacity var(--geulo-view-duration) var(--geulo-view-easing),
+		transform var(--geulo-view-duration) var(--geulo-view-easing);
+}
+.geulo-transcript-workspace--open > .geulo-transcript-workspace__detail {
+	opacity: 1;
+	transform: translateX(0);
+}
+.geulo-transcript-workspace--closing > .geulo-transcript-workspace__detail {
+	pointer-events: none;
 }
 @container geulo-transcript (min-width: 900px) {
 	.geulo-transcript-workspace--open > .geulo-transcript-workspace__list {
-		position: relative;
-		flex: 0 0 40%;
-		visibility: visible;
-		pointer-events: auto;
-		border-right: 1px solid var(--background-modifier-border);
+		flex-basis: 40%;
+	}
+	.geulo-transcript-workspace__detail {
+		left: 40%;
+		border-left: 1px solid var(--background-modifier-border);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.geulo-transcript-workspace > .geulo-transcript-workspace__list,
+	.geulo-transcript-workspace__detail {
+		transition: none;
 	}
 }
 .geulo-transcript-reader {

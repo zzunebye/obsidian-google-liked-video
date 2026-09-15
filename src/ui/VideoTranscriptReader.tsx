@@ -139,7 +139,13 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 	const isAiMode = mode === "ai";
 
 	return (
-		<section ref={rootRef} className={`geulo-transcript-reader geulo-transcript-reader--${mode}`} tabIndex={-1} aria-label={`Transcript for ${video.snippet.title}`}>
+		<section ref={rootRef} className={`geulo-transcript-reader geulo-transcript-reader--${mode}`} tabIndex={-1} aria-label={`Transcript for ${video.snippet.title}`}
+			onKeyDown={event => {
+				if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing || !onBack) return;
+				event.preventDefault();
+				event.stopPropagation();
+				onBack();
+			}}>
 			<header className="geulo-transcript-reader__header">
 				<div className="geulo-transcript-reader__navigation">
 					{onBack ? <button type="button" className="geulo-transcript-reader__back" onClick={onBack}><ArrowLeft size={16} aria-hidden="true" />{backLabel ?? "Back to videos"}</button> : <span>Transcript</span>}
