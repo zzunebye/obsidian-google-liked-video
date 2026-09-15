@@ -1,5 +1,6 @@
 import { requestUrl } from 'obsidian';
 import { debugLogger } from '../debug';
+import type { SummarySource } from '../types';
 import { AIService, AIServiceResult, StreamOptions, StreamCallback } from './geminiService';
 import { AIServiceError, toAIServiceError } from './aiServiceError';
 
@@ -28,10 +29,11 @@ function isAIServiceError(error: unknown): error is AIServiceError {
 export abstract class BaseAIService implements AIService {
 	protected abstract serviceName: string;
 	protected abstract apiKey: string;
+	protected abstract summarySource: SummarySource;
 
 	protected abstract getModel(): string;
 	protected abstract buildStreamUrl(): string;
-	protected abstract buildRequestBody(videoId: string, prompt: string): object;
+	protected abstract buildRequestBody(videoId: string, prompt: string, signal?: AbortSignal): object | Promise<object>;
 	protected abstract buildRequestHeaders(): Record<string, string>;
 	protected abstract parseChunk(jsonStr: string): string | null;
 	protected abstract mapHttpStatusToError(status: number, message: string): AIServiceError;
@@ -45,6 +47,7 @@ export abstract class BaseAIService implements AIService {
 			const timeoutId = window.setTimeout(() => {
 				debugLogger.warn(`[AI Summary] Request timed out after ${REQUEST_TIMEOUT_MS}ms for video: ${videoId}`);
 				controller.abort();
+				reject(new AIServiceError('network_error', 'Summary request timed out. Please try again.'));
 			}, REQUEST_TIMEOUT_MS);
 
 			this.generateVideoSummaryStream(videoId, prompt, {
@@ -69,7 +72,6 @@ export abstract class BaseAIService implements AIService {
 		this.validateApiKey(options.onError);
 
 		const url = this.buildStreamUrl();
-		const body = this.buildRequestBody(videoId, prompt);
 
 		debugLogger.info(`[AI Summary] Starting streaming generation via ${this.serviceName} for video: ${videoId}`);
 		debugLogger.debug(`[AI Summary] Model: ${this.getModel()}`);
@@ -78,6 +80,7 @@ export abstract class BaseAIService implements AIService {
 		let accumulated = '';
 
 		try {
+			const body = await this.buildRequestBody(videoId, prompt, options.signal);
 			const response = await this.executeRequest(url, body, options.signal);
 			await this.handleHttpError(response, options.onError);
 
@@ -134,6 +137,7 @@ export abstract class BaseAIService implements AIService {
 	}
 
 	protected executeRequest(url: string, body: object, signal?: AbortSignal): Promise<Response> {
+		if (signal?.aborted) return Promise.reject(new DOMException('Request aborted', 'AbortError'));
 		const request = requestUrl({
 			url,
 			method: 'POST',
@@ -146,7 +150,6 @@ export abstract class BaseAIService implements AIService {
 		}));
 
 		if (!signal) return request;
-		if (signal.aborted) return Promise.reject(new DOMException('Request aborted', 'AbortError'));
 
 		return new Promise((resolve, reject) => {
 			const abort = () => reject(new DOMException('Request aborted', 'AbortError'));
@@ -228,7 +231,8 @@ export abstract class BaseAIService implements AIService {
 		return {
 			summary,
 			generatedAt: new Date().toISOString(),
-			model: this.getModel()
+			model: this.getModel(),
+			source: this.summarySource,
 		};
 	}
 

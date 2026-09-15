@@ -1,4 +1,5 @@
 import { debugLogger } from '../debug';
+import type { SummarySource } from '../types';
 import { BaseAIService } from './baseAIService';
 import { AIServiceError } from './aiServiceError';
 
@@ -23,6 +24,7 @@ export interface AIServiceResult {
 	summary: string;
 	generatedAt: string;
 	model: string;
+	source: SummarySource;
 }
 
 export type StreamCallback = (chunk: string, accumulated: string) => void;
@@ -46,6 +48,7 @@ export type GeminiError = AIServiceError;
 
 export class GeminiService extends BaseAIService {
 	protected serviceName = 'Gemini';
+	protected summarySource: SummarySource = 'video';
 	protected apiKey: string;
 
 	constructor(apiKey: string) {

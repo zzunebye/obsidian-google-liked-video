@@ -71,6 +71,7 @@ export class SummaryStorageService {
 			summary: summary.summary,
 			generatedAt: summary.generatedAt,
 			model: summary.model,
+			source: summary.source ?? 'video',
 		};
 
 		// LRU: delete then re-insert so it goes to the end
@@ -96,6 +97,7 @@ export class SummaryStorageService {
 		if (!entry) return;
 		entry.oneLinerSummary = oneLiner;
 		await this.persist();
+		this.listeners.forEach((listener) => listener());
 		debugLogger.debug(`[SummaryStorage] Set one-liner summary for ${videoId}`);
 	}
 

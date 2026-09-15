@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { Menu, TFile, moment, Notice } from "obsidian";
 import {
 	getDailyNote,
@@ -10,11 +10,9 @@ import {
 	Eye,
 	ThumbsUp,
 	MessageCircle,
-	ExternalLink,
 	FilePlus,
 	FileCheck,
 	Bot,
-	ChevronDown,
 	Captions,
 } from "lucide-react";
 import { YouTubeVideo } from "src/types";
@@ -38,6 +36,7 @@ import { VideoCommentsModal } from "./VideoCommentsModal";
 import { AddToPlaylistModal } from "./AddToPlaylistModal";
 import { useTranscriptWorkspace } from "./TranscriptWorkspace";
 import { formatVideoCount, formatVideoDuration } from "src/utils/videoUtils";
+import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
 
 interface VideoCardProps {
 	source: "liked" | "playlist" | "subscription";
@@ -93,14 +92,19 @@ export const VideoCard = ({
 		if (onSummaryExpandedChange) onSummaryExpandedChange(expanded);
 		else setLocalSummaryExpanded(expanded);
 	};
-	const [hasSummary, setHasSummary] = useState(() =>
-		plugin.summaryStorage.hasVideoSummary(videoInfo.id),
+	const subscribeToSummaries = useCallback(
+		(listener: () => void) => plugin.summaryStorage.subscribe(listener),
+		[plugin],
 	);
-	const [, setPreviewVersion] = useState(0);
+	const summaryPreview = useSyncExternalStore(
+		subscribeToSummaries,
+		() => plugin.summaryStorage.getOneLineSummary(videoInfo.id),
+	);
+	const hasSummary = summaryPreview !== null;
 	const [regenerateTrigger, setRegenerateTrigger] = useState(0);
-	const openTranscript = (trigger: HTMLElement): void => {
-		if (transcriptWorkspace) transcriptWorkspace.openTranscript(videoInfo, trigger);
-		else void plugin.openTranscriptPane(videoInfo).catch(error => {
+	const openTranscript = (trigger: HTMLElement, mode: TranscriptReaderMode = "paragraphs"): void => {
+		if (transcriptWorkspace) transcriptWorkspace.openTranscript(videoInfo, trigger, mode);
+		else void plugin.openTranscriptPane(videoInfo, undefined, mode).catch(error => {
 			debugLogger.error("[Transcript] Could not open pane", error);
 			new Notice("Could not open the transcript pane.");
 		});
@@ -116,18 +120,6 @@ export const VideoCard = ({
 
 	const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
 		e.currentTarget.classList.remove("video-card__container--dragging");
-	};
-
-	const handleExternalOpen = (e: React.MouseEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		onLinkClick(url);
-	};
-
-	const handleSummaryToggle = (e: React.MouseEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		setIsSummaryExpanded(!isSummaryExpanded);
 	};
 
 	const handleChannelClick = (e: React.MouseEvent) => {
@@ -302,7 +294,7 @@ export const VideoCard = ({
 		const trigger = e.currentTarget;
 		const menu = new Menu();
 		menu.addItem((item) => {
-			item.setTitle("Open in external browser");
+			item.setTitle("Open in browser");
 			item.setIcon("create-new");
 			item.onClick(() => {
 				onLinkClick(url);
@@ -510,11 +502,6 @@ export const VideoCard = ({
 				</div>
 				<div className="video-bottom-row">
 					<div className="video-statistics">
-						<button type="button" className="video-stat video-stat--button video-stat--transcript" aria-label="Read transcript"
-							onClick={event => { event.preventDefault(); event.stopPropagation(); openTranscript(event.currentTarget); }}>
-							<Captions size={16} aria-hidden="true" />
-							<span className="video-stat__transcript-label">Transcript</span>
-						</button>
 						<div className="video-stat">
 							<Eye size={16} className="video-stat-icon" />
 							<span className="video-stat-count">
@@ -607,12 +594,16 @@ export const VideoCard = ({
 	const actionButtons = (
 		<>
 			<button
+				type="button"
 				className="video-card-btn"
-				aria-label="Open in Browser"
-				onClick={handleExternalOpen}
-				title="Open in External Browser"
+				aria-label="Read transcript"
+				onClick={(event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					openTranscript(event.currentTarget);
+				}}
 			>
-				<ExternalLink size={16} />
+				<Captions size={16} />
 			</button>
 			<button
 				className={`video-card-btn ${noteExists ? "video-card-btn--has-note" : ""}`}
@@ -622,11 +613,6 @@ export const VideoCard = ({
 				onClick={(e) => {
 					void handleCreateVideoNote(e);
 				}}
-				title={
-					noteExists
-						? "Open existing video note"
-						: "Create video note"
-				}
 			>
 				{noteExists ? <FileCheck size={16} /> : <FilePlus size={16} />}
 			</button>
@@ -671,13 +657,8 @@ export const VideoCard = ({
 					<div className="video-card-options">
 						<button
 							className={`video-card-btn ${hasSummary ? "video-card-btn--accent" : ""}`}
-							aria-label="AI Summary"
-							onClick={handleSummaryToggle}
-							title={
-								hasSummary
-									? "Show/hide AI summary"
-									: "Generate AI summary"
-							}
+							aria-label="Open AI view"
+							onClick={event => { event.preventDefault(); event.stopPropagation(); openTranscript(event.currentTarget, "ai"); }}
 						>
 							<Bot size={16} />
 						</button>
@@ -685,22 +666,15 @@ export const VideoCard = ({
 					</div>
 				</div>
 				{hasSummary && !isSummaryExpanded && (
-					<button
-						type="button"
+					<div
 						className="summary-preview"
-						onClick={handleSummaryToggle}
+						onClick={event => event.stopPropagation()}
 					>
-						<Bot size={12} className="summary-preview__icon" />
+						<Bot size={12} className="summary-preview__icon" aria-hidden="true" />
 						<span className="summary-preview__text">
-							{plugin.summaryStorage.getOneLineSummary(
-								videoInfo.id,
-							)}
+							{summaryPreview}
 						</span>
-						<ChevronDown
-							size={12}
-							className="summary-preview__chevron"
-						/>
-					</button>
+					</div>
 				)}
 				<SummarySection
 					videoId={videoInfo.id}
@@ -709,9 +683,7 @@ export const VideoCard = ({
 					channelId={videoInfo.snippet.channelId}
 					isExpanded={isSummaryExpanded}
 					setIsExpanded={setIsSummaryExpanded}
-					onSummaryGenerated={() => setHasSummary(true)}
 					onAddToNote={handleAddSummaryToNote}
-					onPreviewUpdated={() => setPreviewVersion((v) => v + 1)}
 					regenerateTrigger={regenerateTrigger}
 					videoDuration={videoInfo.contentDetails?.duration}
 					onBusyChange={onSummaryBusyChange}

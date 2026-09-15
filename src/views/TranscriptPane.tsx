@@ -8,6 +8,7 @@ import type { VideoTranscript } from "src/services/transcriptService";
 import { PluginContext } from "src/store/pluginContext";
 import type { YouTubeVideo } from "src/types";
 import { VideoTranscriptReader } from "src/ui/VideoTranscriptReader";
+import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
 
 export const VIEW_TYPE_TRANSCRIPT = "geulo-transcript";
 
@@ -15,6 +16,7 @@ export class TranscriptPane extends ItemView {
 	private root: Root | null = null;
 	private video?: YouTubeVideo;
 	private transcript?: VideoTranscript;
+	private displayMode: TranscriptReaderMode = "paragraphs";
 
 	constructor(leaf: WorkspaceLeaf, private readonly plugin: GoogleLikedVideoPlugin) { super(leaf); }
 	getViewType(): string { return VIEW_TYPE_TRANSCRIPT; }
@@ -26,7 +28,8 @@ export class TranscriptPane extends ItemView {
 		this.render();
 	}
 	async onClose(): Promise<void> { this.root?.unmount(); this.root = null; }
-	async setState(state: { video?: YouTubeVideo; transcript?: VideoTranscript }, result: ViewStateResult): Promise<void> {
+	async setState(state: { video?: YouTubeVideo; transcript?: VideoTranscript; displayMode?: TranscriptReaderMode }, result: ViewStateResult): Promise<void> {
+		this.displayMode = state.displayMode === "original" || state.displayMode === "ai" ? state.displayMode : "paragraphs";
 		if (state.video?.id && state.video.snippet?.title) {
 			if (this.video?.id !== state.video.id) this.transcript = undefined;
 			this.video = state.video;
@@ -35,10 +38,15 @@ export class TranscriptPane extends ItemView {
 		this.render();
 		await super.setState(state, result);
 	}
-	getState(): Record<string, unknown> { return { video: this.video }; }
+	getState(): Record<string, unknown> { return { video: this.video, displayMode: this.displayMode }; }
 	private render(): void {
 		this.root?.render(<StrictMode><PluginContext.Provider value={this.plugin}>
-			{this.video ? <VideoTranscriptReader key={this.video.id} video={this.video} initialTranscript={this.transcript} /> : <p>Select a video's transcript from Geulo.</p>}
+			{this.video ? <VideoTranscriptReader key={this.video.id} video={this.video} initialTranscript={this.transcript}
+				displayMode={this.displayMode} onDisplayModeChange={mode => {
+					this.displayMode = mode;
+					this.render();
+					this.app.workspace.requestSaveLayout();
+				}} /> : <p>Select a video's transcript from Geulo.</p>}
 		</PluginContext.Provider></StrictMode>);
 	}
 }

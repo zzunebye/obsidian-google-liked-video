@@ -153,7 +153,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         new Setting(containerEl).setHeading().setName('Video display');
         this.renderLikedVideoViewModeSetting(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
-		this.renderTranscriptLanguageSetting(containerEl);
+        this.renderTranscriptLanguageSetting(containerEl);
         this.renderShortVideoDurationSetting(containerEl);
         this.renderVideoTagsSetting(containerEl);
     }
@@ -240,17 +240,17 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
     }
 
-	private renderTranscriptLanguageSetting(containerEl: HTMLElement): void {
-		new Setting(containerEl)
-			.setName('Transcript language')
-			.setDesc('Preferred caption language when opening a transcript. Falls back to English, then the first available language. Reopen an existing transcript to apply changes.')
-			.addDropdown(dropdown => dropdown
-				.addOptions(TRANSCRIPT_LANGUAGE_OPTIONS)
-				.setValue(this.plugin.settings.transcriptLanguage)
-				.onChange(async value => {
-					await this.saveSetting('transcriptLanguage', value);
-				}));
-	}
+    private renderTranscriptLanguageSetting(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setName('Transcript language')
+            .setDesc('Preferred caption language for reading transcripts and OpenRouter summaries. Falls back to English, then the first available language. Reopen an existing transcript to apply changes.')
+            .addDropdown(dropdown => dropdown
+                .addOptions(TRANSCRIPT_LANGUAGE_OPTIONS)
+                .setValue(this.plugin.settings.transcriptLanguage)
+                .onChange(async value => {
+                    await this.saveSetting('transcriptLanguage', value);
+                }));
+    }
 
     private renderVideoTagsSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
@@ -397,7 +397,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     private renderAISection(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setHeading()
-            .setName('[Experimental] AI Features')
+            .setName('AI Features')
             .setDesc('Configure AI-powered features');
 
         new Setting(containerEl)
@@ -419,7 +419,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('AI Provider')
-            .setDesc('Choose which AI provider to use for video summaries.')
+            .setDesc('OpenRouter summarizes the transcript with your selected model. Google Gemini analyzes the video directly without sending the transcript.')
             .addDropdown(dropdown => {
                 for (const provider of AI_PROVIDERS) {
                     dropdown.addOption(provider, AI_PROVIDER_LABELS[provider]);
@@ -457,7 +457,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
             addWideTextSetting(containerEl, {
                 name: 'Model ID',
-                desc: 'Enter a Gemini model ID from OpenRouter (e.g. google/gemini-3-flash-preview).',
+                desc: 'Enter an OpenRouter model ID that supports text input. The transcript is included with your summary prompt.',
                 placeholder: 'google/gemini-3-flash-preview',
                 value: this.plugin.settings.openRouterModel,
                 onChange: async (value) => {

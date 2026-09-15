@@ -4,6 +4,7 @@ import type { RequestUrlParam } from "obsidian";
 const YOUTUBE_ORIGIN = "https://www.youtube.com";
 const TRANSCRIPT_TIMEOUT_MS = 30000;
 const MAX_RESPONSE_LENGTH = 5_000_000;
+const MAX_CACHED_TRANSCRIPTS = 20;
 
 export interface TranscriptSegment {
 	readonly start: number;
@@ -167,6 +168,26 @@ function parseTranscript(text: string): TranscriptSegment[] {
 }
 
 export class TranscriptService {
+	private cache = new Map<string, VideoTranscript>();
+
+	async getTranscript(videoId: string, signal?: AbortSignal, preferredLanguage = 'en'): Promise<VideoTranscript> {
+		if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
+		const key = `${videoId}:${preferredLanguage.toLowerCase()}`;
+		const cached = this.cache.get(key);
+		if (cached) {
+			this.cache.delete(key);
+			this.cache.set(key, cached);
+			return cached;
+		}
+		const transcript = await this.fetchTranscript(videoId, signal, preferredLanguage);
+		this.cache.set(key, transcript);
+		if (this.cache.size > MAX_CACHED_TRANSCRIPTS) {
+			const oldest = this.cache.keys().next().value;
+			if (oldest !== undefined) this.cache.delete(oldest);
+		}
+		return transcript;
+	}
+
 	async fetchTranscript(videoId: string, signal?: AbortSignal, preferredLanguage = "en"): Promise<VideoTranscript> {
 		if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
 			throw new TranscriptServiceError("unavailable", "This video does not have a valid YouTube video ID.");
@@ -247,3 +268,5 @@ export class TranscriptService {
 		}
 	}
 }
+
+export const transcriptService = new TranscriptService();

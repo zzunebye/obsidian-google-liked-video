@@ -1,21 +1,25 @@
 import { Menu, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Copy, ExternalLink, FilePlus, PanelRightOpen, Search } from "lucide-react";
+import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, PanelRightOpen, Search } from "lucide-react";
 import { debugLogger } from "src/debug";
 import type { VideoTranscript } from "src/services/transcriptService";
 import { TranscriptPlaybackService } from "src/services/transcriptPlaybackService";
 import { usePlugin } from "src/store/pluginContext";
 import type { YouTubeVideo } from "src/types";
 import { getExpectedNotePath, sanitizeFileName } from "src/utils/noteUtils";
-import { formatTranscriptTimestamp, groupTranscriptSegments } from "src/utils/transcriptUtils";
+import { formatTranscriptTimestamp, getTranscriptRows } from "src/utils/transcriptUtils";
+import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
+import { SummarySection } from "./SummarySection";
 import { useVideoTranscript } from "./useVideoTranscript";
 
 interface Props {
 	video: YouTubeVideo;
 	initialTranscript?: VideoTranscript;
+	displayMode?: TranscriptReaderMode;
+	onDisplayModeChange?: (mode: TranscriptReaderMode) => void;
 	backLabel?: string;
 	onBack?: () => void;
-	onOpenPane?: (transcript?: VideoTranscript) => Promise<void>;
+	onOpenPane?: (transcript: VideoTranscript | undefined, mode: TranscriptReaderMode) => Promise<void>;
 }
 
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -32,24 +36,30 @@ function Highlight({ text, query }: { text: string; query: string }) {
 	return <>{parts}</>;
 }
 
-export function VideoTranscriptReader({ video, initialTranscript, backLabel, onBack, onOpenPane }: Props) {
+export function VideoTranscriptReader({ video, initialTranscript, displayMode, onDisplayModeChange, backLabel, onBack, onOpenPane }: Props) {
 	const plugin = usePlugin();
 	const rootRef = useRef<HTMLElement>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const { state, retry } = useVideoTranscript(video.id, initialTranscript);
 	const [query, setQuery] = useState("");
+	const [localDisplayMode, setLocalDisplayMode] = useState<TranscriptReaderMode>("paragraphs");
+	const mode = displayMode ?? localDisplayMode;
+	const [summaryBusy, setSummaryBusy] = useState(false);
 	const [position, setPosition] = useState<number | null>(null);
 	const [following, setFollowing] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const busyRef = useRef(false);
 	const [copied, setCopied] = useState(false);
 	const playback = useMemo(() => new TranscriptPlaybackService(plugin.app, plugin.settings), [plugin]);
-	const paragraphs = useMemo(() => state.kind === "loaded" ? groupTranscriptSegments(state.transcript.segments) : [], [state]);
+	const rows = useMemo(() => state.kind === "loaded" && mode !== "ai" ? getTranscriptRows(state.transcript.segments, mode) : [], [state, mode]);
 	const needle = query.trim().toLocaleLowerCase();
-	const visibleParagraphs = paragraphs.filter(paragraph => paragraph.text.toLocaleLowerCase().includes(needle));
-	const activeIndex = position === null ? -1 : paragraphs.findIndex((paragraph, index) =>
-		position >= paragraph.start && position < (paragraphs[index + 1]?.start ?? paragraph.end + 1));
-	const activeStart = paragraphs[activeIndex]?.start;
+	const visibleRows = useMemo(() => needle ? rows.filter(row => row.text.toLocaleLowerCase().includes(needle)) : rows, [rows, needle]);
+
+	const activeIndex = position === null ?
+		-1 : rows.findIndex((row, index) =>
+			position >= row.start && position < (rows[index + 1]?.start ?? row.end + 1));
+	const activeRow = rows[activeIndex];
+	const activeStart = activeRow?.start;
 
 	useEffect(() => { rootRef.current?.focus({ preventScroll: true }); }, []);
 
@@ -73,7 +83,7 @@ export function VideoTranscriptReader({ video, initialTranscript, backLabel, onB
 		const scroller = scrollRef.current;
 		const active = scroller?.querySelector<HTMLElement>('[aria-current="true"]');
 		if (scroller && active) scroller.scrollTo({ top: active.offsetTop - scroller.clientHeight / 3, behavior: "auto" });
-	}, [activeStart, following, needle]);
+	}, [activeStart, following, needle, mode]);
 
 	useEffect(() => {
 		if (!copied) return;
@@ -93,8 +103,8 @@ export function VideoTranscriptReader({ video, initialTranscript, backLabel, onB
 	};
 
 	const copy = async (timestamps: boolean): Promise<void> => {
-		await navigator.clipboard.writeText(paragraphs.map(paragraph =>
-			`${timestamps ? `${formatTranscriptTimestamp(paragraph.start)}  ` : ""}${paragraph.text}`).join("\n\n"));
+		await navigator.clipboard.writeText(rows.map(row =>
+			`${timestamps ? `${formatTranscriptTimestamp(row.start)}  ` : ""}${row.text}`).join("\n\n"));
 		setCopied(true);
 		new Notice("Full transcript copied to clipboard");
 	};
@@ -111,26 +121,43 @@ export function VideoTranscriptReader({ video, initialTranscript, backLabel, onB
 			const url = `https://www.youtube.com/watch?v=${video.id}`;
 			const escapedTitle = video.snippet.title.replace(/[[\]\\]/g, "\\$&");
 			const content = `# Transcript\n\n[Watch video: ${escapedTitle}](${url})\n\n${video.snippet.channelTitle} · ${state.transcript.languageName}\n\n`
-				+ paragraphs.map(paragraph => `[${formatTranscriptTimestamp(paragraph.start)}](${url}&t=${Math.floor(paragraph.start)}s) ${paragraph.text}`).join("\n\n") + "\n";
+				+ rows.map(row => `[${formatTranscriptTimestamp(row.start)}](${url}&t=${Math.floor(row.start)}s) ${row.text}`).join("\n\n") + "\n";
 			file = await plugin.app.vault.create(path, content);
 			new Notice("Transcript saved as a note");
 		} else new Notice("Opening the existing transcript note");
 		await plugin.app.workspace.getLeaf("tab").openFile(file);
 	};
 
+	const changeMode = (value: TranscriptReaderMode): void => {
+		if (value === mode) return;
+		setLocalDisplayMode(value);
+		setCopied(false);
+		onDisplayModeChange?.(value);
+		scrollRef.current?.scrollTo({ top: 0 });
+	};
+	const modes: TranscriptReaderMode[] = ["ai", "paragraphs", "original"];
+	const isAiMode = mode === "ai";
+
 	return (
-		<section ref={rootRef} className="geulo-transcript-reader" tabIndex={-1} aria-label={`Transcript for ${video.snippet.title}`}>
+		<section ref={rootRef} className={`geulo-transcript-reader geulo-transcript-reader--${mode}`} tabIndex={-1} aria-label={`Transcript for ${video.snippet.title}`}>
 			<header className="geulo-transcript-reader__header">
 				<div className="geulo-transcript-reader__navigation">
-					{onBack ? <button type="button" onClick={onBack}><ArrowLeft size={16} aria-hidden="true" />{backLabel ?? "Back to videos"}</button> : <span>Transcript</span>}
-					{onOpenPane && <button type="button" title="Open transcript in new pane" aria-label="Open transcript in new pane" disabled={busy}
-						onClick={() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined))}><PanelRightOpen size={16} aria-hidden="true" /></button>}
+					{onBack ? <button type="button" className="geulo-transcript-reader__back" onClick={onBack}><ArrowLeft size={16} aria-hidden="true" />{backLabel ?? "Back to videos"}</button> : <span>Transcript</span>}
+					<div className="geulo-transcript-reader__navigation-actions">
+						<button type="button" disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" />Open video</button>
+						{onOpenPane && <button type="button" title="Open transcript in new pane" aria-label="Open transcript in new pane" disabled={busy || summaryBusy}
+							onClick={() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined, mode))}><PanelRightOpen size={16} aria-hidden="true" /></button>}
+					</div>
 				</div>
 				<h2>{video.snippet.title}</h2>
 				<p className="geulo-transcript-reader__metadata">{video.snippet.channelTitle}
-					{state.kind === "loaded" && <> · {state.transcript.languageName.replace(/\s*\(auto-generated\)/i, "")} · {state.transcript.isAutoGenerated ? "Auto-generated" : "Captions"}</>}</p>
-				<div className="geulo-transcript-reader__actions">
-					<button type="button" disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" />Open video</button>
+					{!isAiMode && state.kind === "loaded" && <> · {state.transcript.languageName.replace(/\s*\(auto-generated\)/i, "")} · {state.transcript.isAutoGenerated ? "Auto-generated" : "Captions"}</>}</p>
+
+				<div className="geulo-transcript-reader__modes" role="group" aria-label="Transcript display mode">
+					{modes.map(value => <button key={value} type="button" aria-pressed={mode === value} disabled={busy}
+						onClick={() => changeMode(value)}>{value === "ai" ? <><Bot size={14} aria-hidden="true" />AI</> : value === "paragraphs" ? "Paragraphs" : "Original timestamps"}</button>)}
+				</div>
+				{!isAiMode && <div className="geulo-transcript-reader__actions">
 					<button type="button" disabled={busy || state.kind !== "loaded"} onClick={event => {
 						const menu = new Menu();
 						menu.addItem(item => item.setTitle("Copy full text").onClick(() => void run(() => copy(false))));
@@ -139,27 +166,33 @@ export function VideoTranscriptReader({ video, initialTranscript, backLabel, onB
 						menu.showAtPosition({ x: rect.left, y: rect.bottom });
 					}}><Copy size={14} aria-hidden="true" />{copied ? "Copied" : "Copy all…"}</button>
 					<button type="button" disabled={busy || state.kind !== "loaded"} onClick={() => void run(saveNote)}><FilePlus size={14} aria-hidden="true" />Save as note</button>
-				</div>
+				</div>}
 			</header>
-			{state.kind === "loading" && <p className="geulo-transcript-reader__status" role="status">Fetching transcript…</p>}
-			{state.kind === "error" && <div className="geulo-transcript-reader__status" role="alert"><p>{state.message}</p><button type="button" onClick={retry}>Try again</button></div>}
-			{state.kind === "loaded" && <>
+			<div className="geulo-transcript-reader__summary" hidden={mode !== "ai"} aria-label="AI summary">
+				<SummarySection videoId={video.id} videoTitle={video.snippet.title} channelTitle={video.snippet.channelTitle}
+					channelId={video.snippet.channelId} videoDuration={video.contentDetails?.duration} presentation="reader"
+					isExpanded={mode === "ai"} setIsExpanded={expanded => { if (!expanded) changeMode("paragraphs"); }}
+					onBusyChange={setSummaryBusy} />
+			</div>
+			{mode !== "ai" && state.kind === "loading" && <p className="geulo-transcript-reader__status" role="status">Fetching transcript…</p>}
+			{mode !== "ai" && state.kind === "error" && <div className="geulo-transcript-reader__status" role="alert"><p>{state.message}</p><button type="button" onClick={retry}>Try again</button></div>}
+			{mode !== "ai" && state.kind === "loaded" && <>
 				<div className="geulo-transcript-reader__tools">
 					<label className="geulo-transcript-reader__search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search transcript" placeholder="Search transcript…" value={query} onChange={event => { setQuery(event.target.value); setFollowing(false); scrollRef.current?.scrollTo({ top: 0 }); }} /></label>
 					<div className="geulo-transcript-reader__follow">
-						<span role={needle ? "status" : undefined}>{needle ? `${visibleParagraphs.length} matching paragraphs` : position === null ? "Open this video in WebViewer to follow playback" : `Playback · ${formatTranscriptTimestamp(position)}`}</span>
+						<span role={needle ? "status" : undefined}>{needle ? `${visibleRows.length} matching ${mode === "paragraphs" ? "paragraphs" : "captions"}` : position === null ? "Open this video in WebViewer to follow playback" : `Playback · ${formatTranscriptTimestamp(position)}`}</span>
 						{position !== null && <button type="button" aria-pressed={following} onClick={() => { setQuery(""); setFollowing(value => !value); }}>{following ? "Following" : "Follow playback"}</button>}
 					</div>
 				</div>
-				<div ref={scrollRef} className="geulo-transcript-reader__paragraphs" tabIndex={0} aria-label="Transcript paragraphs"
+				<div ref={scrollRef} className="geulo-transcript-reader__paragraphs" tabIndex={0} aria-label={mode === "paragraphs" ? "Transcript paragraphs" : "Original caption segments"}
 					onWheel={() => setFollowing(false)} onTouchMove={() => setFollowing(false)} onPointerDown={() => setFollowing(false)}
 					onKeyDown={event => { if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) setFollowing(false); }}>
-					{visibleParagraphs.length === 0 && <p role="status">{needle ? "No matching transcript text." : "No transcript text is available."}</p>}
-					{visibleParagraphs.map(paragraph => <p key={paragraph.start} className="geulo-transcript-reader__paragraph" aria-current={paragraph.start === activeStart ? "true" : undefined}>
-						<a href={`https://www.youtube.com/watch?v=${video.id}&t=${Math.floor(paragraph.start)}s`} aria-label={`Play video at ${formatTranscriptTimestamp(paragraph.start)}`}
-							onClick={event => { event.preventDefault(); void run(() => playback.open(video.id, paragraph.start)); }}>
-							{formatTranscriptTimestamp(paragraph.start)}</a>
-						<span><Highlight text={paragraph.text} query={needle} /></span>
+					{visibleRows.length === 0 && <p role="status">{needle ? "No matching transcript text." : "No transcript text is available."}</p>}
+					{visibleRows.map((row, index) => <p key={`${row.start}-${index}`} className="geulo-transcript-reader__paragraph" aria-current={row === activeRow ? "true" : undefined}>
+						<a href={`https://www.youtube.com/watch?v=${video.id}&t=${Math.floor(row.start)}s`} aria-label={`Play video at ${formatTranscriptTimestamp(row.start)}`}
+							onClick={event => { event.preventDefault(); void run(() => playback.open(video.id, row.start)); }}>
+							{formatTranscriptTimestamp(row.start)}</a>
+						<span><Highlight text={row.text} query={needle} /></span>
 					</p>)}
 				</div>
 			</>}

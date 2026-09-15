@@ -2,15 +2,17 @@ import { createContext, useContext, useLayoutEffect, useRef, useState } from "re
 import type { ReactNode } from "react";
 import { usePlugin } from "src/store/pluginContext";
 import type { YouTubeVideo } from "src/types";
+import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
 import { VideoTranscriptReader } from "./VideoTranscriptReader";
 
 interface TranscriptSelection {
 	video: YouTubeVideo;
+	displayMode: TranscriptReaderMode;
 }
 
 interface TranscriptContextValue {
 	selectedVideoId?: string;
-	openTranscript: (video: YouTubeVideo, trigger: HTMLElement) => void;
+	openTranscript: (video: YouTubeVideo, trigger: HTMLElement, mode?: TranscriptReaderMode) => void;
 }
 
 const TranscriptContext = createContext<TranscriptContextValue | null>(null);
@@ -49,14 +51,15 @@ export function TranscriptWorkspace({ children, label }: { children: ReactNode; 
 	};
 	return <TranscriptContext.Provider value={{
 		selectedVideoId: selected?.video.id,
-		openTranscript: (video, trigger) => { triggerRef.current = trigger; setSelected({ video }); },
+		openTranscript: (video, trigger, displayMode = "paragraphs") => { triggerRef.current = trigger; setSelected({ video, displayMode }); },
 	}}>
 		<div ref={rootRef} className={`geulo-transcript-workspace${selected ? " geulo-transcript-workspace--open" : ""}`}>
 			<div ref={listRef} className="view-content geulo-transcript-workspace__list" tabIndex={-1} aria-hidden={listHidden || undefined} aria-label={label}>{children}</div>
 			{selected && <div className="geulo-transcript-workspace__detail">
 				<VideoTranscriptReader key={selected.video.id} video={selected.video} backLabel={`Back to ${label}`} onBack={close}
-					onOpenPane={async transcript => {
-						await plugin.openTranscriptPane(selected.video, transcript);
+					displayMode={selected.displayMode} onDisplayModeChange={displayMode => setSelected(current => current ? { ...current, displayMode } : current)}
+					onOpenPane={async (transcript, mode) => {
+						await plugin.openTranscriptPane(selected.video, transcript, mode);
 						setSelected(null);
 					}} />
 			</div>}

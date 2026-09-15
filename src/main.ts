@@ -7,6 +7,7 @@ import { PlaylistVideosPane, VIEW_TYPE_PLAYLIST_VIDEOS } from 'src/views/Playlis
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from 'src/views/SubscriptionPane';
 import { TranscriptPane, VIEW_TYPE_TRANSCRIPT } from 'src/views/TranscriptPane';
 import type { VideoTranscript } from 'src/services/transcriptService';
+import type { TranscriptReaderMode } from 'src/utils/transcriptUtils';
 import { LikedVideoApi, PlaylistApi } from './api';
 import { getValidAccessToken } from './auth';
 import { localStorageService } from './storage';
@@ -53,7 +54,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	shortVideoMaxDurationSeconds: 90,
 	enableAISummary: false,
 	geminiApiKey: '',
-	aiProvider: 'gemini',
+	aiProvider: 'openrouter',
 	openRouterApiKey: '',
 	openRouterModel: 'google/gemini-3-flash-preview',
 	summaryPrompt: 'Summarize this YouTube video. Include the main topics discussed, key takeaways, and any notable quotes or insights. Format with markdown headers and bullet points.',
@@ -221,9 +222,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		await this.checkFeatureAnnouncement();
 	}
 
-	async openTranscriptPane(video: YouTubeVideo, transcript?: VideoTranscript): Promise<void> {
+	async openTranscriptPane(video: YouTubeVideo, transcript?: VideoTranscript, displayMode: TranscriptReaderMode = 'paragraphs'): Promise<void> {
 		const leaf = this.app.workspace.getLeaf('split');
-		await leaf.setViewState({ type: VIEW_TYPE_TRANSCRIPT, state: { video, transcript }, active: true });
+		await leaf.setViewState({ type: VIEW_TYPE_TRANSCRIPT, state: { video, transcript, displayMode }, active: true });
 		await this.app.workspace.revealLeaf(leaf);
 	}
 

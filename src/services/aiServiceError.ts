@@ -3,6 +3,7 @@ export type AIServiceErrorType =
 	| 'invalid_key'
 	| 'network_error'
 	| 'rate_limit'
+	| 'transcript_error'
 	| 'unknown';
 
 export class AIServiceError extends Error {

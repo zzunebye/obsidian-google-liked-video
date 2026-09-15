@@ -1,5 +1,5 @@
+import { Component, Notice, MarkdownRenderer, getLanguage } from "obsidian";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Component, Notice, MarkdownRenderer } from "obsidian";
 import {
 	Copy,
 	RefreshCw,
@@ -15,11 +15,13 @@ import { usePlugin } from "../store/pluginContext";
 import { debugLogger } from "../debug";
 import { parseDurationToSeconds } from "../utils/videoUtils";
 import { confirmLongVideoSummary } from "../utils/confirmationUtils";
+import type { SummarySource } from "../types";
 
 const LONG_VIDEO_THRESHOLD_SECONDS = 30 * 60; // 30 minutes
 
 export interface SummarySnapshot {
 	readonly summary: string | null;
+	readonly source?: SummarySource;
 	readonly error: AIServiceError | null;
 	readonly contentCollapsed: boolean;
 }
@@ -31,8 +33,9 @@ interface SummarySectionProps {
 	channelId: string;
 	isExpanded: boolean;
 	setIsExpanded: (expanded: boolean) => void;
-	onSummaryGenerated: () => void;
-	onAddToNote: (summary: string) => Promise<void>;
+	onSummaryGenerated?: () => void;
+	onAddToNote?: (summary: string) => Promise<void>;
+	presentation?: "card" | "reader";
 	onPreviewUpdated?: () => void;
 	regenerateTrigger?: number;
 	videoDuration?: string; // ISO 8601 duration format (e.g., "PT1H30M")
@@ -56,19 +59,24 @@ export const SummarySection = ({
 	onBusyChange,
 	initialSnapshot,
 	onSnapshotChange,
+	presentation = "card",
 }: SummarySectionProps) => {
 	const plugin = usePlugin();
 	const [summary, setSummaryValue] = useState<string | null>(initialSnapshot?.summary ?? null);
+	const [summarySource, setSummarySource] = useState<SummarySource>(initialSnapshot?.source ?? 'video');
+	const activeSourceRef = useRef<SummarySource>(summarySource);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setErrorValue] = useState<AIServiceError | null>(initialSnapshot?.error ?? null);
 	const [streamingContent, setStreamingContent] = useState<string>("");
 	const [isStreaming, setIsStreaming] = useState(false);
-	const [isContentCollapsed, setContentCollapsedValue] = useState(initialSnapshot?.contentCollapsed ?? true);
-	const snapshotRef = useRef<SummarySnapshot>({ summary, error, contentCollapsed: isContentCollapsed });
-	const setSummary = (value: string | null) => {
+	const [isContentCollapsed, setContentCollapsedValue] = useState(initialSnapshot?.contentCollapsed ?? presentation === "card");
+	const snapshotRef = useRef<SummarySnapshot>({ summary, source: summarySource, error, contentCollapsed: isContentCollapsed });
+	const setSummary = (value: string | null, source: SummarySource) => {
 		setSummaryValue(value);
-		setContentCollapsedValue(true);
-		snapshotRef.current = { ...snapshotRef.current, summary: value, contentCollapsed: true };
+		setSummarySource(source);
+		const contentCollapsed = presentation === "card";
+		setContentCollapsedValue(contentCollapsed);
+		snapshotRef.current = { ...snapshotRef.current, summary: value, source, contentCollapsed };
 		onSnapshotChange?.(snapshotRef.current);
 	};
 	const setError = (value: AIServiceError | null) => {
@@ -126,7 +134,7 @@ export const SummarySection = ({
 			renderComponentRef.current?.unload();
 			renderComponentRef.current = null;
 		};
-	}, [summary, streamingContent, plugin, isExpanded, isStreaming]);
+	}, [summary, streamingContent, plugin, isExpanded, isStreaming, isLoading]);
 
 	// Measure content overflow after markdown rendering completes
 	useEffect(() => {
@@ -146,20 +154,13 @@ export const SummarySection = ({
 				const prompt = `Condense the following video summary into a single concise sentence (max 120 chars). Return ONLY the sentence.\n\n${fullSummary}`;
 				aiService
 					.generateTextCompletion(prompt)
-					.then((oneLiner) => {
-						const trimmed = oneLiner.trim();
-						if (trimmed) {
-							void plugin.summaryStorage.setOneLinerSummary(
-								videoId,
-								trimmed,
-							).catch((error: unknown) => {
-								debugLogger.warn(
-									`[AI Summary] Failed to save one-liner for ${videoId}:`,
-									error,
-								);
-							});
-							onPreviewUpdated?.();
+					.then(async (oneLiner) => {
+						const trimmed = oneLiner.replace(/\s+/g, " ").trim();
+						if (!trimmed) {
+							throw new Error("One-liner completion returned no text");
 						}
+						await plugin.summaryStorage.setOneLinerSummary(videoId, trimmed);
+						onPreviewUpdated?.();
 					})
 					.catch((err) => {
 						debugLogger.warn(
@@ -186,18 +187,9 @@ export const SummarySection = ({
 				return;
 			}
 
-			if (!getActiveApiKey(plugin.settings)) {
-				debugLogger.warn(
-					`[AI Summary] No API key configured for video: ${videoId}`,
-				);
-				setError(new AIServiceError(
-					"no_api_key",
-					"Please configure your API key in Settings > AI Features",
-				));
-				return;
-			}
-
 			requestPendingRef.current = true;
+			setIsLoading(true);
+			setError(null);
 			onBusyChange?.(true);
 			try {
 				if (!forceRegenerate) {
@@ -207,7 +199,10 @@ export const SummarySection = ({
 						debugLogger.debug(
 							`[AI Summary] Cache hit for video: ${videoId} (generated: ${cached.generatedAt})`,
 						);
-						setSummary(cached.summary);
+						setSummary(cached.summary, cached.source ?? 'video');
+						if (!cached.oneLinerSummary?.trim() && plugin.settings.enableAISummary && getActiveApiKey(plugin.settings)) {
+							generateOneLiner(cached.summary);
+						}
 						return;
 					}
 					debugLogger.debug(
@@ -219,8 +214,17 @@ export const SummarySection = ({
 					);
 				}
 
+				if (presentation === "reader" && !plugin.settings.enableAISummary) {
+					setError(new AIServiceError("unknown", "Enable AI summaries in Settings > AI Features to generate a summary."));
+					return;
+				}
+				if (!getActiveApiKey(plugin.settings)) {
+					setError(new AIServiceError("no_api_key", "Please configure your API key in Settings > AI Features"));
+					return;
+				}
+
 				// Check if video is longer than 30 minutes and warn user
-				if (videoDuration) {
+				if (plugin.settings.aiProvider === 'gemini' && videoDuration) {
 					const durationSeconds = parseDurationToSeconds(videoDuration);
 					if (
 						durationSeconds &&
@@ -254,9 +258,10 @@ export const SummarySection = ({
 
 				try {
 					const aiService = createAIService(plugin.settings);
+					activeSourceRef.current = plugin.settings.aiProvider === 'gemini' ? 'video' : 'transcript';
 
 					// Check if streaming is supported
-					if (aiService.generateVideoSummaryStream) {
+					if (presentation === "card" && aiService.generateVideoSummaryStream) {
 						debugLogger.info(
 							`[AI Summary] Using streaming mode for video: ${videoId}`,
 						);
@@ -289,11 +294,11 @@ export const SummarySection = ({
 												videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
 											},
 										);
-										setSummary(result.summary);
+										setSummary(result.summary, result.source);
 										setStreamingContent("");
 										setIsStreaming(false);
 										abortControllerRef.current = null;
-										onSummaryGenerated();
+										onSummaryGenerated?.();
 										generateOneLiner(result.summary);
 										new Notice(
 											`AI summary generated for "${videoTitle}"`,
@@ -332,8 +337,8 @@ export const SummarySection = ({
 								videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
 							},
 						);
-						setSummary(result.summary);
-						onSummaryGenerated();
+						setSummary(result.summary, result.source);
+						onSummaryGenerated?.();
 						generateOneLiner(result.summary);
 						new Notice(
 							`AI summary generated for "${videoTitle}"`,
@@ -355,7 +360,7 @@ export const SummarySection = ({
 					);
 					// If we have partial streaming content on error, keep it visible
 					if (streamingContent) {
-						setSummary(streamingContent);
+						setSummary(streamingContent, activeSourceRef.current);
 						setStreamingContent("");
 					}
 					setError(aiError);
@@ -363,7 +368,11 @@ export const SummarySection = ({
 					setIsLoading(false);
 					setIsStreaming(false);
 				}
+			} catch (err: unknown) {
+				debugLogger.error(`[AI Summary] Could not load summary for ${videoId}`, err);
+				setError(err instanceof AIServiceError ? err : new AIServiceError("unknown", "Could not load the summary. Please try again."));
 			} finally {
+				setIsLoading(false);
 				requestPendingRef.current = false;
 				onBusyChange?.(false);
 			}
@@ -380,6 +389,7 @@ export const SummarySection = ({
 			channelTitle,
 			channelId,
 			videoDuration,
+			presentation,
 		],
 	);
 
@@ -431,7 +441,7 @@ export const SummarySection = ({
 		e.stopPropagation();
 		if (!summary) return;
 		try {
-			await onAddToNote(summary);
+			await onAddToNote?.(summary);
 		} catch (err) {
 			console.error("Failed to add summary to note:", err);
 			new Notice("Failed to add summary to note");
@@ -449,7 +459,7 @@ export const SummarySection = ({
 			setIsLoading(false);
 			// Keep streaming content visible if any was received
 			if (streamingContent) {
-				setSummary(streamingContent);
+				setSummary(streamingContent, activeSourceRef.current);
 				setStreamingContent("");
 			}
 			setError(new AIServiceError("unknown", "Summary cancelled. Retry when ready."));
@@ -472,9 +482,10 @@ export const SummarySection = ({
 	if (!isExpanded) return null;
 
 	return (
-		<div className="summary-section" onClick={(e) => e.stopPropagation()}>
+		<div className="summary-section" onClick={(e) => e.stopPropagation()} aria-busy={isLoading || isStreaming}>
 			{(isLoading || (isStreaming && !streamingContent)) && (
-				<div className="summary-section__skeleton">
+				<div className="summary-section__skeleton" role="status" aria-label="Loading AI summary">
+					{presentation === "reader" && <p>Preparing AI summary… This may take a moment.</p>}
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--long" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--medium" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--short" />
@@ -483,10 +494,10 @@ export const SummarySection = ({
 			)}
 
 			{error && !isLoading && !isStreaming && (
-				<div className="summary-section__error">
+				<div className="summary-section__error" role="alert">
 					<AlertCircle size={14} />
 					<span>{error.message}</span>
-					{error.type !== "no_api_key" && (
+					{(error.type !== "no_api_key" || presentation === "reader") && (
 						<button
 							className="summary-section__retry-btn"
 							onClick={handleRegenerate}
@@ -522,6 +533,11 @@ export const SummarySection = ({
 
 			{summary && !isLoading && !isStreaming && (
 				<>
+					<div className="summary-section__source">
+						{getLanguage() === 'ko'
+							? (summarySource === 'transcript' ? 'Transcript 기반' : '영상 분석 기반')
+							: (summarySource === 'transcript' ? 'Transcript-based' : 'Video-based')}
+					</div>
 					<div
 						className={
 							isOverflowing && isContentCollapsed
@@ -534,7 +550,7 @@ export const SummarySection = ({
 							ref={contentRef}
 						/>
 					</div>
-					{isOverflowing && (
+					{isOverflowing && presentation === "card" && (
 						<button
 							className="summary-section__toggle-btn"
 							onClick={handleToggleCollapse}
@@ -554,7 +570,7 @@ export const SummarySection = ({
 					)}
 					<div className="summary-section__actions">
 						<div className="summary-section__left-actions">
-							<button
+							{onAddToNote && <button
 								className="summary-section__action-btn"
 								onClick={(event) => {
 									void handleAddToNote(event);
@@ -563,7 +579,7 @@ export const SummarySection = ({
 							>
 								<FileText size={14} />
 								<span>Add to Note</span>
-							</button>
+							</button>}
 							<button
 								className="summary-section__action-btn"
 								onClick={handleCopy}

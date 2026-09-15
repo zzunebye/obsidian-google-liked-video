@@ -1,30 +1,31 @@
 export type LikedVideoPaginationMode = 'pagination' | 'infinite';
 
 export const TRANSCRIPT_LANGUAGE_OPTIONS: Record<string, string> = {
-	auto: 'Follow Obsidian language',
-	ko: 'Korean (한국어)',
-	en: 'English',
-	ja: 'Japanese (日本語)',
-	'zh-Hans': 'Chinese, simplified (简体中文)',
-	'zh-Hant': 'Chinese, traditional (繁體中文)',
-	es: 'Spanish (Español)',
-	fr: 'French (Français)',
-	de: 'German (Deutsch)',
-	pt: 'Portuguese (Português)',
-	ru: 'Russian (Русский)',
-	hi: 'Hindi (हिन्दी)',
-	ar: 'Arabic (العربية)',
-	id: 'Indonesian (Bahasa Indonesia)',
-	th: 'Thai (ไทย)',
-	vi: 'Vietnamese (Tiếng Việt)',
+    auto: 'Follow Obsidian language',
+    ko: 'Korean (한국어)',
+    en: 'English',
+    ja: 'Japanese (日本語)',
+    'zh-Hans': 'Chinese, simplified (简体中文)',
+    'zh-Hant': 'Chinese, traditional (繁體中文)',
+    es: 'Spanish (Español)',
+    fr: 'French (Français)',
+    de: 'German (Deutsch)',
+    pt: 'Portuguese (Português)',
+    ru: 'Russian (Русский)',
+    hi: 'Hindi (हिन्दी)',
+    ar: 'Arabic (العربية)',
+    id: 'Indonesian (Bahasa Indonesia)',
+    th: 'Thai (ไทย)',
+    vi: 'Vietnamese (Tiếng Việt)',
 };
 
-export const AI_PROVIDERS = ['gemini', 'openrouter'] as const;
+export const AI_PROVIDERS = ['openrouter', 'gemini'] as const;
 export type AIProvider = typeof AI_PROVIDERS[number];
+export type SummarySource = 'transcript' | 'video';
 
 export const AI_PROVIDER_LABELS: Record<AIProvider, string> = {
     gemini: 'Google Gemini',
-    openrouter: 'OpenRouter (experimental)',
+    openrouter: 'OpenRouter',
 };
 
 export function isAIProvider(value: string): value is AIProvider {
@@ -50,7 +51,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     fetchOnStartup: boolean;
     lastAutoFetchTime: number;
     lastSeenVersion: string;
-	lastSeenAnnouncementId?: string;
+    lastSeenAnnouncementId?: string;
     autoCreateNoteEnabled: boolean;
     linkToDailyNote: boolean;
     fullFetchOnEveryAutoFetch: boolean;
@@ -58,7 +59,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     customTemplate: string;
     openInObsidianWebViewer: boolean;
     openWebViewerInSplitPane: boolean;
-	transcriptLanguage: string;
+    transcriptLanguage: string;
     showVideoTags: boolean;
     shortVideoMaxDurationSeconds: ShortVideoMaxDurationSeconds;
     enableAISummary: boolean;
@@ -134,11 +135,11 @@ export interface YouTubeVideo {
 }
 
 export interface SubscriptionChannel {
-	id: string;
-	title: string;
-	thumbnailUrl?: string;
-	uploadsPlaylistId: string;
-	subscriptionId?: string;
+    id: string;
+    title: string;
+    thumbnailUrl?: string;
+    uploadsPlaylistId: string;
+    subscriptionId?: string;
 }
 
 export interface YouTubeVideosResponse {
@@ -192,6 +193,7 @@ export interface SummaryFileData {
     oneLinerSummary?: string;
     generatedAt: string; // ISO string
     model: string;
+    source?: SummarySource; // Summaries saved before this field used video input.
 }
 
 // File format for persisting AI generated Video summaries
@@ -264,4 +266,5 @@ export interface CachedLLMSummary {
     summary: string;
     generatedAt: string; // ISO string
     model: string;
+    source?: SummarySource;
 }
