@@ -101,7 +101,6 @@ export const VideoCard = ({
 		() => plugin.summaryStorage.getOneLineSummary(videoInfo.id),
 	);
 	const hasSummary = summaryPreview !== null;
-	const [regenerateTrigger, setRegenerateTrigger] = useState(0);
 	const openTranscript = (trigger: HTMLElement, mode: TranscriptReaderMode = "paragraphs"): void => {
 		if (transcriptWorkspace) transcriptWorkspace.openTranscript(videoInfo, trigger, mode);
 		else void plugin.openTranscriptPane(videoInfo, undefined, mode).catch(error => {
@@ -292,14 +291,117 @@ export const VideoCard = ({
 		e.preventDefault();
 		e.stopPropagation();
 		const trigger = e.currentTarget;
+		const activeFile = plugin.app.workspace.getActiveFile()
+			?? plugin.app.workspace.activeEditor?.file;
 		const menu = new Menu();
 		menu.addItem((item) => {
-			item.setTitle("Open in browser");
+			item.setTitle("Open video");
 			item.setIcon("create-new");
 			item.onClick(() => {
 				onLinkClick(url);
 			});
 		});
+
+		menu.addItem((item) => {
+			item.setTitle("Read transcript");
+			item.setIcon("captions");
+			item.onClick(() => openTranscript(trigger));
+		});
+
+		if (isAIEnabled) {
+			menu.addItem((item) => {
+				item.setTitle(
+					hasSummary ? "View AI summary" : "Generate AI summary",
+				);
+				item.setIcon("bot");
+				item.onClick(() => openTranscript(trigger, "ai"));
+			});
+		}
+
+		menu.addItem((item) => {
+			item.setTitle("View video details");
+			item.onClick(() => {
+				const modal = new VideoInfoModal(
+					plugin.app,
+					videoInfo,
+					plugin.getCategoryDisplay.bind(plugin),
+				);
+				modal.open();
+			});
+		});
+
+		menu.addSeparator();
+
+		menu.addItem((item) => {
+			item.setTitle(noteExists ? "Open video note" : "Create video note");
+			item.setIcon(noteExists ? "file-check" : "file-plus");
+			item.onClick(async () => handleCreateVideoNote(e));
+		});
+
+		menu.addItem((item) => {
+			item.setTitle("Add link to current note");
+			item.setDisabled(activeFile?.extension !== "md");
+			item.onClick(async () => {
+				if (!activeFile || activeFile.extension !== "md") {
+					new Notice(
+						"No active note found. Please open a note first.",
+					);
+					return;
+				}
+
+				const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
+
+				try {
+					await appendNoteContent(plugin.app, activeFile, {
+						text: "\n" + videoData,
+					});
+					new Notice(`Added video to ${activeFile.basename}`);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					debugLogger.error("Failed to add video to the active note:", message);
+					new Notice("Failed to add video to the active note");
+				}
+			});
+		});
+
+		menu.addItem((item) => {
+			item.setTitle("Add link to daily note");
+			item.onClick(async () => {
+				try {
+					const today = moment().startOf("day");
+					const dailyNotes = getAllDailyNotes();
+					let dailyNote = getDailyNote(today, dailyNotes);
+					if (!dailyNote) {
+						dailyNote = await createDailyNote(today);
+					}
+
+					const dailyNoteFile = plugin.app.vault.getFileByPath(dailyNote.path);
+					if (dailyNoteFile === null) {
+						throw new Error(`Daily note is unavailable in the current vault: ${dailyNote.path}`);
+					}
+					const dataToAdd = `[${videoInfo.snippet.title} - ${videoInfo.snippet.channelTitle}](${url})`;
+					await onAddToDailyNote(dataToAdd, dailyNoteFile);
+				} catch (error) {
+					console.error("Error adding to daily note:", error);
+					new Notice(
+						"Failed to add video to daily note. Check console for details.",
+					);
+				}
+			});
+		});
+
+		if (source === "liked") {
+			menu.addSeparator();
+			menu.addItem((item) => {
+				item.setTitle("Add to playlist…");
+				item.setIcon("list-plus");
+				item.onClick(() => {
+					new AddToPlaylistModal(plugin.app, plugin.playlistApi, videoInfo.id, videoInfo.snippet.title).open();
+				});
+			});
+		}
+
+		menu.addSeparator();
 
 		if (source === "liked") {
 			menu.addItem((item) => {
@@ -336,16 +438,6 @@ export const VideoCard = ({
 			}
 		}
 
-		if (source === "liked") {
-			menu.addItem((item) => {
-				item.setTitle("Add to playlist");
-				item.setIcon("list-plus");
-				item.onClick(() => {
-					new AddToPlaylistModal(plugin.app, plugin.playlistApi, videoInfo.id, videoInfo.snippet.title).open();
-				});
-			});
-		}
-
 		if (source === "subscription" && onUnsubscribeChannel) {
 			menu.addItem((item) => {
 				item.setTitle("Unsubscribe channel");
@@ -353,104 +445,6 @@ export const VideoCard = ({
 				item.setDisabled(unsubscribeActionPending);
 				item.onClick(onUnsubscribeChannel);
 			});
-		}
-
-		menu.addItem((item) => {
-			item.setTitle("Add to daily note");
-			item.onClick(async () => {
-				try {
-					const today = moment().startOf("day");
-					const dailyNotes = getAllDailyNotes();
-					let dailyNote = getDailyNote(today, dailyNotes);
-					if (!dailyNote) {
-						dailyNote = await createDailyNote(today);
-					}
-
-					const dailyNoteFile = plugin.app.vault.getFileByPath(dailyNote.path);
-					if (dailyNoteFile === null) {
-						throw new Error(`Daily note is unavailable in the current vault: ${dailyNote.path}`);
-					}
-					const dataToAdd = `[${videoInfo.snippet.title} - ${videoInfo.snippet.channelTitle}](${url})`;
-					await onAddToDailyNote(dataToAdd, dailyNoteFile);
-				} catch (error) {
-					console.error("Error adding to daily note:", error);
-					new Notice(
-						"Failed to add video to daily note. Check console for details.",
-					);
-				}
-			});
-		});
-
-		menu.addItem((item) => {
-			item.setTitle("Add to current note");
-			item.onClick(async () => {
-				const activeFile = plugin.app.workspace.getActiveFile()
-					?? plugin.app.workspace.activeEditor?.file;
-				if (!activeFile || activeFile.extension !== "md") {
-					new Notice(
-						"No active note found. Please open a note first.",
-					);
-					return;
-				}
-
-				const videoData = `- [${videoInfo.snippet.title}](${url}) - ${videoInfo.snippet.channelTitle}`;
-
-				try {
-					await appendNoteContent(plugin.app, activeFile, {
-						text: "\n" + videoData,
-					});
-					new Notice(`Added video to ${activeFile.basename}`);
-				} catch (error) {
-					const message = error instanceof Error ? error.message : String(error);
-					debugLogger.error("Failed to add video to the active note:", message);
-					new Notice("Failed to add video to the active note");
-				}
-			});
-		});
-
-		menu.addItem((item) => {
-			item.setTitle("Display video info");
-			item.onClick(() => {
-				const modal = new VideoInfoModal(
-					plugin.app,
-					videoInfo,
-					plugin.getCategoryDisplay.bind(plugin),
-				);
-				modal.open();
-			});
-		});
-
-		menu.addItem((item) => {
-			item.setTitle(noteExists ? "Open video note" : "Create note");
-			item.setIcon(noteExists ? "file-check" : "file-plus");
-			item.onClick(async () => handleCreateVideoNote(e));
-		});
-
-		menu.addItem((item) => {
-			item.setTitle("Read transcript");
-			item.setIcon("captions");
-			item.onClick(() => openTranscript(trigger));
-		});
-
-		if (isAIEnabled) {
-			menu.addItem((item) => {
-				item.setTitle(
-					hasSummary ? "View AI summary" : "Generate AI summary",
-				);
-				item.setIcon("bot");
-				item.onClick(() => setIsSummaryExpanded(true));
-			});
-
-			if (hasSummary) {
-				menu.addItem((item) => {
-					item.setTitle("Regenerate AI summary");
-					item.setIcon("refresh-cw");
-					item.onClick(() => {
-						setIsSummaryExpanded(true);
-						setRegenerateTrigger((prev) => prev + 1);
-					});
-				});
-			}
 		}
 
 		menu.showAtPosition({ x: e.clientX, y: e.clientY });
@@ -684,7 +678,6 @@ export const VideoCard = ({
 					isExpanded={isSummaryExpanded}
 					setIsExpanded={setIsSummaryExpanded}
 					onAddToNote={handleAddSummaryToNote}
-					regenerateTrigger={regenerateTrigger}
 					videoDuration={videoInfo.contentDetails?.duration}
 					onBusyChange={onSummaryBusyChange}
 					initialSnapshot={summarySnapshot}
