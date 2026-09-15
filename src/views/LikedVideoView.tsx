@@ -7,7 +7,7 @@ import {
 	ContentTypeSelection,
 } from "src/types";
 import {
-	TvMinimalPlay,
+	ThumbsUp,
 	Search,
 	Settings,
 	RefreshCcw,
@@ -457,7 +457,7 @@ export const LikedVideoView: React.FC = () => {
 	return (
 		<div className="liked-video-view" onKeyDown={handleViewKeyDown}>
 			<ViewHeader
-				icon={<TvMinimalPlay className="video-view-header__icon" />}
+				icon={<ThumbsUp className="video-view-header__icon" />}
 				title={
 					<>
 						{" "}

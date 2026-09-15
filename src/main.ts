@@ -153,7 +153,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.addSettingTab(this.settingTabRef);
 
 
-		this.addRibbonIcon("tv-minimal-play", "Geulo: Open YouTube Liked Videos View", () => {
+		this.addRibbonIcon("thumbs-up", "Geulo: Open YouTube Liked Videos View", () => {
 			void this.activateView();
 		});
 

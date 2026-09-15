@@ -51,7 +51,7 @@ export class LikedVideoListPane
     }
 
     getIcon(): string {
-        return "tv-minimal-play";
+        return "thumbs-up";
     }
 
     async onOpen() {
