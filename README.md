@@ -11,7 +11,7 @@ Instead of letting your liked videos disappear into YouTube's depths, Geulo brin
 - Instantly access your entire YouTube 'My Liked Videos' playlist and subscriptions
 - Browse and manage your YouTube playlists saved or created
 - Search, filter and sort the videos to rediscover them
-- AI-powered video summaries (Gemini / OpenRouter)
+- AI-powered video summaries (Gemini / OpenRouter / OpenAI)
 - One-click integration with your daily notes
 - Curate your playlists by removing videos directly from the sidebar
 
@@ -36,7 +36,7 @@ Mobile version is still experimental!
 - **Create Video Notes**: Create video notes with a single click and write your own notes. You can also organize them by channel.
 - **Daily note integration**: Add videos to your daily notes with a single click
 - **Collection curation**: Remove videos from your liked list directly within Obsidian
-- **AI video summaries**: Generate video summaries using Google Gemini or OpenRouter with Gemini's video_url parameter. Summaries stream in real-time, with a collapsible one-liner preview and full expandable summary.
+- **AI video summaries**: Generate video summaries using Google Gemini, OpenRouter, or OpenAI. Gemini analyzes the video directly, while OpenRouter and OpenAI summarize the selected transcript. Summaries include a collapsible one-liner preview and full expandable summary.
 - **Add summary to note**: Append AI-generated summaries to your video notes
 - **Fetch transcripts**: Choose **Fetch transcript** from a video card's menu in liked videos, playlists, or subscriptions. Read existing YouTube captions with timestamp links and copy the text. No extra API key is needed. Geulo prefers captions in your app's language, then English, then the first available language. Transcript access uses unofficial YouTube endpoints and may be unavailable for some videos or temporarily blocked. Captions are fetched on demand and are not saved automatically.
 - **Video info display**: Display video info with a single click
@@ -47,9 +47,9 @@ It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/ob
 ## AI Summary Setup
 
 1. Enable **AI Summary** in the plugin settings
-2. Choose a provider: **Gemini** (direct) or **OpenRouter**
+2. Choose a provider: **Gemini** (direct video analysis), **OpenRouter**, or **OpenAI** (transcript-based)
 3. Enter the API key for your chosen provider
-4. (OpenRouter only) Select or enter a model ID
+4. (OpenRouter or OpenAI) Select or enter a model ID
 5. Optionally customize the summary prompt
 6. Click the summary button on any video card to generate a summary
 
@@ -164,7 +164,7 @@ Existing liked videos in localStorage migrate automatically after the new file i
 **Google credential storage**
 
 - Google access tokens, refresh tokens, and the client secret now use Obsidian SecretStorage. Existing credentials move automatically when the plugin loads.
-- This change applies to Google credentials; Gemini and OpenRouter API keys still use the existing plugin settings storage.
+- This change applies to Google credentials; Gemini, OpenRouter, and OpenAI API keys still use the existing plugin settings storage.
 
 ### 3.3.0
 

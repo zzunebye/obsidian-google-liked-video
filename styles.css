@@ -3095,6 +3095,25 @@ button.video-channel-link:focus-visible {
 	width: 100%;
 }
 
+.setting-item.geulo-openai-custom-model[hidden] {
+	display: none;
+}
+
+.setting-item.geulo-openai-custom-model {
+	align-items: stretch;
+	flex-direction: column;
+}
+
+.setting-item.geulo-openai-custom-model .setting-item-control,
+.setting-item.geulo-openai-custom-model .geulo-setting-full-width-input {
+	width: 100%;
+	max-width: none;
+}
+
+.setting-item.geulo-openai-custom-model .geulo-setting-full-width-input {
+	flex: 1 1 auto;
+}
+
 .geulo-google-credentials {
 	margin-bottom: var(--size-4-6);
 }

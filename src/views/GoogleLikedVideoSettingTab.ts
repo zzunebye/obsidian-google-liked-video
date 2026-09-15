@@ -3,7 +3,7 @@ import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
-import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, SHORT_VIDEO_MAX_DURATION_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
+import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isOpenAIModelPreset, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, SHORT_VIDEO_MAX_DURATION_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
 import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
@@ -12,6 +12,8 @@ import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templat
 import { PlaylistVideosPane } from './PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from './SubscriptionPane';
 import { addWideTextSetting, createCollapsibleReference, createMonospaceTextarea } from '../utils/settingUiUtils';
+
+const CUSTOM_OPENAI_MODEL_OPTION = 'custom';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
@@ -84,7 +86,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 ),
                 this.createSectionDefinition(
                     'AI features',
-                    ['Enable AI Summary', 'AI Provider', 'Gemini API Key', 'OpenRouter API Key', 'Model ID', 'Summary Prompt'],
+                    ['Enable AI Summary', 'AI Provider', 'Gemini API Key', 'OpenRouter API Key', 'OpenAI API Key', 'Model ID', 'Summary Prompt'],
                     (containerEl) => this.renderAISection(containerEl),
                 ),
             );
@@ -243,7 +245,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     private renderTranscriptLanguageSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setName('Transcript language')
-            .setDesc('Preferred caption language for reading transcripts and OpenRouter summaries. Falls back to English, then the first available language. Reopen an existing transcript to apply changes.')
+            .setDesc('Preferred caption language for reading transcripts and OpenRouter or OpenAI summaries. Falls back to English, then the first available language. Reopen an existing transcript to apply changes.')
             .addDropdown(dropdown => dropdown
                 .addOptions(TRANSCRIPT_LANGUAGE_OPTIONS)
                 .setValue(this.plugin.settings.transcriptLanguage)
@@ -419,7 +421,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('AI Provider')
-            .setDesc('OpenRouter summarizes the transcript with your selected model. Google Gemini analyzes the video directly without sending the transcript.')
+            .setDesc('OpenRouter and OpenAI summarize the transcript with your selected model. Google Gemini analyzes the video directly without sending the transcript.')
             .addDropdown(dropdown => {
                 for (const provider of AI_PROVIDERS) {
                     dropdown.addOption(provider, AI_PROVIDER_LABELS[provider]);
@@ -443,7 +445,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     await this.saveSetting('geminiApiKey', value);
                 },
             });
-        } else {
+        } else if (this.plugin.settings.aiProvider === 'openrouter') {
             addWideTextSetting(containerEl, {
                 name: 'OpenRouter API Key',
                 desc: 'Use an OpenRouter API key for the OpenRouter provider. Get a key at openrouter.ai/keys.',
@@ -463,6 +465,56 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 onChange: async (value) => {
                     await this.saveSetting('openRouterModel', value);
                 },
+            });
+        } else if (this.plugin.settings.aiProvider === 'openai') {
+            addWideTextSetting(containerEl, {
+                name: 'OpenAI API Key',
+                desc: 'Use an OpenAI API key for the OpenAI provider. Get a key at platform.openai.com/api-keys.',
+                placeholder: 'sk-...',
+                value: this.plugin.settings.openAIApiKey,
+                secret: true,
+                onChange: async (value) => {
+                    await this.saveSetting('openAIApiKey', value);
+                },
+            });
+
+            const currentModel = this.plugin.settings.openAIModel;
+            const isPresetModel = isOpenAIModelPreset(currentModel);
+            const modelSetting = new Setting(containerEl)
+                .setName('Model ID')
+                .setDesc('Choose an OpenAI model that supports text input through the Responses API. The transcript is included with your summary prompt.');
+
+            const customModelSetting = addWideTextSetting(containerEl, {
+                name: 'Custom model ID',
+                desc: 'Enter the complete OpenAI model ID.',
+                placeholder: 'model-id',
+                value: currentModel,
+                onChange: async (value) => {
+                    await this.saveSetting('openAIModel', value);
+                },
+            });
+            customModelSetting.setClass('geulo-openai-custom-model');
+            customModelSetting.settingEl.hidden = isPresetModel;
+
+            modelSetting.addDropdown(dropdown => {
+                for (const model of OPENAI_MODEL_PRESETS) {
+                    dropdown.addOption(model, model);
+                }
+                dropdown
+                    .addOption(CUSTOM_OPENAI_MODEL_OPTION, 'Custom')
+                    .setValue(isPresetModel ? currentModel : CUSTOM_OPENAI_MODEL_OPTION)
+                    .onChange(async (value) => {
+                        if (value === CUSTOM_OPENAI_MODEL_OPTION) {
+                            const inputEl = customModelSetting.controlEl.querySelector<HTMLInputElement>('input');
+                            if (inputEl) inputEl.value = this.plugin.settings.openAIModel;
+                            customModelSetting.settingEl.hidden = false;
+                            inputEl?.focus();
+                            return;
+                        }
+                        if (!isOpenAIModelPreset(value)) return;
+                        customModelSetting.settingEl.hidden = true;
+                        await this.saveSetting('openAIModel', value);
+                    });
             });
         }
 

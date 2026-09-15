@@ -19,17 +19,29 @@ export const TRANSCRIPT_LANGUAGE_OPTIONS: Record<string, string> = {
     vi: 'Vietnamese (Tiếng Việt)',
 };
 
-export const AI_PROVIDERS = ['openrouter', 'gemini'] as const;
+export const AI_PROVIDERS = ['openrouter', 'openai', 'gemini'] as const;
 export type AIProvider = typeof AI_PROVIDERS[number];
 export type SummarySource = 'transcript' | 'video';
 
 export const AI_PROVIDER_LABELS: Record<AIProvider, string> = {
     gemini: 'Google Gemini',
+    openai: 'OpenAI',
     openrouter: 'OpenRouter',
 };
 
 export function isAIProvider(value: string): value is AIProvider {
     return (AI_PROVIDERS as readonly string[]).includes(value);
+}
+
+export const OPENAI_MODEL_PRESETS = [
+    'gpt-5.6-luna',
+    'gpt-5.6-terra',
+    'gpt-5.6-sol',
+] as const;
+export type OpenAIModelPreset = typeof OPENAI_MODEL_PRESETS[number];
+
+export function isOpenAIModelPreset(value: string): value is OpenAIModelPreset {
+    return (OPENAI_MODEL_PRESETS as readonly string[]).includes(value);
 }
 
 export const SHORT_VIDEO_MAX_DURATION_OPTIONS = [60, 90, 120, 180] as const;
@@ -67,6 +79,8 @@ export interface ObsidianGoogleLikedVideoSettings {
     aiProvider: AIProvider;
     openRouterApiKey: string;
     openRouterModel: string;
+    openAIApiKey: string;
+    openAIModel: string;
     summaryPrompt: string;
 }
 

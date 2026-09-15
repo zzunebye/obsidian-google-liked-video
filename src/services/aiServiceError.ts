@@ -1,6 +1,7 @@
 export type AIServiceErrorType =
 	| 'no_api_key'
 	| 'invalid_key'
+	| 'request_rejected'
 	| 'network_error'
 	| 'rate_limit'
 	| 'transcript_error'

@@ -44,7 +44,7 @@ export const FEATURE_ANNOUNCEMENT = {
 			title: 'Google credential storage',
 			notes: [
 				'Google access tokens, refresh tokens, and the client secret now use Obsidian SecretStorage. Existing credentials move automatically when the plugin loads.',
-				'This change applies to Google credentials; Gemini and OpenRouter API keys still use the existing plugin settings storage.'
+				'This change applies to Google credentials; Gemini, OpenRouter, and OpenAI API keys still use the existing plugin settings storage.'
 			]
 		},
 		{
