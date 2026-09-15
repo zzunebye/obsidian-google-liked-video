@@ -125,11 +125,11 @@ export const LikedVideoView: React.FC = () => {
 
 	// Pre-process video durations once
 	const videoDurations = useMemo(() => {
-		const durations = new Map<string, number>();
+		const durations = new Map<string, number | null>();
 		videos.forEach((video) => {
 			durations.set(
 				video.id,
-				parseDurationToSeconds(video.contentDetails?.duration) ?? 0,
+				parseDurationToSeconds(video.contentDetails?.duration),
 			);
 		});
 		return durations;
@@ -169,7 +169,7 @@ export const LikedVideoView: React.FC = () => {
 	// Debounce search term
 	useEffect(() => {
 		const timer = window.setTimeout(() => {
-			setDebouncedSearchTerm(searchTerm);
+			setDebouncedSearchTerm(searchTerm.trim());
 		}, 300);
 
 		return () => window.clearTimeout(timer);
