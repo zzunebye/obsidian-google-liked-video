@@ -3,7 +3,7 @@ import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
-import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isOpenAIModelPreset, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, SHORT_VIDEO_MAX_DURATION_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
+import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isOpenAIModelPreset, isOpenRouterModelPreset, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, SHORT_VIDEO_MAX_DURATION_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
 import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
@@ -13,6 +13,7 @@ import { PlaylistVideosPane } from './PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from './SubscriptionPane';
 import { addWideTextSetting, createCollapsibleReference, createMonospaceTextarea } from '../utils/settingUiUtils';
 
+const CUSTOM_OPENROUTER_MODEL_OPTION = 'custom';
 const CUSTOM_OPENAI_MODEL_OPTION = 'custom';
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
@@ -457,14 +458,43 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 },
             });
 
-            addWideTextSetting(containerEl, {
-                name: 'Model ID',
-                desc: 'Enter an OpenRouter model ID that supports text input. The transcript is included with your summary prompt.',
-                placeholder: 'google/gemini-3-flash-preview',
-                value: this.plugin.settings.openRouterModel,
+            const currentModel = this.plugin.settings.openRouterModel;
+            const isPresetModel = isOpenRouterModelPreset(currentModel);
+            const modelSetting = new Setting(containerEl)
+                .setName('Model ID')
+                .setDesc('Choose an OpenRouter model that supports text input. The transcript is included with your summary prompt.');
+
+            const customModelSetting = addWideTextSetting(containerEl, {
+                name: 'Custom model ID',
+                desc: 'Enter the complete OpenRouter model ID.',
+                placeholder: 'provider/model-id',
+                value: currentModel,
                 onChange: async (value) => {
                     await this.saveSetting('openRouterModel', value);
                 },
+            });
+            customModelSetting.setClass('geulo-openrouter-custom-model');
+            customModelSetting.settingEl.hidden = isPresetModel;
+
+            modelSetting.addDropdown(dropdown => {
+                for (const model of OPENROUTER_MODEL_PRESETS) {
+                    dropdown.addOption(model, model);
+                }
+                dropdown
+                    .addOption(CUSTOM_OPENROUTER_MODEL_OPTION, 'Custom')
+                    .setValue(isPresetModel ? currentModel : CUSTOM_OPENROUTER_MODEL_OPTION)
+                    .onChange(async (value) => {
+                        if (value === CUSTOM_OPENROUTER_MODEL_OPTION) {
+                            const inputEl = customModelSetting.controlEl.querySelector<HTMLInputElement>('input');
+                            if (inputEl) inputEl.value = this.plugin.settings.openRouterModel;
+                            customModelSetting.settingEl.hidden = false;
+                            inputEl?.focus();
+                            return;
+                        }
+                        if (!isOpenRouterModelPreset(value)) return;
+                        customModelSetting.settingEl.hidden = true;
+                        await this.saveSetting('openRouterModel', value);
+                    });
             });
         } else if (this.plugin.settings.aiProvider === 'openai') {
             addWideTextSetting(containerEl, {

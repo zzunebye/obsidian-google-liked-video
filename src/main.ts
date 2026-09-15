@@ -1,5 +1,5 @@
 import { Notice, Plugin, WorkspaceLeaf } from 'obsidian';
-import { isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, TRANSCRIPT_LANGUAGE_OPTIONS, YouTubeVideo } from 'src/types';
+import { isAIProvider, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, TRANSCRIPT_LANGUAGE_OPTIONS, YouTubeVideo } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
@@ -56,7 +56,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	geminiApiKey: '',
 	aiProvider: 'openrouter',
 	openRouterApiKey: '',
-	openRouterModel: 'google/gemini-3-flash-preview',
+	openRouterModel: OPENROUTER_MODEL_PRESETS[0],
 	openAIApiKey: '',
 	openAIModel: OPENAI_MODEL_PRESETS[0],
 	summaryPrompt: 'Summarize this YouTube video. Include the main topics discussed, key takeaways, and any notable quotes or insights. Format with markdown headers and bullet points.',

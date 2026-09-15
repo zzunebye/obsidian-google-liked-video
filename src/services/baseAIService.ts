@@ -43,26 +43,11 @@ export abstract class BaseAIService implements AIService {
 
 	async generateVideoSummary(videoId: string, prompt: string): Promise<AIServiceResult> {
 		return new Promise((resolve, reject) => {
-			const controller = new AbortController();
-			const timeoutId = window.setTimeout(() => {
-				debugLogger.warn(`[AI Summary] Request timed out after ${REQUEST_TIMEOUT_MS}ms for video: ${videoId}`);
-				controller.abort();
-				reject(new AIServiceError('network_error', 'Summary request timed out. Please try again.'));
-			}, REQUEST_TIMEOUT_MS);
-
 			this.generateVideoSummaryStream(videoId, prompt, {
 				onChunk: () => {},
-				onComplete: (result) => {
-					window.clearTimeout(timeoutId);
-					resolve(result);
-				},
-				onError: (error) => {
-					window.clearTimeout(timeoutId);
-					reject(error);
-				},
-				signal: controller.signal,
+				onComplete: resolve,
+				onError: reject,
 			}).catch((error) => {
-				window.clearTimeout(timeoutId);
 				reject(toAIServiceError(error));
 			});
 		});
@@ -77,11 +62,25 @@ export abstract class BaseAIService implements AIService {
 		debugLogger.debug(`[AI Summary] Model: ${this.getModel()}`);
 		debugLogger.time(`ai-summary-${videoId}`);
 
-		let accumulated = '';
+		const controller = new AbortController();
+		const abort = () => controller.abort();
+		options.signal?.addEventListener('abort', abort, { once: true });
+		if (options.signal?.aborted) controller.abort();
+		let timedOut = false;
+		const timeoutId = window.setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, REQUEST_TIMEOUT_MS);
 
 		try {
-			const body = await this.buildRequestBody(videoId, prompt, options.signal);
-			const response = await this.executeRequest(url, body, options.signal);
+			const body = await this.buildRequestBody(videoId, prompt, controller.signal);
+			// requestUrl buffers the entire response, so SSE must use fetch's live body.
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: this.buildRequestHeaders(),
+				body: JSON.stringify(body),
+				signal: controller.signal,
+			});
 			await this.handleHttpError(response, options.onError);
 
 			const reader = response.body?.getReader();
@@ -92,13 +91,20 @@ export abstract class BaseAIService implements AIService {
 				);
 			}
 
-			accumulated = await this.processSSEStream(reader, options.onChunk, (jsonStr) => this.parseChunk(jsonStr));
+			const accumulated = await this.processSSEStream(reader, (chunk, content) => {
+				if (!controller.signal.aborted) options.onChunk(chunk, content);
+			}, (jsonStr) => this.parseChunk(jsonStr));
+			if (controller.signal.aborted) throw new DOMException('Request aborted', 'AbortError');
 
 			debugLogger.info(`[AI Summary] ${this.serviceName} streaming complete for video: ${videoId} (${accumulated.length} chars)`);
 			options.onComplete?.(this.createResult(accumulated));
 		} catch (error: unknown) {
-			this.handleStreamError(error, accumulated, options, videoId);
+			this.handleStreamError(timedOut
+				? new AIServiceError('network_error', 'Summary request timed out. Please try again.')
+				: error, options, videoId);
 		} finally {
+			window.clearTimeout(timeoutId);
+			options.signal?.removeEventListener('abort', abort);
 			debugLogger.timeEnd(`ai-summary-${videoId}`);
 		}
 	}
@@ -199,21 +205,21 @@ export abstract class BaseAIService implements AIService {
 		const decoder = new TextDecoder();
 		let buffer = '';
 		let accumulated = '';
-
 		let streamDone = false;
-		while (!streamDone) {
-			const { done, value } = await reader.read();
-			streamDone = done;
-			if (streamDone) break;
 
-			buffer += decoder.decode(value, { stream: true });
-			const lines = buffer.split('\n');
-			buffer = lines.pop() || '';
+		try {
+			while (!streamDone) {
+				const { done, value } = await reader.read();
+				streamDone = done;
+				buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
+				const lines = buffer.split('\n');
+				buffer = lines.pop() || '';
 
-			for (const line of lines) {
-				if (line.startsWith('data: ')) {
-					const jsonStr = line.slice(6).trim();
-					if (!jsonStr || jsonStr === '[DONE]') continue;
+				for (const line of lines) {
+					if (!line.startsWith('data:')) continue;
+					const jsonStr = line.slice(5).trim();
+					if (jsonStr === '[DONE]') return accumulated;
+					if (!jsonStr) continue;
 
 					const text = parseChunk(jsonStr);
 					if (text) {
@@ -222,9 +228,11 @@ export abstract class BaseAIService implements AIService {
 					}
 				}
 			}
+			return accumulated;
+		} finally {
+			await reader.cancel().catch(() => {});
+			reader.releaseLock();
 		}
-
-		return accumulated;
 	}
 
 	protected createResult(summary: string): AIServiceResult {
@@ -243,15 +251,11 @@ export abstract class BaseAIService implements AIService {
 
 	protected handleStreamError(
 		error: unknown,
-		accumulated: string,
 		options: StreamOptions,
 		videoId: string
 	): void {
 		if (isAbortError(error)) {
 			debugLogger.info(`[AI Summary] ${this.serviceName} streaming aborted for video: ${videoId}`);
-			if (accumulated) {
-				options.onComplete?.(this.createResult(accumulated));
-			}
 			return;
 		}
 

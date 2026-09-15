@@ -68,6 +68,7 @@ export const SummarySection = ({
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setErrorValue] = useState<AIServiceError | null>(initialSnapshot?.error ?? null);
 	const [streamingContent, setStreamingContent] = useState<string>("");
+	const streamingContentRef = useRef("");
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [isContentCollapsed, setContentCollapsedValue] = useState(initialSnapshot?.contentCollapsed ?? presentation === "card");
 	const snapshotRef = useRef<SummarySnapshot>({ summary, source: summarySource, error, contentCollapsed: isContentCollapsed });
@@ -93,48 +94,52 @@ export const SummarySection = ({
 	const contentRef = useRef<HTMLDivElement>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const requestPendingRef = useRef(false);
-	const renderTimeoutRef = useRef<number | null>(null);
 	const renderComponentRef = useRef<Component | null>(null);
 
 	useEffect(() => {
 		const el = contentRef.current;
-		const contentToRender = streamingContent || summary;
-		if (!el || !contentToRender) return;
+		if (!el) return;
+		let disposed = false;
+		let rendering = false;
+		let renderedContent = "";
 
-		// Debounce rendering during streaming to reduce flicker
-		if (renderTimeoutRef.current) {
-			window.clearTimeout(renderTimeoutRef.current);
-		}
-
-		const delay = isStreaming ? 100 : 0;
-		renderTimeoutRef.current = window.setTimeout(() => {
-			el.empty();
-			renderComponentRef.current?.unload();
+		const renderContent = async (): Promise<void> => {
+			const contentToRender = isStreaming ? streamingContentRef.current : summary;
+			if (!contentToRender || rendering || contentToRender === renderedContent) return;
+			rendering = true;
+			const rendered = el.ownerDocument.createElement("div");
 			const renderComponent = new Component();
 			renderComponent.load();
-			renderComponentRef.current = renderComponent;
-			void MarkdownRenderer.render(
-				plugin.app,
-				contentToRender,
-				el,
-				"",
-				renderComponent,
-			).catch((error: unknown) => {
+			try {
+				await MarkdownRenderer.render(plugin.app, contentToRender, rendered, "", renderComponent);
+				if (disposed) {
+					renderComponent.unload();
+					return;
+				}
+				renderComponentRef.current?.unload();
+				el.replaceChildren(...Array.from(rendered.childNodes));
+				renderComponentRef.current = renderComponent;
+				renderedContent = contentToRender;
+			} catch (error: unknown) {
+				renderComponent.unload();
 				debugLogger.warn(
 					`[AI Summary] Failed to render summary for video: ${videoId}`,
 					error,
 				);
-			});
-		}, delay);
+			} finally {
+				rendering = false;
+			}
+		};
+		void renderContent();
+		const interval = isStreaming ? window.setInterval(() => void renderContent(), 100) : undefined;
 
 		return () => {
-			if (renderTimeoutRef.current) {
-				window.clearTimeout(renderTimeoutRef.current);
-			}
+			disposed = true;
+			window.clearInterval(interval);
 			renderComponentRef.current?.unload();
 			renderComponentRef.current = null;
 		};
-	}, [summary, streamingContent, plugin, isExpanded, isStreaming, isLoading]);
+	}, [summary, plugin, videoId, isExpanded, isStreaming, isLoading]);
 
 	// Measure content overflow after markdown rendering completes
 	useEffect(() => {
@@ -255,13 +260,14 @@ export const SummarySection = ({
 				setIsLoading(true);
 				setError(null);
 				setStreamingContent("");
+				streamingContentRef.current = "";
 
 				try {
 					const aiService = createAIService(plugin.settings);
 					activeSourceRef.current = plugin.settings.aiProvider === 'gemini' ? 'video' : 'transcript';
 
 					// Check if streaming is supported
-					if (presentation === "card" && aiService.generateVideoSummaryStream) {
+					if (aiService.generateVideoSummaryStream) {
 						debugLogger.info(
 							`[AI Summary] Using streaming mode for video: ${videoId}`,
 						);
@@ -277,9 +283,12 @@ export const SummarySection = ({
 							plugin.settings.summaryPrompt,
 							{
 								onChunk: (_chunk: string, accumulated: string) => {
+									if (abortController.signal.aborted) return;
+									streamingContentRef.current = accumulated;
 									setStreamingContent(accumulated);
 								},
 								onComplete: (result: AIServiceResult) => {
+									if (abortController.signal.aborted) return;
 									completion = (async () => {
 										debugLogger.info(
 											`[AI Summary] Streaming complete for video: ${videoId} - caching result`,
@@ -296,6 +305,7 @@ export const SummarySection = ({
 										);
 										setSummary(result.summary, result.source);
 										setStreamingContent("");
+										streamingContentRef.current = "";
 										setIsStreaming(false);
 										abortControllerRef.current = null;
 										onSummaryGenerated?.();
@@ -307,6 +317,7 @@ export const SummarySection = ({
 									})();
 								},
 								onError: (err: AIServiceError) => {
+									if (abortController.signal.aborted) return;
 									debugLogger.error(
 										`[AI Summary] Streaming failed for video ${videoId}: type=${err.type}, message=${err.message}`,
 									);
@@ -359,12 +370,14 @@ export const SummarySection = ({
 						`[AI Summary] Generation failed for video ${videoId}: type=${aiError.type}, message=${aiError.message}`,
 					);
 					// If we have partial streaming content on error, keep it visible
-					if (streamingContent) {
-						setSummary(streamingContent, activeSourceRef.current);
+					if (streamingContentRef.current) {
+						setSummary(streamingContentRef.current, activeSourceRef.current);
 						setStreamingContent("");
+						streamingContentRef.current = "";
 					}
 					setError(aiError);
 				} finally {
+					abortControllerRef.current = null;
 					setIsLoading(false);
 					setIsStreaming(false);
 				}
@@ -384,7 +397,6 @@ export const SummarySection = ({
 			isStreaming,
 			onSummaryGenerated,
 			generateOneLiner,
-			streamingContent,
 			videoTitle,
 			channelTitle,
 			channelId,
@@ -458,13 +470,14 @@ export const SummarySection = ({
 			setIsStreaming(false);
 			setIsLoading(false);
 			// Keep streaming content visible if any was received
-			if (streamingContent) {
-				setSummary(streamingContent, activeSourceRef.current);
+			if (streamingContentRef.current) {
+				setSummary(streamingContentRef.current, activeSourceRef.current);
 				setStreamingContent("");
+				streamingContentRef.current = "";
 			}
 			setError(new AIServiceError("unknown", "Summary cancelled. Retry when ready."));
 		},
-		[videoId, streamingContent],
+		[videoId],
 	);
 
 	const handleToggleCollapse = (e: React.MouseEvent) => {
@@ -510,9 +523,9 @@ export const SummarySection = ({
 
 			{isStreaming && (
 				<>
-					<div className="summary-section__fade-overlay">
+					<div className={presentation === "card" ? "summary-section__fade-overlay" : ""}>
 						<div
-							className="summary-section__content summary-section__content--collapsed"
+							className={`summary-section__content${presentation === "card" ? " summary-section__content--collapsed" : ""}`}
 							ref={contentRef}
 						/>
 					</div>

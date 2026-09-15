@@ -96,8 +96,10 @@ export class OpenRouterService extends BaseAIService {
 	}
 
 	protected mapHttpStatusToError(status: number, message: string): AIServiceError {
-		if (status === 401 || status === 403) {
+		if (status === 401) {
 			return new AIServiceError('invalid_key', `Invalid API key: ${message}`);
+		} else if (status === 403) {
+			return new AIServiceError('request_rejected', `OpenRouter rejected the request for ${this.model}: ${message}`);
 		} else if (status === 429) {
 			return new AIServiceError('rate_limit', 'Rate limit exceeded. Try again later.');
 		}

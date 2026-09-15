@@ -33,6 +33,17 @@ export function isAIProvider(value: string): value is AIProvider {
     return (AI_PROVIDERS as readonly string[]).includes(value);
 }
 
+export const OPENROUTER_MODEL_PRESETS = [
+    'deepseek/deepseek-v4.1-flash',
+    'openai/gpt-5.6-luna',
+    'google/gemini-3.8-flash',
+] as const;
+export type OpenRouterModelPreset = typeof OPENROUTER_MODEL_PRESETS[number];
+
+export function isOpenRouterModelPreset(value: string): value is OpenRouterModelPreset {
+    return (OPENROUTER_MODEL_PRESETS as readonly string[]).includes(value);
+}
+
 export const OPENAI_MODEL_PRESETS = [
     'gpt-5.6-luna',
     'gpt-5.6-terra',
