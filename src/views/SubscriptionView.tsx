@@ -625,7 +625,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				</div>
 			) : (
 				<>
-					<div className="videos-grid">
+					<div className="video-view__video-grid">
 						{displayedVideos.map((video) => {
 							const channel = snapshot?.channels.find(
 								(candidate) => candidate.id === video.snippet.channelId,
