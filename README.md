@@ -90,11 +90,17 @@ Follow the steps below to set it up:
 - Under **Test users**, click **Add users** and add the Google account you use in Obsidian (for example `yourname@gmail.com`).
 - Save.
 
+> **Testing mode requires reconnection after 7 days.** Google authorization for Geulo's YouTube access, including the refresh token, expires 7 days after you grant permission. Reconnect your Google account in Geulo to continue fetching videos.
+>
+> For ongoing use, consider selecting **Publish app** under **Google Auth Platform → Audience** to switch to **In production**, then reconnect Geulo to obtain new tokens. This removes the Testing-specific 7-day limit, but does not guarantee that tokens will never expire or be revoked. **Publishing is separate from Google's app verification**: an unverified-app warning and applicable verification requirements may still remain. See [Google's publishing status guidance](https://support.google.com/cloud/answer/15549945?hl=en).
+
 #### 5. Enter Credentials in Plugin
 
-- Open Obsidian and go to the settings of the YouTube Liked Videos plugin.
-- Enter your Client ID and Client secret in the respective fields.
-- Click "Login" to login to your Google account.
+- Open Obsidian and go to **Settings → Geulo → Google connection**.
+- Choose either setup method:
+    - **Import JSON**: Download your OAuth client JSON from **Google Auth Platform → Clients**, click **Import JSON** in Geulo, and select the file. Review the client type, project, and Client ID, then click **Save credentials**. Web and Desktop client JSON files are accepted; service account keys are not. The file is read locally, and the client secret is saved in Obsidian SecretStorage. If already connected, disconnect before replacing credentials.
+    - **Manual entry**: Expand **Google API credentials** and enter your Client ID and Client secret in the respective fields.
+- Click **Connect with Google** to sign in. Importing a file does not sign you in or verify your project's API and consent settings.
 
 #### 6. Successful Authentication Confirmation
 

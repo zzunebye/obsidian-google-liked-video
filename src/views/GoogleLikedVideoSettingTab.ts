@@ -13,6 +13,8 @@ import { PlaylistVideosPane } from './PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from './SubscriptionPane';
 import { addWideTextSetting, createCollapsibleReference, createMonospaceTextarea } from '../utils/settingUiUtils';
 import { SPEECH_MODEL_PRESETS } from '../types';
+import { GoogleCredentialsImportModal } from '../ui/GoogleCredentialsImportModal';
+import type { GoogleClientCredentials } from '../utils/googleCredentialsUtils';
 
 const CUSTOM_OPENROUTER_MODEL_OPTION = 'custom';
 const CUSTOM_OPENAI_MODEL_OPTION = 'custom';
@@ -67,7 +69,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         const definitions: SettingDefinitionItem[] = [
             this.createSectionDefinition(
                 'Google connection',
-                ['Google account', 'Connect with Google', 'Client ID', 'Client secret', 'YouTube Data API'],
+                ['Google account', 'Connect with Google', 'Client ID', 'Client secret', 'YouTube Data API', 'Import credentials', 'JSON'],
                 (containerEl) => this.renderSetupSection(containerEl, refreshToken),
             ),
             this.createSectionDefinition(
@@ -815,7 +817,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setName(isLoggedIn ? 'Connected to Google' : 'Not connected to Google')
             .setDesc(isLoggedIn
                 ? 'Your Google account is connected. You can fetch your liked videos.'
-                : 'Enter your Google API credentials below, then connect your account.')
+                : 'Import a credentials JSON file or enter your Google API credentials below, then connect your account.')
             .addButton(button => button
                 .setButtonText(isLoggedIn ? 'Disconnect' : 'Connect with Google')
                 .onClick(async (): Promise<void> => {
@@ -830,6 +832,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         await handleGoogleLogin(this.plugin.settings, refreshDisplay);
                     }
                 }));
+
+		new Setting(containerEl)
+			.setName('Import Google credentials')
+			.setDesc('Load a Google OAuth client JSON file and review it before saving.')
+			.addButton(button => button
+				.setButtonText('Import JSON')
+				.onClick(() => {
+					new GoogleCredentialsImportModal(
+						this.app,
+						() => Boolean(googleTokenStorageService.getRefreshToken() || googleTokenStorageService.getAccessToken()),
+						credentials => this.importGoogleCredentials(credentials),
+					).open();
+				}));
 
         const credentialsEl = containerEl.createEl('details', {
             cls: 'geulo-google-credentials',
@@ -879,6 +894,30 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             });
 
     }
+
+	private async importGoogleCredentials(credentials: GoogleClientCredentials): Promise<void> {
+		if (googleTokenStorageService.getRefreshToken() || googleTokenStorageService.getAccessToken()) {
+			throw new Error('Disconnect your Google account before importing new credentials.');
+		}
+		const previousClientSecret = googleTokenStorageService.getClientSecret();
+		try {
+			googleTokenStorageService.setClientSecret(credentials.clientSecret);
+		} catch {
+			throw new Error('Could not save the client secret in Obsidian SecretStorage. Please try again.');
+		}
+		try {
+			await this.plugin.saveData({ ...this.plugin.settings, googleClientId: credentials.clientId });
+		} catch {
+			try {
+				googleTokenStorageService.setClientSecret(previousClientSecret);
+			} catch {
+				throw new Error('Could not save credentials or restore the previous secret. Import the file again before connecting.');
+			}
+			throw new Error('Could not save credentials. Please try again.');
+		}
+		this.plugin.settings.googleClientId = credentials.clientId;
+		this.update();
+	}
 
     private renderDebugSection(containerEl: HTMLElement): void {
         const debugConfig = debugLogger.getConfig();
