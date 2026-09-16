@@ -34,6 +34,7 @@ import { CacheOwnershipError, YouTubeAccountIdentity, YouTubeAccountIdentityServ
 import { chooseCacheOwnership } from './ui/CacheOwnershipModal';
 import { WebViewerSummaryIntegration } from './services/webViewerSummaryIntegration';
 import { PlaylistImportService } from './services/playlistImportService';
+import { SPEECH_MODEL_PRESETS } from './types';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -63,6 +64,10 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	openRouterModel: OPENROUTER_MODEL_PRESETS[0],
 	openAIApiKey: '',
 	openAIModel: OPENAI_MODEL_PRESETS[0],
+	speechProvider: 'openrouter',
+	speechApiKey: '',
+	speechModel: SPEECH_MODEL_PRESETS[0].id,
+	speechVoice: SPEECH_MODEL_PRESETS[0].voice,
 	summaryPrompt: 'Summarize this YouTube video. Include the main topics discussed, key takeaways, and any notable quotes or insights. Format with markdown headers and bullet points.',
 }
 

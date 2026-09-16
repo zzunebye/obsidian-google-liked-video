@@ -23,6 +23,19 @@ export const AI_PROVIDERS = ['openrouter', 'openai', 'gemini'] as const;
 export type AIProvider = typeof AI_PROVIDERS[number];
 export type SummarySource = 'transcript' | 'video';
 
+export const SPEECH_MODEL_PRESETS = [
+	{ id: 'x-ai/grok-voice-tts-1.0', voice: 'eve' },
+	{ id: 'google/gemini-3.1-flash-tts-preview', voice: 'Kore' },
+	{ id: 'mistralai/voxtral-mini-tts-2603', voice: 'en_paul_neutral' },
+] as const;
+
+export interface SpeechSettings {
+	speechProvider: 'openrouter';
+	speechApiKey: string;
+	speechModel: string;
+	speechVoice: string;
+}
+
 export const AI_PROVIDER_LABELS: Record<AIProvider, string> = {
     gemini: 'Google Gemini',
     openai: 'OpenAI',
@@ -71,7 +84,7 @@ export function isSummaryLineHeight(value: number): value is SummaryLineHeight {
 	return (SUMMARY_LINE_HEIGHT_OPTIONS as readonly number[]).includes(value);
 }
 
-export interface ObsidianGoogleLikedVideoSettings {
+export interface ObsidianGoogleLikedVideoSettings extends SpeechSettings {
     googleClientId: string;
     dailyNotePath: string;
     videoNotePath: string;

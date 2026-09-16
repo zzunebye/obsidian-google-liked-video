@@ -12,6 +12,7 @@ import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templat
 import { PlaylistVideosPane } from './PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from './SubscriptionPane';
 import { addWideTextSetting, createCollapsibleReference, createMonospaceTextarea } from '../utils/settingUiUtils';
+import { SPEECH_MODEL_PRESETS } from '../types';
 
 const CUSTOM_OPENROUTER_MODEL_OPTION = 'custom';
 const CUSTOM_OPENAI_MODEL_OPTION = 'custom';
@@ -25,6 +26,14 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     openVideoDisplaySettings(): boolean {
+		return this.openSettingsSection('video-display');
+	}
+
+	openSpeechSettings(): boolean {
+		return this.openSettingsSection('speech');
+	}
+
+	private openSettingsSection(section: 'video-display' | 'speech'): boolean {
         const setting = Reflect.get(this.app, 'setting');
         if (
             typeof setting !== 'object' ||
@@ -44,7 +53,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         ownerWindow?.requestAnimationFrame(() => {
             ownerWindow.requestAnimationFrame(() => {
                 this.containerEl
-                    .querySelector<HTMLElement>('[data-geulo-settings-section="video-display"]')
+                    .querySelector<HTMLElement>(`[data-geulo-settings-section="${section}"]`)
                     ?.scrollIntoView({ behavior: 'auto', block: 'start' });
             });
         });
@@ -94,6 +103,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
 
         definitions.push(
+            this.createSectionDefinition(
+                'Speech',
+                ['Text to speech', 'Read aloud', 'Speech provider', 'Speech API key', 'Speech model', 'Voice'],
+                (containerEl) => this.renderSpeechSection(containerEl),
+            ),
             this.createSectionDefinition(
                 'Data management',
                 ['Clear saved liked videos'],
@@ -580,6 +594,57 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             },
         });
     }
+
+	private renderSpeechSection(containerEl: HTMLElement): void {
+		containerEl.dataset.geuloSettingsSection = 'speech';
+		new Setting(containerEl).setHeading().setName('Speech')
+			.setDesc('Read AI summaries aloud. Speech uses its own API key and model, independently of AI summaries.');
+		new Setting(containerEl).setName('Speech provider')
+			.addDropdown(dropdown => dropdown.addOption('openrouter', 'OpenRouter')
+				.setValue(this.plugin.settings.speechProvider)
+				.onChange(async () => { await this.saveSetting('speechProvider', 'openrouter'); }));
+		addWideTextSetting(containerEl, {
+			name: 'Speech API key',
+			desc: 'OpenRouter key used only for speech. Clicking Read aloud sends the summary text to this provider.',
+			placeholder: 'sk-or-...', value: this.plugin.settings.speechApiKey, secret: true,
+			onChange: async value => { await this.saveSetting('speechApiKey', value.trim()); },
+		});
+		const currentModel = this.plugin.settings.speechModel;
+		const isPreset = SPEECH_MODEL_PRESETS.some(model => model.id === currentModel);
+		const modelSetting = new Setting(containerEl).setName('Speech model')
+			.setDesc('Choose a text-to-speech model. Supported languages and voices vary by model.');
+		const customModel = addWideTextSetting(containerEl, {
+			name: 'Custom speech model ID', desc: 'Enter an OpenRouter model with speech output support.',
+			placeholder: 'provider/model-id', value: currentModel,
+			onChange: async value => { await this.saveSetting('speechModel', value.trim()); },
+		});
+		customModel.setClass('geulo-speech-custom-model');
+		customModel.settingEl.hidden = isPreset;
+		const voiceSetting = addWideTextSetting(containerEl, {
+			name: 'Speech voice', desc: 'Optional voice ID. Leave blank to omit voice from the request. Preset models fill in a default voice.',
+			placeholder: 'Optional voice ID', value: this.plugin.settings.speechVoice,
+			onChange: async value => { await this.saveSetting('speechVoice', value.trim()); },
+		});
+		modelSetting.addDropdown(dropdown => {
+			for (const model of SPEECH_MODEL_PRESETS) dropdown.addOption(model.id, model.id);
+			dropdown.addOption('custom', 'Custom').setValue(isPreset ? currentModel : 'custom')
+				.onChange(async value => {
+					const input = customModel.controlEl.querySelector('input');
+					customModel.settingEl.hidden = value !== 'custom';
+					if (value === 'custom') {
+						if (input) { input.value = this.plugin.settings.speechModel; input.focus(); }
+						return;
+					}
+					const preset = SPEECH_MODEL_PRESETS.find(model => model.id === value);
+					if (!preset) return;
+					this.plugin.settings.speechModel = preset.id;
+					this.plugin.settings.speechVoice = preset.voice;
+					const voiceInput = voiceSetting.controlEl.querySelector('input');
+					if (voiceInput) voiceInput.value = preset.voice;
+					await this.plugin.saveSettings();
+				});
+		});
+	}
 
     private renderAutoFetchSection(containerEl: HTMLElement): void {
         new Setting(containerEl)
