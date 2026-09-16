@@ -150,6 +150,7 @@ You can watch youtube video and take a note within Obsidian if you turn on **Cor
 - **Web Viewer actions**: On desktop, open transcripts, AI summaries, video notes, and playlist imports from the menu on a YouTube page in Obsidian Web Viewer.
 - **Your likes in notes**: The new `liked` property tracks your connected account’s confirmed like status. `likes` remains the total like count; editing a note does not change YouTube.
 - **Account-aware saved lists**: Confirm how existing liked videos and subscriptions should be used when connecting a different or previously unverified YouTube account.
+- **Simpler Google setup**: Import your OAuth client JSON in Settings instead of entering the Client ID and secret manually.
 
 ### 4.3
 
