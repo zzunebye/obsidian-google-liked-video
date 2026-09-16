@@ -17,6 +17,7 @@ import {
 	Captions,
 } from "lucide-react";
 import { YouTubeVideo } from "src/types";
+import { saveSummaryToNote } from "src/services/summaryNoteService";
 import { VideoInfoModal } from "src/ui/VideoInfoModal";
 import { usePlugin } from "../store/pluginContext";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
@@ -147,43 +148,6 @@ export const VideoCard = ({
 			debugLogger.error("Error handling video note:", error);
 			new Notice("Failed to create/open video note. Check console for details.");
 		}
-	};
-
-	const handleAddSummaryToNote = async (summaryText: string) => {
-		const appInstance = plugin.app;
-		const { file } = await plugin.videoNotes.getOrCreate(videoInfo, url);
-
-		const summaryWasAppended = await appendNoteContent(appInstance, file, {
-			text: "\n\n## AI Summary\n" + summaryText,
-			skipIfContains: "## AI Summary",
-		});
-
-		try {
-			await appInstance.fileManager.processFrontMatter(
-				file,
-				(fm: Record<string, unknown>) => {
-					fm.ai_summary = true;
-				},
-			);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			debugLogger.error("Failed to update AI summary frontmatter:", message);
-			new Notice(
-				summaryWasAppended
-					? "AI summary was added, but its metadata could not be updated. Try again to repair it."
-					: "AI summary exists, but its metadata could not be updated. Try again to repair it.",
-			);
-			return;
-		}
-
-		if (!summaryWasAppended) {
-			new Notice("AI Summary already exists in this note");
-			await appInstance.workspace.openLinkText(file.path, "", true);
-			return;
-		}
-
-		new Notice("Summary added to video note");
-		await appInstance.workspace.openLinkText(file.path, "", true);
 	};
 
 	const handleContextMenu = (e: React.MouseEvent<HTMLElement>): void => {
@@ -560,7 +524,7 @@ export const VideoCard = ({
 					channelId={videoInfo.snippet.channelId}
 					isExpanded={isSummaryExpanded}
 					setIsExpanded={setIsSummaryExpanded}
-					onAddToNote={handleAddSummaryToNote}
+					onAddToNote={summary => saveSummaryToNote(plugin, videoInfo, summary)}
 					videoDuration={videoInfo.contentDetails?.duration}
 					onBusyChange={onSummaryBusyChange}
 					initialSnapshot={summarySnapshot}

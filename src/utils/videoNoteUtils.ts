@@ -14,6 +14,7 @@ export function findVideoNote(app: App, index: VideoNoteIndexService, videoId: s
 	for (const legacyPath of legacyPaths) {
 		const noteAtLegacyPath = app.vault.getAbstractFileByPath(legacyPath);
 		if (!(noteAtLegacyPath instanceof TFile)) continue;
+		if (app.metadataCache.getFileCache(noteAtLegacyPath)?.frontmatter?.source_video_id) continue;
 
 		const existingVideoId = getVideoNoteId(app, noteAtLegacyPath);
 		if (existingVideoId !== null && existingVideoId !== videoId) {

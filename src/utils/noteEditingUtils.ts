@@ -31,6 +31,39 @@ function findEditableEditor(app: App, file: TFile): Editor | null {
 	return matchingEditor;
 }
 
+export interface NoteContentEdit {
+	from: number;
+	to: number;
+	text: string;
+}
+
+export async function readNoteContent(app: App, file: TFile): Promise<string> {
+	return findEditableEditor(app, file)?.getValue() ?? app.vault.read(file);
+}
+
+export async function editNoteContent(
+	app: App,
+	file: TFile,
+	getEdit: (content: string) => NoteContentEdit | null,
+): Promise<boolean> {
+	const editor = findEditableEditor(app, file);
+	if (editor) {
+		const edit = getEdit(editor.getValue());
+		if (!edit) return false;
+		editor.replaceRange(edit.text, editor.offsetToPos(edit.from), editor.offsetToPos(edit.to));
+		return true;
+	}
+
+	let edited = false;
+	await app.vault.process(file, content => {
+		const edit = getEdit(content);
+		if (!edit) return content;
+		edited = true;
+		return content.slice(0, edit.from) + edit.text + content.slice(edit.to);
+	});
+	return edited;
+}
+
 export async function appendNoteContent(
 	app: App,
 	file: TFile,

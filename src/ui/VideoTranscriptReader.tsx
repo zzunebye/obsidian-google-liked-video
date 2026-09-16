@@ -2,6 +2,7 @@ import { Menu, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, PanelRightOpen, Search } from "lucide-react";
 import { debugLogger } from "src/debug";
+import { saveSummaryToNote } from "src/services/summaryNoteService";
 import type { VideoTranscript } from "src/services/transcriptService";
 import { TranscriptPlaybackService } from "src/services/transcriptPlaybackService";
 import { usePlugin } from "src/store/pluginContext";
@@ -201,6 +202,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			<div ref={summaryScrollRef} className="geulo-transcript-reader__summary" hidden={mode !== "ai"} aria-label="AI summary">
 				<SummarySection key={video.id} videoId={video.id} videoTitle={video.snippet.title} channelTitle={video.snippet.channelTitle}
 					channelId={video.snippet.channelId} videoDuration={video.contentDetails?.duration} presentation="reader"
+					onAddToNote={summary => saveSummaryToNote(plugin, video, summary)}
 					isExpanded={mode === "ai"} setIsExpanded={expanded => { if (!expanded) changeMode("paragraphs"); }}
 					onScrollToTop={() => summaryScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
 					onBusyChange={setSummaryBusy} progressHost={summaryProgressHost} onShowSummary={() => changeMode("ai")}

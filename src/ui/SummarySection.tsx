@@ -78,6 +78,8 @@ export const SummarySection = ({
 	const isLoading = phase === "preparing";
 	const isStreaming = phase === "generating";
 	const isBusy = phase !== "idle";
+	const [savingNote, setSavingNote] = useState(false);
+	const savingNoteRef = useRef(false);
 	const [checkingCache, setCheckingCache] = useState(!initialSnapshot?.summary);
 	const [isSaved, setSavedValue] = useState(initialSnapshot?.saved ?? !!initialSnapshot?.summary);
 	const [hasOneLiner, setHasOneLiner] = useState<boolean | null>(null);
@@ -180,7 +182,7 @@ export const SummarySection = ({
 	const showLongVideoNotice = provider === "gemini"
 		&& (parseDurationToSeconds(videoDuration ?? "") ?? 0) > LONG_VIDEO_THRESHOLD_SECONDS;
 
-	useEffect(() => { onBusyChange?.(isBusy); }, [isBusy, onBusyChange]);
+	useEffect(() => { onBusyChange?.(isBusy || savingNote); }, [isBusy, savingNote, onBusyChange]);
 
 	const loadSavedSummary = async (): Promise<void> => {
 		lastActionRef.current = "load";
@@ -205,7 +207,7 @@ export const SummarySection = ({
 	}, [isExpanded, videoId]);
 
 	const generateSummary = async (forceRegenerate = false): Promise<void> => {
-		if (requestPendingRef.current || checkingCache || !canGenerate) return;
+		if (requestPendingRef.current || savingNoteRef.current || checkingCache || !canGenerate) return;
 		lastActionRef.current = "summary";
 		const controller = new AbortController();
 		abortControllerRef.current = controller;
@@ -257,7 +259,7 @@ export const SummarySection = ({
 			setHasOneLiner(false);
 			autoPreviewAttemptedRef.current = false;
 			onSummaryGenerated?.();
-			new Notice(`AI summary saved for "${videoTitle}"`, 5000);
+			new Notice(`AI summary saved in Geulo for "${videoTitle}". Use Add to Note to save it to a note.`, 5000);
 		} catch (error: unknown) {
 			if (controller.signal.aborted) return;
 			if (streamingContentRef.current) {
@@ -285,7 +287,7 @@ export const SummarySection = ({
 	}, [isExpanded, checkingCache, summary, error, canGenerate]);
 
 	const generateOneLiner = async (): Promise<void> => {
-		if (!summary || !isSaved || !canGenerate || requestPendingRef.current) return;
+		if (!summary || !isSaved || !canGenerate || requestPendingRef.current || savingNoteRef.current) return;
 		autoPreviewAttemptedRef.current = true;
 		lastActionRef.current = "preview";
 		const controller = new AbortController();
@@ -320,9 +322,9 @@ export const SummarySection = ({
 
 	useEffect(() => {
 		if (checkingCache || !summary || !isSaved || hasOneLiner !== false || error || !canGenerate
-			|| isBusy || requestPendingRef.current || autoPreviewAttemptedRef.current) return;
+			|| isBusy || savingNote || requestPendingRef.current || autoPreviewAttemptedRef.current) return;
 		void generateOneLiner();
-	}, [checkingCache, summary, isSaved, hasOneLiner, error, canGenerate, isBusy]);
+	}, [checkingCache, summary, isSaved, hasOneLiner, error, canGenerate, isBusy, savingNote]);
 
 	useEffect(() => {
 		if (regenerateTrigger && regenerateTrigger > 0) {
@@ -357,12 +359,17 @@ export const SummarySection = ({
 
 	const handleAddToNote = async (e: React.MouseEvent) => {
 		e.stopPropagation();
-		if (!summary) return;
+		if (!summary || !onAddToNote || requestPendingRef.current || savingNoteRef.current) return;
+		savingNoteRef.current = true;
+		setSavingNote(true);
 		try {
-			await onAddToNote?.(summary);
+			await onAddToNote(summary);
 		} catch (err) {
-			console.error("Failed to add summary to note:", err);
+			debugLogger.error("[AI Summary] Failed to save summary to note", err);
 			new Notice("Failed to add summary to note");
+		} finally {
+			savingNoteRef.current = false;
+			setSavingNote(false);
 		}
 	};
 
@@ -407,7 +414,7 @@ export const SummarySection = ({
 	if (!isExpanded) return progressPortal;
 
 	return (
-		<div className="summary-section" onClick={(e) => e.stopPropagation()} aria-busy={isBusy || checkingCache}>
+		<div className="summary-section" onClick={(e) => e.stopPropagation()} aria-busy={isBusy || checkingCache || savingNote}>
 			{progressPortal ?? progress}
 			{checkingCache && <p role="status">Loading saved summary…</p>}
 			{!checkingCache && ((!summary && !isBusy && !error) || !canGenerate || showLongVideoNotice) && <div className="summary-section__setup">
@@ -456,7 +463,7 @@ export const SummarySection = ({
 			{summary && !isLoading && !isStreaming && (
 				<>
 					<div className="summary-section__source">
-						<span>{isSaved ? "Saved" : phase === "saving" ? "Saving…" : "Not saved"} · </span>
+						<span>{isSaved ? "Saved in Geulo" : phase === "saving" ? "Saving in Geulo…" : "Not saved in Geulo"} · </span>
 						{getLanguage() === 'ko'
 							? (summarySource === 'transcript' ? 'Transcript 기반' : '영상 분석 기반')
 							: (summarySource === 'transcript' ? 'Transcript-based' : 'Video-based')}
@@ -499,13 +506,14 @@ export const SummarySection = ({
 						<div className="summary-section__left-actions">
 							{onAddToNote && <button
 								className="summary-section__action-btn"
+								disabled={isBusy || checkingCache || savingNote}
 								onClick={(event) => {
 									void handleAddToNote(event);
 								}}
 								title="Add summary to video note"
 							>
 								<FileText size={14} />
-								<span>Add to Note</span>
+								<span>{savingNote ? "Saving to note…" : "Add to Note"}</span>
 							</button>}
 							<button
 								className="summary-section__action-btn"
@@ -518,7 +526,7 @@ export const SummarySection = ({
 						<button
 							className="summary-section__action-btn"
 							onClick={handleRegenerate}
-							disabled={!canGenerate || isBusy}
+							disabled={!canGenerate || isBusy || savingNote}
 							aria-label="Regenerate summary"
 							title="Regenerate summary"
 						>
