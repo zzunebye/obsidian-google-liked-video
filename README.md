@@ -1,4 +1,4 @@
-# Geulo
+# Geulo: YouTube Library Manager and AI Summarizer for Obsidian
 
 **Your YouTube library, connected to your Obsidian notes.**
 
