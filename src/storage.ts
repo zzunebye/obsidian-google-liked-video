@@ -48,6 +48,15 @@ class LocalStorageService {
         return this.getLikedVideoStorage().getVideos();
     }
 
+    getLikedVideoOwnerChannelId(): string | null {
+        return this.getLikedVideoStorage().getOwnerChannelId();
+    }
+
+    async setLikedVideoOwnerChannelId(ownerChannelId: string): Promise<void> {
+        const storage = this.getLikedVideoStorage();
+        await storage.setOwnerChannelId(ownerChannelId);
+    }
+
     subscribeLikedVideos(listener: (videos: YouTubeVideo[]) => void): () => void {
         this.likedVideoListeners.add(listener);
         return () => this.likedVideoListeners.delete(listener);
@@ -285,6 +294,21 @@ class LocalStorageService {
         this.likedVideoListeners.forEach((listener) => listener(nextVideos));
     };
 
+    setLikedVideosForOwner = async (likedVideos: YouTubeVideo[], ownerChannelId: string): Promise<void> => {
+        const storage = this.getLikedVideoStorage();
+        const ownerChanged = storage.getOwnerChannelId() !== ownerChannelId;
+        const now = Date.now();
+        for (const [videoId, expiresAt] of this.temporarilyUnlikedVideos) {
+            if (expiresAt <= now) this.temporarilyUnlikedVideos.delete(videoId);
+        }
+        const nextVideos = ownerChanged || this.temporarilyUnlikedVideos.size === 0
+            ? likedVideos
+            : likedVideos.filter((video) => !this.temporarilyUnlikedVideos.has(video.id));
+        await storage.setVideosForOwner(nextVideos, ownerChannelId);
+        if (ownerChanged) this.temporarilyUnlikedVideos.clear();
+        this.likedVideoListeners.forEach((listener) => listener(nextVideos));
+    };
+
     setWatchLaterVideos = (watchLaterVideos: YouTubeVideo[]): void => {
         window.localStorage.setItem("googleYtbLikedVideoWatchLaterVideos", JSON.stringify(watchLaterVideos));
     };
@@ -308,7 +332,7 @@ class LocalStorageService {
 	subscribeSavedPlaylists(listener: () => void): () => void {
 		this.savedPlaylistListeners.add(listener);
 		return () => this.savedPlaylistListeners.delete(listener);
-    }
+	}
 
     addSavedPlaylist(playlistInfo: PlaylistInfo): boolean {
         const savedPlaylists = this.getSavedPlaylists();

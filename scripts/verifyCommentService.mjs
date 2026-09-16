@@ -13,6 +13,7 @@ await build({
 	stdin: {
 		contents: `
 			export { CommentService, CommentServiceError } from './src/services/commentService.ts';
+			export { YouTubeAccountIdentityService } from './src/services/youtubeAccountIdentityService.ts';
 			export { YouTubeApiClient } from './src/services/youtubeApiClient.ts';
 		`,
 		resolveDir: process.cwd(),
@@ -44,7 +45,7 @@ await build({
 });
 
 const require = createRequire(import.meta.url);
-const { CommentService, CommentServiceError, YouTubeApiClient } = require(outputPath);
+const { CommentService, CommentServiceError, YouTubeAccountIdentityService, YouTubeApiClient } = require(outputPath);
 const requests = [];
 let commentsResponse = {
 	status: 200,
@@ -112,4 +113,32 @@ await assert.rejects(
 );
 service.cleanup();
 
-console.log('comment-service requestUrl verification passed');
+let identityRequests = 0;
+let identityResponse = { items: [{ id: 'owner-channel', snippet: { title: 'Owner channel' } }] };
+globalThis.requestUrl = async () => {
+	identityRequests += 1;
+	return { status: 200, json: identityResponse };
+};
+const identityService = new YouTubeAccountIdentityService(new YouTubeApiClient(async () => 'access-token'));
+assert.deepEqual(await identityService.getCurrentIdentity(), {
+	channelId: 'owner-channel',
+	channelTitle: 'Owner channel',
+});
+await identityService.getCurrentIdentity();
+assert.equal(identityRequests, 1);
+identityService.reset();
+identityResponse = { items: [{ id: 'new-owner-channel' }] };
+assert.deepEqual(await identityService.getCurrentIdentity(), {
+	channelId: 'new-owner-channel',
+	channelTitle: undefined,
+});
+assert.equal(identityRequests, 2);
+identityService.reset();
+identityResponse = { items: [] };
+await assert.rejects(identityService.getCurrentIdentity(), /exactly one YouTube channel/);
+identityResponse = { items: [{ id: 'one' }, { id: 'two' }] };
+await assert.rejects(identityService.getCurrentIdentity(), /exactly one YouTube channel/);
+identityResponse = { items: [{ id: 'one' }, {}] };
+await assert.rejects(identityService.getCurrentIdentity(), /exactly one YouTube channel/);
+
+console.log('comment-service and account-identity requestUrl verification passed');

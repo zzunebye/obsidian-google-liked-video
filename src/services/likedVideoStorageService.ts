@@ -1,6 +1,7 @@
 import { normalizePath } from 'obsidian';
 import type { DataAdapter } from 'obsidian';
 import type { YouTubeVideo } from 'src/types';
+import { isYouTubeVideo } from 'src/utils/youtubeVideoValidation';
 
 const LEGACY_KEY = 'googleYtbLikedVideoLikedVideos';
 const STORAGE_INSTANCES = Symbol.for('geulo.likedVideoStorage.instances');
@@ -9,35 +10,42 @@ type StorageAdapter = Pick<DataAdapter, 'exists' | 'read' | 'write'> & {
 	[STORAGE_INSTANCES]?: Map<string, LikedVideoStorageService>;
 };
 
+interface StoredLikedVideos {
+	ownerChannelId: string | null;
+	videos: YouTubeVideo[];
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isOptionalCount(value: unknown): boolean {
-	return value === undefined
-		|| (typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0)
-		|| (typeof value === 'string' && /^\d+$/.test(value) && Number.isFinite(Number(value)));
-}
-
-function isVideo(value: unknown): value is YouTubeVideo {
-	if (!isRecord(value) || typeof value.id !== 'string' || !isRecord(value.snippet)
-		|| !isRecord(value.contentDetails) || !isRecord(value.statistics)) return false;
-	const snippet = value.snippet;
-	return ['title', 'channelTitle', 'channelId', 'publishedAt', 'description'].every(key => typeof snippet[key] === 'string')
-		&& isRecord(snippet.thumbnails) && isRecord(snippet.thumbnails.medium)
-		&& typeof snippet.thumbnails.medium.url === 'string'
-		&& (snippet.tags === undefined || (Array.isArray(snippet.tags) && snippet.tags.every(tag => typeof tag === 'string')))
-		&& (value.contentDetails.duration === undefined || typeof value.contentDetails.duration === 'string')
-		&& isOptionalCount(value.statistics.viewCount)
-		&& isOptionalCount(value.statistics.likeCount)
-		&& isOptionalCount(value.statistics.commentCount);
-}
-
 function parseVideos(value: unknown): YouTubeVideo[] {
-	if (!Array.isArray(value) || !value.every(isVideo)) {
+	if (!Array.isArray(value) || !value.every(isYouTubeVideo)) {
 		throw new Error('Invalid liked video list. The original data has been preserved.');
 	}
 	return value;
+}
+
+function parseOwnerChannelId(value: unknown): string | null {
+	if (value === null) return null;
+	if (typeof value === 'string' && value.trim().length > 0) return value;
+	throw new Error('Invalid liked-video cache owner. The original data has been preserved.');
+}
+
+function parseStoredLikedVideos(value: unknown): StoredLikedVideos {
+	if (!isRecord(value)) {
+		throw new Error('Unsupported liked-videos.json format. The original file has been preserved.');
+	}
+	if (value.schemaVersion === 1) {
+		return { ownerChannelId: null, videos: parseVideos(value.videos) };
+	}
+	if (value.schemaVersion === 2) {
+		return {
+			ownerChannelId: parseOwnerChannelId(value.ownerChannelId),
+			videos: parseVideos(value.videos),
+		};
+	}
+	throw new Error('Unsupported liked-videos.json format. The original file has been preserved.');
 }
 
 export class LikedVideoStorageService {
@@ -47,6 +55,7 @@ export class LikedVideoStorageService {
 	private revision = 0;
 	private savedRevision = 0;
 	private pendingWrite: Promise<void> | null = null;
+	private ownerChannelId: string | null = null;
 	readonly filePath: string;
 
 	constructor(private readonly adapter: StorageAdapter, manifestDir: string) {
@@ -60,10 +69,9 @@ export class LikedVideoStorageService {
 		if (previous && previous !== this) await previous.close();
 		if (await this.adapter.exists(this.filePath)) {
 			const data: unknown = JSON.parse(await this.adapter.read(this.filePath));
-			if (!isRecord(data) || data.schemaVersion !== 1) {
-				throw new Error('Unsupported liked-videos.json format. The original file has been preserved.');
-			}
-			this.videos = parseVideos(data.videos);
+			const stored = parseStoredLikedVideos(data);
+			this.ownerChannelId = stored.ownerChannelId;
+			this.videos = stored.videos;
 		} else {
 			const legacy = legacyStorage.getItem(LEGACY_KEY);
 			this.videos = legacy === null ? [] : parseVideos(JSON.parse(legacy));
@@ -84,11 +92,59 @@ export class LikedVideoStorageService {
 		return [...this.videos];
 	}
 
+	getOwnerChannelId(): string | null {
+		this.requireInitialized();
+		return this.ownerChannelId;
+	}
+
+	async setOwnerChannelId(ownerChannelId: string): Promise<void> {
+		this.requireInitialized();
+		if (this.closed) throw new Error('Liked video storage is closed.');
+		const owner = parseOwnerChannelId(ownerChannelId);
+		if (this.ownerChannelId === owner) return;
+		const previousOwnerChannelId = this.ownerChannelId;
+		this.ownerChannelId = owner;
+		this.revision++;
+		const revision = this.revision;
+		try {
+			await this.flush();
+		} catch (error) {
+			if (this.revision === revision) {
+				this.ownerChannelId = previousOwnerChannelId;
+				this.revision++;
+			}
+			throw error;
+		}
+	}
+
 	setVideos(videos: YouTubeVideo[]): void {
 		this.requireInitialized();
 		if (this.closed) throw new Error('Liked video storage is closed.');
-		this.videos = [...videos];
+		this.videos = [...parseVideos(videos)];
 		this.revision++;
+	}
+
+	async setVideosForOwner(videos: YouTubeVideo[], ownerChannelId: string): Promise<void> {
+		this.requireInitialized();
+		if (this.closed) throw new Error('Liked video storage is closed.');
+		const nextVideos = [...parseVideos(videos)];
+		const nextOwnerChannelId = parseOwnerChannelId(ownerChannelId);
+		const previousVideos = this.videos;
+		const previousOwnerChannelId = this.ownerChannelId;
+		this.videos = nextVideos;
+		this.ownerChannelId = nextOwnerChannelId;
+		this.revision++;
+		const revision = this.revision;
+		try {
+			await this.flush();
+		} catch (error) {
+			if (this.revision === revision) {
+				this.videos = previousVideos;
+				this.ownerChannelId = previousOwnerChannelId;
+				this.revision++;
+			}
+			throw error;
+		}
 	}
 
 	close(): Promise<void> {
@@ -116,12 +172,15 @@ export class LikedVideoStorageService {
 	}
 
 	private async writeSnapshot(): Promise<void> {
-		const json = JSON.stringify({ schemaVersion: 1, videos: this.videos }, null, 2);
+		const json = JSON.stringify({
+			schemaVersion: 2,
+			ownerChannelId: this.ownerChannelId,
+			videos: this.videos,
+		}, null, 2);
 		if (await this.adapter.exists(this.filePath)) {
 			const previous = await this.adapter.read(this.filePath);
 			const data: unknown = JSON.parse(previous);
-			if (!isRecord(data) || data.schemaVersion !== 1) throw new Error('Unsupported liked video file. Save cancelled.');
-			parseVideos(data.videos);
+			parseStoredLikedVideos(data);
 			await this.adapter.write(normalizePath(`${this.filePath}.bak`), previous);
 		}
 		await this.adapter.write(this.filePath, json);

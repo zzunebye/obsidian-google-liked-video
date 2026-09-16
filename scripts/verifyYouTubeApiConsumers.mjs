@@ -15,6 +15,8 @@ try {
 			contents: `
 				export { PlaylistApi, LikedVideoApi } from './src/api.ts';
 				export { YouTubeApiClient, YouTubeRequestError } from './src/services/youtubeApiClient.ts';
+				export { fetchAndMergeLikedVideos } from './src/services/likedVideoFetchService.ts';
+				export { localStorageService } from './src/storage.ts';
 			`,
 			resolveDir: process.cwd(),
 		},
@@ -44,7 +46,7 @@ try {
 		clearTimeout: globalThis.clearTimeout.bind(globalThis),
 	};
 	const require = createRequire(import.meta.url);
-	const { PlaylistApi, LikedVideoApi, YouTubeApiClient, YouTubeRequestError } = require(outputPath);
+	const { PlaylistApi, LikedVideoApi, YouTubeApiClient, YouTubeRequestError, fetchAndMergeLikedVideos, localStorageService } = require(outputPath);
 	const requests = [];
 	let responses = [];
 	globalThis.requestUrl = async (request) => {
@@ -91,6 +93,109 @@ try {
 		['GET', 'POST', 'DELETE', 'POST', 'POST'],
 	);
 	assert.ok(requests.slice(-5).every((request) => request.headers.Authorization === 'Bearer shared-token'));
+
+	const requestCountBeforeBlockedMutation = requests.length;
+	const guardedLikedVideoApi = new LikedVideoApi(client, async () => {
+		throw new Error('cache owner mismatch');
+	});
+	await assert.rejects(guardedLikedVideoApi.likeVideo('video-id'), /cache owner mismatch/);
+	await assert.rejects(guardedLikedVideoApi.unlikeVideo('video-id'), /cache owner mismatch/);
+	assert.equal(requests.length, requestCountBeforeBlockedMutation);
+	console.log('PASS: liked-video mutations verify cache ownership before changing YouTube');
+
+	const savedVideo = {
+		id: 'saved-video', pulled_at: '2026-01-01T00:00:00Z',
+		snippet: { title: 'Saved video', channelTitle: 'Channel', channelId: 'channel', publishedAt: '2026-01-01', description: '', thumbnails: { medium: { url: 'https://example.com/image.jpg' } } },
+		contentDetails: { duration: 'PT1M' }, statistics: { viewCount: '10' },
+	};
+	let savedVideos = [savedVideo];
+	localStorageService.initializeLikedVideos({
+		getVideos: () => savedVideos,
+		setVideos: () => assert.fail('Fetching must not persist before validation'),
+	}, () => {});
+	const fullSync = () => fetchAndMergeLikedVideos(likedVideoApi, { mode: 'full', keepUnfetched: false });
+	for (const json of [null, {}, { error: { message: 'Unexpected success body' } },
+		{ items: null }, { items: {} }, { items: [null] }, { items: [{}] },
+		{ items: [{ id: 'incomplete-video', snippet: {}, contentDetails: {}, statistics: {} }] },
+		{ items: [{ ...savedVideo, id: '' }] },
+		{ items: [savedVideo], nextPageToken: 42 }]) {
+		responses = [{ status: 200, json }];
+		await assert.rejects(fullSync(), /invalid liked-video response/);
+		assert.deepEqual(savedVideos, [savedVideo]);
+	}
+	responses = [{ status: 200, json: { items: [] } }];
+	await assert.rejects(fullSync(), /saved list was kept.*Clear saved videos/);
+	assert.deepEqual(savedVideos, [savedVideo]);
+	responses = [{ status: 200, json: { items: [] } }];
+	assert.deepEqual((await fetchAndMergeLikedVideos(likedVideoApi, {
+		mode: 'full',
+		keepUnfetched: false,
+		allowEmptyFullReplacement: true,
+	})).mergedVideos, []);
+	console.log('PASS: malformed success responses and empty full sync cannot replace a non-empty saved list');
+
+	for (const lastPage of [{ status: 200, json: {} }, forbidden]) {
+		responses = [
+			{ status: 200, json: { items: [{ ...savedVideo, id: 'first-page' }], nextPageToken: 'second-page' } },
+			lastPage,
+		];
+		await assert.rejects(fullSync());
+		assert.deepEqual(savedVideos, [savedVideo]);
+		assert.match(requests.at(-1).url, /pageToken=second-page/);
+	}
+	console.log('PASS: malformed or failed later pages reject the whole sync without a partial replacement');
+
+	responses = [{ status: 200, json: { items: [] } }];
+	const partial = await fetchAndMergeLikedVideos(likedVideoApi, { mode: 'partial', keepUnfetched: true });
+	assert.deepEqual(partial.mergedVideos, savedVideos);
+	assert.equal(partial.fetchedCount, 0);
+	assert.deepEqual(partial.newVideos, []);
+	assert.equal(partial.updatedCount, 0);
+
+	savedVideos = [savedVideo, { ...savedVideo, id: 'removed-video' }];
+	responses = [
+		{ status: 200, json: { items: [{ ...savedVideo, snippet: { ...savedVideo.snippet, title: 'Updated video' } }], nextPageToken: 'next' } },
+		{ status: 200, json: { items: [{ ...savedVideo, id: 'new-video' }] } },
+	];
+	const full = await fullSync();
+	assert.deepEqual(full.mergedVideos.map(video => video.id), ['saved-video', 'new-video']);
+	assert.equal(full.mergedVideos[0].pulled_at, savedVideo.pulled_at);
+	assert.equal(full.mergedVideos[0].snippet.title, 'Updated video');
+	assert.deepEqual(full.newVideos.map(video => video.id), ['new-video']);
+	assert.equal(full.updatedCount, 1);
+	assert.equal(full.fetchedCount, 2);
+
+	savedVideos = [];
+	responses = [{ status: 200, json: { items: [] } }];
+	assert.deepEqual((await fullSync()).mergedVideos, []);
+	console.log('PASS: partial empty fetch, valid paginated replacement and an initially empty account retain their existing behavior');
+
+	let ownerChannelId = 'old-owner';
+	let failOwnedSave = true;
+	savedVideos = [savedVideo];
+	localStorageService.initializeLikedVideos({
+		getVideos: () => savedVideos,
+		getOwnerChannelId: () => ownerChannelId,
+		setVideos: (videos) => { savedVideos = videos; },
+		flush: async () => {},
+		setVideosForOwner: async (videos, owner) => {
+			if (failOwnedSave && owner === 'new-owner') throw new Error('disk full');
+			savedVideos = videos;
+			ownerChannelId = owner;
+		},
+	}, () => {});
+	localStorageService.removeLikedVideo(savedVideo.id);
+	await assert.rejects(
+		localStorageService.setLikedVideosForOwner([savedVideo], 'new-owner'),
+		/disk full/,
+	);
+	await localStorageService.setLikedVideosForOwner([savedVideo], 'old-owner');
+	assert.deepEqual(savedVideos, []);
+	failOwnedSave = false;
+	await localStorageService.setLikedVideosForOwner([savedVideo], 'new-owner');
+	assert.deepEqual(savedVideos, [savedVideo]);
+	assert.equal(ownerChannelId, 'new-owner');
+	console.log('PASS: failed account replacement keeps old unlike guards; successful replacement clears them');
 
 	console.log('youtube-api-consumers verification passed');
 } finally {

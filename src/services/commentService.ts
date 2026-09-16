@@ -1,4 +1,5 @@
 import { YouTubeApiClient, YouTubeRequestError } from "./youtubeApiClient";
+import { YouTubeAccountIdentityService } from "./youtubeAccountIdentityService";
 
 export const COMMENT_LIMIT = 30;
 
@@ -87,15 +88,13 @@ function parseCommentThread(value: unknown): VideoComment | null {
 }
 
 export class CommentService {
-	private myChannelIdPromise: Promise<string | null> | null = null;
-	private identityController: AbortController | null = null;
-
-	constructor(private readonly client: YouTubeApiClient) {}
+	constructor(
+		private readonly client: YouTubeApiClient,
+		private readonly identityService = new YouTubeAccountIdentityService(client),
+	) {}
 
 	resetIdentityCache(): void {
-		this.identityController?.abort();
-		this.identityController = null;
-		this.myChannelIdPromise = null;
+		this.identityService.reset();
 	}
 
 	cleanup(): void {
@@ -104,8 +103,8 @@ export class CommentService {
 
 	async fetchVideoComments(videoId: string, signal: AbortSignal): Promise<VideoCommentsResult> {
 		const commentsPromise = this.fetchTopLevelComments(videoId, signal);
-		const identityPromise = this.getMyChannelId().then(
-			(myChannelId) => ({ myChannelId, identityUnavailable: false }),
+		const identityPromise = this.identityService.getCurrentIdentity().then(
+			(identity) => ({ myChannelId: identity.channelId, identityUnavailable: false }),
 			(error: unknown) => {
 				if (error instanceof DOMException && error.name === "AbortError") throw error;
 				return { myChannelId: null, identityUnavailable: true };
@@ -137,44 +136,6 @@ export class CommentService {
 			const comment = parseCommentThread(item);
 			return comment ? [comment] : [];
 		});
-	}
-
-	private getMyChannelId(): Promise<string | null> {
-		if (!this.myChannelIdPromise) {
-			const controller = new AbortController();
-			this.identityController = controller;
-			this.myChannelIdPromise = this.fetchMyChannelId(controller.signal).then(
-				(channelId) => {
-					if (this.identityController === controller) {
-						this.identityController = null;
-					}
-					return channelId;
-				},
-				(error: unknown) => {
-					if (this.identityController === controller) {
-						this.identityController = null;
-						this.myChannelIdPromise = null;
-					}
-					throw error;
-				},
-			);
-		}
-		return this.myChannelIdPromise;
-	}
-
-	private async fetchMyChannelId(signal: AbortSignal): Promise<string | null> {
-		const params = new URLSearchParams({ part: "id", mine: "true" });
-		const body = await this.get(`channels?${params.toString()}`, signal);
-		if (!isRecord(body) || !Array.isArray(body.items)) {
-			throw new CommentServiceError("invalid-response", "YouTube returned an invalid channel response.");
-		}
-		for (const item of body.items) {
-			if (isRecord(item)) {
-				const id = readString(item, "id");
-				if (id) return id;
-			}
-		}
-		return null;
 	}
 
 	private async get(path: string, signal: AbortSignal): Promise<unknown> {

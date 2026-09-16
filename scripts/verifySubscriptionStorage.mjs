@@ -66,8 +66,13 @@ export async function requestUrl(options) {
 	await check('load and save an upcoming broadcast without inventing a duration', async () => {
 		await writeFile(storage.filePath, JSON.stringify({ schemaVersion: 1, snapshot }));
 		assert.deepEqual(await storage.load(), snapshot);
-		await storage.save(snapshot);
+		assert.equal(storage.getOwnerChannelId(), null);
+		await storage.save(snapshot, 'owner-channel-a');
+		const persisted = JSON.parse(await readFile(storage.filePath, 'utf8'));
+		assert.equal(persisted.schemaVersion, 2);
+		assert.equal(persisted.ownerChannelId, 'owner-channel-a');
 		assert.deepEqual(await storage.load(), snapshot);
+		assert.equal(storage.getOwnerChannelId(), 'owner-channel-a');
 	});
 	await check('invalid candidate leaves primary and backup byte-for-byte intact', async () => {
 		const valid = { ...snapshot, videos: [{ ...video, contentDetails: { duration: 'PT1M' } }] };
@@ -79,6 +84,9 @@ export async function requestUrl(options) {
 			assert.equal(await readFile(storage.filePath, 'utf8'), primary);
 			assert.equal(await readFile(storage.filePath + '.bak', 'utf8'), backup);
 		}
+		await assert.rejects(storage.save(valid, ' '), /Invalid subscription cache owner/);
+		assert.equal(await readFile(storage.filePath, 'utf8'), primary);
+		assert.equal(await readFile(storage.filePath + '.bak', 'utf8'), backup);
 	});
 	await check('fetch subscriptions through every API stage, save, and restart', async () => {
 		setResponses([
@@ -88,13 +96,29 @@ export async function requestUrl(options) {
 			{ path: '/videos?', body: { items: [structuredClone(video)] } },
 		]);
 		const service = new SubscriptionService(youtubeApiClient, storage);
-		const result = await service.fetch();
+		const result = await service.fetch({ ownerChannelId: 'owner-channel-a' });
 		assert.equal(result.videos.length, 1);
 		assert.equal(result.videos[0].contentDetails.duration, undefined);
 		assert.equal(getRequestCount(), 4);
 		const restarted = new SubscriptionService(youtubeApiClient, storage);
 		await restarted.initialize();
 		assert.deepEqual(restarted.getSnapshot(), JSON.parse(JSON.stringify(result)));
+		assert.equal(restarted.getOwnerChannelId(), 'owner-channel-a');
+	});
+	await check('replace a subscription snapshot and owner only after a successful fetch', async () => {
+		const service = new SubscriptionService(youtubeApiClient, storage);
+		await service.initialize();
+		assert.equal(service.getOwnerChannelId(), 'owner-channel-a');
+		setResponses([{ path: '/subscriptions?', body: { items: [] } }]);
+		const result = await service.fetch({
+			ownerChannelId: 'owner-channel-b',
+			replaceExisting: true,
+		});
+		assert.deepEqual(result.channels, []);
+		assert.equal(service.getOwnerChannelId(), 'owner-channel-b');
+		const persisted = JSON.parse(await readFile(storage.filePath, 'utf8'));
+		assert.equal(persisted.ownerChannelId, 'owner-channel-b');
+		assert.deepEqual(persisted.snapshot.channels, []);
 	});
 	await check('restart immediately after cancellation without reusing or committing the old request', async () => {
 		let resolveOldRequest;
@@ -137,6 +161,7 @@ export async function requestUrl(options) {
 		const nextSubscriptions = new Promise((resolve) => { resolveNextSubscriptions = resolve; });
 		const controlledStorage = {
 			load: async () => structuredClone(persisted),
+			getOwnerChannelId: () => null,
 			save: async (next) => {
 				saveCount += 1;
 				if (saveCount === 1) {

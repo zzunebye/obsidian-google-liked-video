@@ -47,6 +47,7 @@ import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { useLikedVideoFocus } from "src/hooks/useLikedVideoFocus";
 import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
+import { CacheOwnershipError } from "src/services/youtubeAccountIdentityService";
 
 interface ActiveChannelFilter {
 	id: string;
@@ -938,13 +939,15 @@ export const LikedVideoView: React.FC = () => {
 												notice.hide();
 											} catch (error) {
 												console.error("Failed to undo unlike:", error);
-												new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+												new Notice(error instanceof CacheOwnershipError
+													? error.message : UI_TEXT.NOTICE_LIKE_FAILED);
 											}
 										})();
 									}, { once: true });
 								} catch (error) {
 									console.error("Failed to unlike video:", error);
-									new Notice(UI_TEXT.NOTICE_UNLIKE_FAILED);
+									new Notice(error instanceof CacheOwnershipError
+										? error.message : UI_TEXT.NOTICE_UNLIKE_FAILED);
 								} finally {
 									pendingUnlikeIdsRef.current.delete(video.id);
 									setPendingUnlikeIds(new Set(pendingUnlikeIdsRef.current));

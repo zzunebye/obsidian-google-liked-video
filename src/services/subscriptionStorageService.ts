@@ -6,7 +6,7 @@ import type { SubscriptionFailureDetail, SubscriptionSnapshot } from "./subscrip
 type StorageAdapter = Pick<DataAdapter, "exists" | "read" | "write">;
 
 interface StoredSubscriptions {
-	schemaVersion: 1;
+	ownerChannelId: string | null;
 	snapshot: SubscriptionSnapshot;
 }
 
@@ -78,28 +78,54 @@ function parseSnapshot(value: unknown): SubscriptionSnapshot {
 	};
 }
 
+function parseOwnerChannelId(value: unknown): string | null {
+	if (value === null) return null;
+	if (typeof value === "string" && value.trim().length > 0) return value;
+	throw new Error("Invalid subscription cache owner.");
+}
+
 function parseStoredSubscriptions(value: unknown): StoredSubscriptions {
-	if (!isRecord(value) || value.schemaVersion !== 1) {
+	if (!isRecord(value)) {
 		throw new Error("Unsupported subscriptions.json format.");
 	}
-	return { schemaVersion: 1, snapshot: parseSnapshot(value.snapshot) };
+	if (value.schemaVersion === 1) {
+		return { ownerChannelId: null, snapshot: parseSnapshot(value.snapshot) };
+	}
+	if (value.schemaVersion === 2) {
+		return {
+			ownerChannelId: parseOwnerChannelId(value.ownerChannelId),
+			snapshot: parseSnapshot(value.snapshot),
+		};
+	}
+	throw new Error("Unsupported subscriptions.json format.");
 }
 
 export class SubscriptionStorageService {
 	readonly filePath: string;
+	private ownerChannelId: string | null = null;
 
 	constructor(private readonly adapter: StorageAdapter, manifestDir: string) {
 		this.filePath = normalizePath(`${manifestDir}/subscriptions.json`);
 	}
 
 	async load(): Promise<SubscriptionSnapshot | null> {
-		if (!await this.adapter.exists(this.filePath)) return null;
+		if (!await this.adapter.exists(this.filePath)) {
+			this.ownerChannelId = null;
+			return null;
+		}
 		const stored: unknown = JSON.parse(await this.adapter.read(this.filePath));
-		return parseStoredSubscriptions(stored).snapshot;
+		const parsed = parseStoredSubscriptions(stored);
+		this.ownerChannelId = parsed.ownerChannelId;
+		return parsed.snapshot;
 	}
 
-	async save(snapshot: SubscriptionSnapshot): Promise<void> {
-		const stored: StoredSubscriptions = { schemaVersion: 1, snapshot };
+	getOwnerChannelId(): string | null {
+		return this.ownerChannelId;
+	}
+
+	async save(snapshot: SubscriptionSnapshot, ownerChannelId = this.ownerChannelId): Promise<void> {
+		const owner = ownerChannelId === null ? null : parseOwnerChannelId(ownerChannelId);
+		const stored = { schemaVersion: 2, ownerChannelId: owner, snapshot };
 		const json = JSON.stringify(stored, null, 2);
 		const candidate: unknown = JSON.parse(json);
 		parseStoredSubscriptions(candidate);
@@ -110,5 +136,6 @@ export class SubscriptionStorageService {
 		await this.adapter.write(this.filePath, json);
 		const persisted: unknown = JSON.parse(await this.adapter.read(this.filePath));
 		parseStoredSubscriptions(persisted);
+		this.ownerChannelId = owner;
 	}
 }

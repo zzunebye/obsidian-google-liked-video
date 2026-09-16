@@ -3,6 +3,7 @@ import { YouTubeVideo, YouTubeVideosResponse, YouTubeCategory, YoutubeCategories
 import { debugLogger } from "./debug";
 import { YouTubeApiClient, YouTubeRequestError } from "./services/youtubeApiClient";
 import type { YouTubeRequestOptions } from "./services/youtubeApiClient";
+import { isYouTubeVideo } from "./utils/youtubeVideoValidation";
 
 type RequestOptions = Pick<YouTubeRequestOptions, 'body' | 'contentType'>;
 
@@ -575,7 +576,17 @@ export class PlaylistApi {
 }
 
 export class LikedVideoApi {
-    constructor(private readonly client: YouTubeApiClient) { }
+    constructor(
+		private readonly client: YouTubeApiClient,
+		private readonly beforeMutation?: () => Promise<void>,
+	) { }
+
+	private validateLikedVideosResponse(data: unknown): data is YouTubeVideosResponse {
+		return isRecord(data)
+			&& Array.isArray(data.items)
+			&& data.items.every(isYouTubeVideo)
+			&& (data.nextPageToken === undefined || typeof data.nextPageToken === 'string');
+	}
 
     /**
      * Cleanup resources when plugin is unloaded
@@ -603,11 +614,14 @@ export class LikedVideoApi {
             url += `&pageToken=${pageToken}`;
         }
         const response = await this.sendRequest('GET', url, {});
-        const data: YouTubeVideosResponse = response.json;
-        debugLogger.api(`Fetched ${data.items?.length || 0} videos`);
+        const data: unknown = response.json;
+		if (!this.validateLikedVideosResponse(data)) {
+			throw new Error('YouTube returned an invalid liked-video response. Your saved list was kept.');
+		}
+        debugLogger.api(`Fetched ${data.items.length} videos`);
         debugLogger.verbose('API Response:', data);
 
-        data.items?.forEach(video => {
+        data.items.forEach(video => {
             video.pulled_at = new Date().toISOString();
         });
 
@@ -657,6 +671,7 @@ export class LikedVideoApi {
     }
 
     async likeVideo(videoId: string): Promise<void> {
+		await this.beforeMutation?.();
         const url = 'videos/rate?id=' + videoId + '&rating=like';
         await this.sendRequest('POST', url, {
             'Content-Type': 'application/json'
@@ -664,6 +679,7 @@ export class LikedVideoApi {
     }
 
     async unlikeVideo(videoId: string): Promise<void> {
+		await this.beforeMutation?.();
         const url = 'videos/rate?id=' + videoId + '&rating=none';
         await this.sendRequest('POST', url, {
             'Content-Type': 'application/json'

@@ -43,6 +43,7 @@ import type {
 import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { usePlugin } from "../store/pluginContext";
 import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
+import { CacheOwnershipError } from "src/services/youtubeAccountIdentityService";
 
 export type SubscriptionPeriod = "all" | "day" | "week" | "month" | "year";
 export type SubscriptionSortOrder = "ASC" | "DESC";
@@ -280,12 +281,16 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		setError(null);
 		setProgress(null);
 		try {
+			const ownership = await plugin.prepareSubscriptionSync();
+			if (!ownership || controller.signal.aborted) return;
 			const result = await plugin.subscriptionService.fetch({
 				signal: controller.signal,
 				onProgress: setProgress,
+				ownerChannelId: ownership.ownerChannelId,
+				replaceExisting: ownership.replaceExisting,
 			});
 			if (controller.signal.aborted) return;
-			if (stageResult && snapshot) setPendingSnapshot(result);
+			if (stageResult && snapshot && !ownership.replaceExisting) setPendingSnapshot(result);
 			else setSnapshot(result);
 		} catch (fetchError) {
 			if (!isAbortError(fetchError)) {
@@ -605,7 +610,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
 		} catch (likeError) {
 			console.error("Failed to like subscription video:", likeError);
-			new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+			new Notice(likeError instanceof CacheOwnershipError
+				? likeError.message : UI_TEXT.NOTICE_LIKE_FAILED);
 		} finally {
 			pendingLikeIdsRef.current.delete(video.id);
 			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
@@ -647,7 +653,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 						notice.hide();
 					} catch (undoError) {
 						console.error("Failed to undo subscription video unlike:", undoError);
-						new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+						new Notice(undoError instanceof CacheOwnershipError
+							? undoError.message : UI_TEXT.NOTICE_LIKE_FAILED);
 						undoButton.disabled = false;
 					} finally {
 						pendingLikeIdsRef.current.delete(video.id);
@@ -657,7 +664,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			});
 		} catch (unlikeError) {
 			console.error("Failed to unlike subscription video:", unlikeError);
-			new Notice(UI_TEXT.NOTICE_UNLIKE_FAILED);
+			new Notice(unlikeError instanceof CacheOwnershipError
+				? unlikeError.message : UI_TEXT.NOTICE_UNLIKE_FAILED);
 		} finally {
 			pendingLikeIdsRef.current.delete(video.id);
 			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
@@ -693,6 +701,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		setIsLoading(true);
 		setError(null);
 		try {
+			await plugin.requireSubscriptionCacheOwnership();
 			const result = await plugin.subscriptionService.retryFailed({
 				signal: controller.signal,
 				onProgress: setProgress,
@@ -772,6 +781,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const unsubscribeChannels = async (channels: SubscriptionChannel[]): Promise<void> => {
 		setIsUnsubscribing(true);
 		try {
+			await plugin.requireSubscriptionCacheOwnership();
 			const result = await plugin.subscriptionService.unsubscribeChannels(channels);
 			setSnapshot(result.snapshot);
 			setPendingSnapshot(null);

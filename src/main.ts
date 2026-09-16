@@ -31,6 +31,8 @@ import { SubscriptionStorageService } from './services/subscriptionStorageServic
 import { vaultLocalStorageService } from './services/vaultLocalStorageService';
 import { VideoNoteIndexService } from './services/videoNoteIndexService';
 import { YouTubeApiClient } from './services/youtubeApiClient';
+import { CacheOwnershipError, YouTubeAccountIdentity, YouTubeAccountIdentityService } from './services/youtubeAccountIdentityService';
+import { chooseCacheOwnership } from './ui/CacheOwnershipModal';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -66,6 +68,18 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 export const APP_ID = 'geulo-youtube-liked-video';
 export type LikedVideoFetchStatus = 'idle' | 'recent' | 'full' | 'creating-notes';
 
+export interface CacheSyncOwnership {
+	ownerChannelId: string;
+	replaceExisting: boolean;
+}
+
+interface CacheOwnershipContext {
+	cacheLabel: string;
+	ownerChannelId: string | null;
+	hasData: boolean;
+	assignOwner: (ownerChannelId: string) => Promise<void>;
+}
+
 export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings = { ...DEFAULT_SETTINGS };
 	vault = this.app.vault;
@@ -75,12 +89,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	subscriptionService!: SubscriptionService;
 	summaryStorage!: SummaryStorageService;
 	videoNoteIndex!: VideoNoteIndexService;
+	accountIdentityService!: YouTubeAccountIdentityService;
 	likedVideoStorage?: LikedVideoStorageService;
 	autoFetchInterval: number | null = null;
 	isFetching = false;
 	private fetchStatus: LikedVideoFetchStatus = 'idle';
 	private fetchStatusListeners = new Set<(status: LikedVideoFetchStatus) => void>();
 	private settingsListeners = new Set<() => void>();
+	private ownershipWarnings = new Set<string>();
 	settingTabRef: GoogleLikedVideoSettingTab | null = null;
 	private featureAnnouncementModal: FeatureIntroModal | null = null;
 
@@ -107,9 +123,13 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		const youtubeApiClient = new YouTubeApiClient(
 			() => getValidAccessToken(this.settings.googleClientId),
 		);
-		this.likedVideoApi = new LikedVideoApi(youtubeApiClient);
+		this.accountIdentityService = new YouTubeAccountIdentityService(youtubeApiClient);
+		this.likedVideoApi = new LikedVideoApi(
+			youtubeApiClient,
+			() => this.requireLikedVideoCacheOwnership(),
+		);
 		this.playlistApi = new PlaylistApi(youtubeApiClient);
-		this.commentService = new CommentService(youtubeApiClient);
+		this.commentService = new CommentService(youtubeApiClient, this.accountIdentityService);
 		const subscriptionStorage = new SubscriptionStorageService(this.app.vault.adapter, manifestDir);
 		this.subscriptionService = new SubscriptionService(youtubeApiClient, subscriptionStorage);
 		try {
@@ -214,7 +234,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		if (this.settings.fetchOnStartup && googleTokenStorageService.getAccessToken()) {
 			debugLogger.info('Fetch on startup enabled, scheduling fetch in 5 seconds');
 			window.setTimeout(() => {
-				void this.performAutoFetch();
+				void this.performAutoFetch(false, true, false);
 			}, 5000);
 		}
 
@@ -371,7 +391,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 			this.autoFetchInterval = window.setInterval(() => {
 				if (!this.isFetching) {
-					void this.performAutoFetch();
+					void this.performAutoFetch(false, true, false);
 				}
 			}, intervalMs);
 		}
@@ -399,7 +419,187 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.fetchStatusListeners.forEach((listener) => listener(status));
 	}
 
-	async performAutoFetch(forceFullFetch = false, useConfiguredMode = true): Promise<void> {
+	resetGoogleAccountIdentity(): void {
+		this.accountIdentityService.reset();
+		this.ownershipWarnings.clear();
+	}
+
+	async prepareSubscriptionSync(): Promise<CacheSyncOwnership | null> {
+		const snapshot = this.subscriptionService.getSnapshot();
+		return this.prepareCacheSyncOwnership({
+			cacheLabel: 'subscriptions',
+			ownerChannelId: this.subscriptionService.getOwnerChannelId(),
+			hasData: snapshot !== null && (
+				snapshot.channels.length > 0
+				|| snapshot.videos.length > 0
+				|| snapshot.failedChannels.length > 0
+			),
+			assignOwner: (ownerChannelId) => this.subscriptionService.setOwnerChannelId(ownerChannelId),
+		}, true);
+	}
+
+	async requireSubscriptionCacheOwnership(): Promise<void> {
+		const snapshot = this.subscriptionService.getSnapshot();
+		await this.requireCacheOwnership({
+			cacheLabel: 'subscriptions',
+			ownerChannelId: this.subscriptionService.getOwnerChannelId(),
+			hasData: snapshot !== null && (
+				snapshot.channels.length > 0
+				|| snapshot.videos.length > 0
+				|| snapshot.failedChannels.length > 0
+			),
+			assignOwner: (ownerChannelId) => this.subscriptionService.setOwnerChannelId(ownerChannelId),
+		});
+	}
+
+	private prepareLikedVideoSync(interactive: boolean): Promise<CacheSyncOwnership | null> {
+		return this.prepareCacheSyncOwnership({
+			cacheLabel: 'liked videos',
+			ownerChannelId: localStorageService.getLikedVideoOwnerChannelId(),
+			hasData: localStorageService.getLikedVideos().length > 0,
+			assignOwner: (ownerChannelId) => localStorageService.setLikedVideoOwnerChannelId(ownerChannelId),
+		}, interactive);
+	}
+
+	private async requireLikedVideoCacheOwnership(): Promise<void> {
+		await this.requireCacheOwnership({
+			cacheLabel: 'liked videos',
+			ownerChannelId: localStorageService.getLikedVideoOwnerChannelId(),
+			hasData: localStorageService.getLikedVideos().length > 0,
+			assignOwner: (ownerChannelId) => localStorageService.setLikedVideoOwnerChannelId(ownerChannelId),
+		});
+	}
+
+	private async prepareCacheSyncOwnership(
+		context: CacheOwnershipContext,
+		interactive: boolean,
+	): Promise<CacheSyncOwnership | null> {
+		let identity: YouTubeAccountIdentity;
+		try {
+			identity = await this.accountIdentityService.getCurrentIdentity();
+		} catch (error) {
+			debugLogger.error(`[Cache ownership] Could not identify the account for ${context.cacheLabel}:`, error);
+			new Notice(`Geulo: Could not verify which Google account owns the ${context.cacheLabel}. ${error instanceof Error ? error.message : 'Please reconnect and try again.'}`, 10000);
+			return null;
+		}
+
+		if (context.ownerChannelId === identity.channelId) {
+			this.clearOwnershipWarnings(context.cacheLabel);
+			return { ownerChannelId: identity.channelId, replaceExisting: false };
+		}
+		if (context.ownerChannelId === null && !context.hasData) {
+			try {
+				await context.assignOwner(identity.channelId);
+				this.clearOwnershipWarnings(context.cacheLabel);
+				return { ownerChannelId: identity.channelId, replaceExisting: false };
+			} catch (error) {
+				debugLogger.error(`[Cache ownership] Could not save the owner for ${context.cacheLabel}:`, error);
+				new Notice(`Geulo: Could not save the Google account for the ${context.cacheLabel}. Existing data was preserved.`, 10000);
+				return null;
+			}
+		}
+		if (!interactive) {
+			this.warnAboutUnresolvedOwnership(context, identity);
+			return null;
+		}
+
+		const choice = await chooseCacheOwnership(this.app, {
+			cacheLabel: context.cacheLabel,
+			currentChannelId: identity.channelId,
+			currentChannelTitle: identity.channelTitle,
+			storedOwnerChannelId: context.ownerChannelId,
+			allowAssociate: context.ownerChannelId === null,
+			allowReplace: true,
+		});
+		if (choice === 'cancel') return null;
+		if (choice === 'replace') {
+			return { ownerChannelId: identity.channelId, replaceExisting: true };
+		}
+
+		try {
+			await context.assignOwner(identity.channelId);
+			this.clearOwnershipWarnings(context.cacheLabel);
+			return { ownerChannelId: identity.channelId, replaceExisting: false };
+		} catch (error) {
+			debugLogger.error(`[Cache ownership] Could not associate ${context.cacheLabel}:`, error);
+			new Notice(`Geulo: Could not link the existing ${context.cacheLabel} to this Google account. Existing data was preserved.`, 10000);
+			return null;
+		}
+	}
+
+	private async requireCacheOwnership(context: CacheOwnershipContext): Promise<void> {
+		let identity: YouTubeAccountIdentity;
+		try {
+			identity = await this.accountIdentityService.getCurrentIdentity();
+		} catch (error) {
+			throw new CacheOwnershipError(
+				`Could not verify which Google account owns the ${context.cacheLabel}. ${error instanceof Error ? error.message : 'Please reconnect and try again.'}`,
+			);
+		}
+
+		if (context.ownerChannelId === identity.channelId) return;
+		if (context.ownerChannelId === null && !context.hasData) {
+			try {
+				await context.assignOwner(identity.channelId);
+			} catch (error) {
+				debugLogger.error(`[Cache ownership] Could not save the owner for ${context.cacheLabel}:`, error);
+				throw new CacheOwnershipError(
+					`Could not save the Google account for the ${context.cacheLabel}. No YouTube change was made.`,
+				);
+			}
+			return;
+		}
+		if (context.ownerChannelId !== null) {
+			throw new CacheOwnershipError(
+				`The connected YouTube account does not own the saved ${context.cacheLabel}. Load the ${context.cacheLabel} and confirm replacement before changing them.`,
+			);
+		}
+
+		const choice = await chooseCacheOwnership(this.app, {
+			cacheLabel: context.cacheLabel,
+			currentChannelId: identity.channelId,
+			currentChannelTitle: identity.channelTitle,
+			storedOwnerChannelId: null,
+			allowAssociate: true,
+			allowReplace: false,
+		});
+		if (choice !== 'associate') {
+			throw new CacheOwnershipError(`The ${context.cacheLabel} were not changed because their Google account is not confirmed.`);
+		}
+		try {
+			await context.assignOwner(identity.channelId);
+		} catch (error) {
+			debugLogger.error(`[Cache ownership] Could not associate ${context.cacheLabel}:`, error);
+			throw new CacheOwnershipError(
+				`Could not link the existing ${context.cacheLabel} to this Google account. No YouTube change was made.`,
+			);
+		}
+	}
+
+	private warnAboutUnresolvedOwnership(
+		context: CacheOwnershipContext,
+		identity: YouTubeAccountIdentity,
+	): void {
+		const key = `${context.cacheLabel}:${context.ownerChannelId ?? 'unowned'}:${identity.channelId}`;
+		if (this.ownershipWarnings.has(key)) return;
+		this.ownershipWarnings.add(key);
+		new Notice(
+			`Geulo: Automatic ${context.cacheLabel} sync was skipped because the saved data belongs to an unconfirmed or different Google account. Run it manually to review the change.`,
+			10000,
+		);
+	}
+
+	private clearOwnershipWarnings(cacheLabel: string): void {
+		for (const warning of this.ownershipWarnings) {
+			if (warning.startsWith(`${cacheLabel}:`)) this.ownershipWarnings.delete(warning);
+		}
+	}
+
+	async performAutoFetch(
+		forceFullFetch = false,
+		useConfiguredMode = true,
+		interactiveOwnership = true,
+	): Promise<void> {
 		if (this.isFetching) {
 			debugLogger.autoFetch('Skipping auto-fetch - already fetching');
 			return;
@@ -409,7 +609,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			return;
 		}
 
-		const shouldFetchAllVideos = forceFullFetch ||
+		const ownership = await this.prepareLikedVideoSync(interactiveOwnership);
+		if (!ownership) return;
+		const shouldFetchAllVideos = ownership.replaceExisting || forceFullFetch ||
 			(useConfiguredMode && this.settings.fullFetchOnEveryAutoFetch);
 		try {
 			debugLogger.autoFetch('Starting auto-fetch');
@@ -434,6 +636,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				const result = await fetchAndMergeLikedVideos(this.likedVideoApi, {
 					mode: shouldFetchAllVideos ? 'full' : 'partial',
 					keepUnfetched: !shouldFetchAllVideos,
+					allowEmptyFullReplacement: ownership.replaceExisting,
 				});
 				const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos, updatedCount } = result;
 
@@ -450,7 +653,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				}
 
 				if (shouldFetchAllVideos || newLikedVideos.length > 0 || updatedCount > 0) {
-					localStorageService.setLikedVideos(updatedLikedVideos);
+					await localStorageService.setLikedVideosForOwner(
+						updatedLikedVideos,
+						ownership.ownerChannelId,
+					);
 					if (shouldFetchAllVideos) {
 						new Notice(UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(updatedLikedVideos.length));
 					} else if (newLikedVideos.length > 0) {

@@ -184,7 +184,6 @@ export async function handleGoogleLogout(
     const accessToken = googleTokenStorageService.getAccessToken();
     const success = accessToken ? await revokeGoogleToken(accessToken) : true;
     invalidateGoogleAuth();
-    localStorageService.setLikedVideos([]);
     if (success) {
         onSuccess();
     } else {

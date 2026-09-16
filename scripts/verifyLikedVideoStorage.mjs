@@ -51,7 +51,10 @@ try {
 	failWrite = false;
 	await store.initialize(legacy);
 	assert.equal(values.has(key), false);
-	assert.deepEqual(JSON.parse(await readFile(resolveVaultPath(store.filePath), 'utf8')).videos, [video]);
+	const migrated = JSON.parse(await readFile(resolveVaultPath(store.filePath), 'utf8'));
+	assert.equal(migrated.schemaVersion, 2);
+	assert.equal(migrated.ownerChannelId, null);
+	assert.deepEqual(migrated.videos, [video]);
 	console.log('PASS: migration writes/read-verifies before removing legacy; failed migration preserves it');
 
 	values.set(key, JSON.stringify([{ ...video, id: 'stale' }]));
@@ -86,7 +89,31 @@ try {
 	assert.deepEqual(restart.getVideos(), []);
 	console.log('PASS: changes during writes persist; failed replacement preserves file; retry and empty-list restart work');
 
-	for (const invalid of ['{broken', JSON.stringify({ schemaVersion: 2, videos: [] }), JSON.stringify({ schemaVersion: 1, videos: [{}] })]) {
+	await restart.setVideosForOwner([video], 'owner-channel-a');
+	let owned = JSON.parse(await readFile(resolveVaultPath(restart.filePath), 'utf8'));
+	assert.equal(owned.schemaVersion, 2);
+	assert.equal(owned.ownerChannelId, 'owner-channel-a');
+	assert.deepEqual(owned.videos, [video]);
+	const ownedRestart = new LikedVideoStorageService(adapter, pluginDir);
+	await ownedRestart.initialize(legacy);
+	assert.equal(ownedRestart.getOwnerChannelId(), 'owner-channel-a');
+	ownedRestart.setVideos([]);
+	await ownedRestart.flush();
+	owned = JSON.parse(await readFile(resolveVaultPath(ownedRestart.filePath), 'utf8'));
+	assert.equal(owned.ownerChannelId, 'owner-channel-a');
+	assert.deepEqual(owned.videos, []);
+	failPrimaryWrite = true;
+	await assert.rejects(ownedRestart.setVideosForOwner([video], 'owner-channel-b'), /disk full/);
+	assert.equal(ownedRestart.getOwnerChannelId(), 'owner-channel-a');
+	assert.deepEqual(ownedRestart.getVideos(), []);
+	owned = JSON.parse(await readFile(resolveVaultPath(ownedRestart.filePath), 'utf8'));
+	assert.equal(owned.ownerChannelId, 'owner-channel-a');
+	assert.deepEqual(owned.videos, []);
+	failPrimaryWrite = false;
+	await ownedRestart.flush();
+	console.log('PASS: owner and liked videos persist atomically; failed replacement rolls memory back');
+
+	for (const invalid of ['{broken', JSON.stringify({ schemaVersion: 2, videos: [] }), JSON.stringify({ schemaVersion: 2, ownerChannelId: ' ', videos: [] }), JSON.stringify({ schemaVersion: 1, videos: [{}] })]) {
 		await writeFile(resolveVaultPath(store.filePath), invalid);
 		values.set(key, JSON.stringify([video]));
 		const broken = new LikedVideoStorageService(adapter, pluginDir);

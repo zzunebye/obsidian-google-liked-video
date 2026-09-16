@@ -14,6 +14,7 @@ export interface FetchAndMergeLikedVideosOptions {
 	 * If false, drop them (manual full scan).
 	 */
 	keepUnfetched: boolean;
+	allowEmptyFullReplacement?: boolean;
 }
 
 export interface FetchAndMergeLikedVideosResult {
@@ -35,8 +36,8 @@ export async function fetchAllLikedVideos(
 
 	do {
 		const response = await api.fetchLikedVideos(LIKED_VIDEOS_PAGE_SIZE, nextPageToken);
-		allVideos.push(...(response?.items ?? []));
-		nextPageToken = nextPageTokenOrUndefined(response?.nextPageToken);
+		allVideos.push(...response.items);
+		nextPageToken = nextPageTokenOrUndefined(response.nextPageToken);
 	} while (nextPageToken !== undefined);
 
 	return allVideos;
@@ -46,7 +47,7 @@ export async function fetchPartialLikedVideos(
 	api: LikedVideoApi
 ): Promise<YouTubeVideo[]> {
 	const response = await api.fetchLikedVideos(LIKED_VIDEOS_PAGE_SIZE);
-	return response?.items ?? [];
+	return response.items;
 }
 
 /**
@@ -62,6 +63,11 @@ export async function fetchAndMergeLikedVideos(
 		: await fetchPartialLikedVideos(api);
 
 	const storedVideos = localStorageService.getLikedVideos();
+	if (options.mode === 'full' && !options.keepUnfetched
+		&& !options.allowEmptyFullReplacement
+		&& fetchedVideos.length === 0 && storedVideos.length > 0) {
+		throw new Error('YouTube returned no liked videos. Your saved list was kept. To remove it, use "Clear saved videos" in Geulo settings.');
+	}
 	const { mergedVideos, newVideos, updatedCount } = mergeVideos(
 		fetchedVideos,
 		storedVideos,

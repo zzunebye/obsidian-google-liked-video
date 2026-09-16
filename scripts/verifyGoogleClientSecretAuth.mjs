@@ -1,6 +1,6 @@
 /* global globalThis */
 import assert from 'node:assert/strict';
-import { mkdtemp } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -12,8 +12,10 @@ const outputPath = path.join(outputDirectory, 'auth-verification.cjs');
 await build({
 	stdin: {
 		contents: `
-			export { handleGoogleLogin, refreshAccessToken, getValidAccessToken } from './src/auth.ts';
+			export { handleGoogleLogin, handleGoogleLogout, refreshAccessToken, getValidAccessToken } from './src/auth.ts';
 			export { googleTokenStorageService } from './src/services/googleTokenStorageService.ts';
+			export { LikedVideoStorageService } from './src/services/likedVideoStorageService.ts';
+			export { localStorageService } from './src/storage.ts';
 		`,
 		resolveDir: process.cwd(),
 		sourcefile: 'auth-verification-entry.ts',
@@ -30,6 +32,7 @@ await build({
 				builder.onLoad({ filter: /.*/, namespace: 'verification' }, (args) => ({
 					contents: args.path === 'obsidian' ? `
 						export const Platform = { isDesktop: true };
+						export const normalizePath = value => value;
 						export class Notice { constructor() {} }
 						export const requestUrl = (request) => globalThis.requestUrl(request);
 					` : `export const createServer = (...args) => globalThis.createVerificationHttpServer(...args);`,
@@ -147,8 +150,35 @@ globalThis.requestUrl = async (request) => {
 
 try {
 	const require = createRequire(import.meta.url);
-	const { handleGoogleLogin, refreshAccessToken, getValidAccessToken, googleTokenStorageService } = require(outputPath);
+	const { handleGoogleLogin, handleGoogleLogout, refreshAccessToken, getValidAccessToken, googleTokenStorageService, LikedVideoStorageService, localStorageService } = require(outputPath);
 	googleTokenStorageService.initialize(new FakeSecretStorage(secrets));
+	const savedVideos = [{
+		id: 'saved-video', pulled_at: '2026-01-01T00:00:00Z',
+		snippet: { title: 'Saved video', channelTitle: 'Channel', channelId: 'channel', publishedAt: '2026-01-01', description: '', thumbnails: { medium: { url: 'https://example.com/image.jpg' } } },
+		contentDetails: { duration: 'PT1M' }, statistics: { viewCount: '10' },
+	}];
+	const savedJSON = JSON.stringify({ schemaVersion: 1, videos: savedVideos });
+	const savedPath = path.join(outputDirectory, 'liked-videos.json');
+	await writeFile(savedPath, savedJSON);
+	await writeFile(savedPath + '.bak', savedJSON);
+	let videoWrites = 0;
+	let videoNotifications = 0;
+	const storage = new LikedVideoStorageService({
+		exists: async file => { try { await access(file); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } },
+		read: file => readFile(file, 'utf8'),
+		write: async (file, data) => { videoWrites++; await writeFile(file, data); },
+	}, outputDirectory);
+	await storage.initialize(localStorage);
+	localStorageService.initializeLikedVideos(storage, error => { throw error; });
+	localStorageService.subscribeLikedVideos(() => videoNotifications++);
+	const assertSavedVideosPreserved = async () => {
+		await storage.flush();
+		assert.deepEqual(localStorageService.getLikedVideos(), savedVideos);
+		assert.equal(await readFile(savedPath, 'utf8'), savedJSON);
+		assert.equal(await readFile(savedPath + '.bak', 'utf8'), savedJSON);
+		assert.equal(videoWrites, 0);
+		assert.equal(videoNotifications, 0);
+	};
 	let loginSuccessCount = 0;
 	const handleLoginSuccess = () => {
 		loginSuccessCount += 1;
@@ -251,9 +281,44 @@ try {
 	assert.equal(failedCallbackResponse.statusCode, 400);
 	assert.equal(failedCallbackResponse.ended, true);
 	assert.equal(failedCallbackResponse.headers.get('Connection'), 'close');
+	await assertSavedVideosPreserved();
+
+	for (const revokeStatus of [200, 400]) {
+		secrets.set('geulo-google-refresh-token', 'expired-refresh');
+		secrets.set('geulo-google-access-token', 'expired-access');
+		localStorageService.setAccessTokenExpirationTime(0);
+		globalThis.requestUrl = async () => ({ status: 400, json: { error: 'invalid_grant' } });
+		await assert.rejects(getValidAccessToken('client-id'), /400/);
+		await assertSavedVideosPreserved();
+		let logoutResult;
+		globalThis.requestUrl = async () => ({ status: revokeStatus, json: {} });
+		await handleGoogleLogout({ googleClientId: 'client-id' },
+			() => { logoutResult = 'success'; }, () => { logoutResult = 'error'; });
+		assert.equal(logoutResult, revokeStatus === 200 ? 'success' : 'error');
+		assert.equal(googleTokenStorageService.getRefreshToken(), '');
+		assert.equal(googleTokenStorageService.getAccessToken(), '');
+		assert.equal(localStorageService.getAccessTokenExpirationTime(), 0);
+		await assertSavedVideosPreserved();
+
+		globalThis.requestUrl = async () => ({ status: 200, json: {
+			refresh_token: 'reconnected-refresh', access_token: 'reconnected-access', expires_in: 3600,
+		} });
+		let reconnected = false;
+		await handleGoogleLogin({ googleClientId: 'client-id' }, () => { reconnected = true; });
+		oauthCallback({ url: '/callback?code=reconnect' }, createCallbackResponse());
+		await waitFor(() => reconnected);
+		assert.equal(googleTokenStorageService.getRefreshToken(), 'reconnected-refresh');
+		await assertSavedVideosPreserved();
+	}
+	secrets.set('geulo-google-access-token', '');
+	globalThis.requestUrl = async () => { throw new Error('Revocation should be skipped without an access token'); };
+	await handleGoogleLogout({ googleClientId: 'client-id' }, () => {}, () => assert.fail('Unexpected logout error'));
+	await assertSavedVideosPreserved();
+	console.log('PASS: expired refresh, successful/failed revocation, reconnect and tokenless logout preserve memory, JSON, backup and subscribers');
 } finally {
 	globalThis.requestUrl = originalRequestUrl;
 	delete globalThis.createVerificationHttpServer;
+	await rm(outputDirectory, { recursive: true, force: true });
 }
 
 console.log('google-client-secret auth verification passed');

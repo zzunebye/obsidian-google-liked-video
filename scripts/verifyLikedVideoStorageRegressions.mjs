@@ -59,6 +59,14 @@ try {
 	const first = new LikedVideoStorageService(adapter, pluginDir);
 	assert.equal(first.filePath, '.obsidian/plugins/geulo/liked-videos.json');
 	await first.initialize(legacy);
+	assert.throws(() => first.setVideos([{
+		id: 'incomplete-video',
+		snippet: {},
+		contentDetails: {},
+		statistics: {},
+	}]), /Invalid liked video list/);
+	assert.deepEqual(first.getVideos(), [video]);
+	console.log('PASS: invalid runtime video objects are rejected before changing memory or disk');
 	first.setVideos([{ ...video, id: 'new' }]);
 	const pending = first.flush();
 	await started;

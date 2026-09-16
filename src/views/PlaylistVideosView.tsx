@@ -18,6 +18,7 @@ import { useLikedVideoFocus } from "src/hooks/useLikedVideoFocus";
 import { classifyVideoContent, getVideoLanguageLabel, matchesDurationFilter, matchesPublishedDateFilter, normalizeVideoLanguage, parseDurationToSeconds } from "src/utils/videoUtils";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
+import { CacheOwnershipError } from "src/services/youtubeAccountIdentityService";
 import { debugLogger } from "src/debug";
 import { usePlugin } from "../store/pluginContext";
 
@@ -579,7 +580,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 			new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
 		} catch (likeError) {
 			console.error("Failed to like playlist video:", likeError);
-			new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+			new Notice(likeError instanceof CacheOwnershipError
+				? likeError.message : UI_TEXT.NOTICE_LIKE_FAILED);
 		} finally {
 			pendingLikeIdsRef.current.delete(video.id);
 			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
@@ -621,7 +623,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 						notice.hide();
 					} catch (undoError) {
 						console.error("Failed to undo playlist video unlike:", undoError);
-						new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+						new Notice(undoError instanceof CacheOwnershipError
+							? undoError.message : UI_TEXT.NOTICE_LIKE_FAILED);
 						undoButton.disabled = false;
 					} finally {
 						pendingLikeIdsRef.current.delete(video.id);
@@ -631,7 +634,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 			});
 		} catch (unlikeError) {
 			console.error("Failed to unlike playlist video:", unlikeError);
-			new Notice(UI_TEXT.NOTICE_UNLIKE_FAILED);
+			new Notice(unlikeError instanceof CacheOwnershipError
+				? unlikeError.message : UI_TEXT.NOTICE_UNLIKE_FAILED);
 		} finally {
 			pendingLikeIdsRef.current.delete(video.id);
 			setPendingLikeIds(new Set(pendingLikeIdsRef.current));

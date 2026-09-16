@@ -71,6 +71,8 @@ interface FetchOptions {
 	onProgress?: (progress: SubscriptionProgress) => void;
 	channels?: SubscriptionChannel[];
 	commit?: boolean;
+	ownerChannelId?: string;
+	replaceExisting?: boolean;
 }
 
 function chunks<T>(items: T[], size: number): T[][] {
@@ -174,6 +176,7 @@ export class SubscriptionService {
 	private snapshot: SubscriptionSnapshot | null = null;
 	private activeRequest: { promise: Promise<SubscriptionSnapshot>; signal?: AbortSignal } | null = null;
 	private commitQueue: Promise<void> = Promise.resolve();
+	private ownerChannelId: string | null = null;
 
 	constructor(
 		private readonly client: YouTubeApiClient,
@@ -182,15 +185,31 @@ export class SubscriptionService {
 
 	async initialize(): Promise<void> {
 		this.snapshot = await this.storage.load();
+		this.ownerChannelId = this.storage.getOwnerChannelId();
 	}
 
 	getSnapshot(): SubscriptionSnapshot | null {
 		return this.snapshot;
 	}
 
+	getOwnerChannelId(): string | null {
+		return this.ownerChannelId;
+	}
+
+	async setOwnerChannelId(ownerChannelId: string): Promise<void> {
+		if (!ownerChannelId) throw new Error("Subscription cache owner is required.");
+		if (this.ownerChannelId === ownerChannelId) return;
+		if (this.snapshot) {
+			await this.commitSnapshot(this.snapshot, undefined, ownerChannelId);
+		} else {
+			this.ownerChannelId = ownerChannelId;
+		}
+	}
+
 	clear(): void {
 		this.snapshot = null;
 		this.activeRequest = null;
+		this.ownerChannelId = null;
 	}
 
 	fetch(options: FetchOptions = {}): Promise<SubscriptionSnapshot> {
@@ -348,7 +367,7 @@ export class SubscriptionService {
 		throwIfAborted(options.signal);
 
 		const videos = await this.fetchVideoDetails([...videoIds], options.signal);
-		if (options.channels === undefined && this.snapshot && failedChannels.length > 0) {
+		if (!options.replaceExisting && options.channels === undefined && this.snapshot && failedChannels.length > 0) {
 			const failedChannelIds = new Set(failedChannels.map((channel) => channel.id));
 			for (const video of this.snapshot.videos) {
 				if (failedChannelIds.has(video.snippet.channelId) && !videoIds.has(video.id)) {
@@ -368,15 +387,22 @@ export class SubscriptionService {
 			updatedAt: Date.now(),
 		};
 		throwIfAborted(options.signal);
-		if (options.commit !== false) await this.commitSnapshot(nextSnapshot, options.signal);
+		if (options.commit !== false) {
+			await this.commitSnapshot(nextSnapshot, options.signal, options.ownerChannelId ?? this.ownerChannelId);
+		}
 		return nextSnapshot;
 	}
 
-	private async commitSnapshot(snapshot: SubscriptionSnapshot, signal?: AbortSignal): Promise<void> {
+	private async commitSnapshot(
+		snapshot: SubscriptionSnapshot,
+		signal?: AbortSignal,
+		ownerChannelId: string | null = this.ownerChannelId,
+	): Promise<void> {
 		const commit = this.commitQueue.then(async () => {
 			throwIfAborted(signal);
-			await this.storage.save(snapshot);
+			await this.storage.save(snapshot, ownerChannelId);
 			this.snapshot = snapshot;
+			this.ownerChannelId = ownerChannelId;
 		});
 		this.commitQueue = commit.catch(() => {});
 		await commit;
