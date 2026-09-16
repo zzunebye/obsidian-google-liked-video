@@ -164,6 +164,15 @@ export const VideoCard = ({
 				onLinkClick(url);
 			});
 		});
+		if (source === "subscription") {
+			menu.addItem((item) => {
+				item.setTitle("Open channel page in YouTube");
+				item.setIcon("user");
+				item.onClick(() => {
+					window.open(`https://www.youtube.com/channel/${encodeURIComponent(videoInfo.snippet.channelId)}`, "_blank");
+				});
+			});
+		}
 
 		menu.addItem((item) => {
 			item.setTitle("Read transcript");
