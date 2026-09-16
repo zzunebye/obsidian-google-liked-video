@@ -8,8 +8,6 @@ Browse your liked videos, playlists, and subscriptions in Obsidian. Rediscover v
 [![Obsidian 1.13.0+](https://img.shields.io/badge/Obsidian-1.13.0%2B-7C3AED?logo=obsidian)](https://obsidian.md/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Get started](#requirements) · [AI summary setup](#ai-summary-setup) · [Report an issue](https://github.com/zzunebye/obsidian-google-liked-video/issues) · [Support](#support)
-
 > Setup requires your own Google OAuth credentials.
 
 ## Table of Contents
