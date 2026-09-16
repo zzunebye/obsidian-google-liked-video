@@ -259,6 +259,7 @@ export interface PlaylistInfo {
     thumbnailUrl?: string;
     publishedAt?: string; // Playlist creation date
     isOwnedByUser?: boolean;
+	isUnavailable?: boolean;
 }
 
 // Type-safe YouTube API response interfaces

@@ -1,5 +1,5 @@
 import { Menu } from "obsidian";
-import { Calendar, Pin, Play, Video } from "lucide-react";
+import { AlertCircle, Calendar, Pin, Play, Video } from "lucide-react";
 import { PlaylistInfo } from "src/types";
 
 interface PlaylistCardProps {
@@ -7,6 +7,7 @@ interface PlaylistCardProps {
 	onPlaylistSelect: (playlist: PlaylistInfo) => void;
 	onTogglePin: (playlistId: string) => void;
 	onDeletePlaylist?: (playlist: PlaylistInfo) => Promise<void>;
+	onRemovePlaylist?: (playlist: PlaylistInfo) => void;
 	isPinned: boolean;
 }
 
@@ -15,11 +16,16 @@ export const PlaylistCard = ({
 	onPlaylistSelect,
 	onTogglePin,
 	onDeletePlaylist,
+	onRemovePlaylist,
 	isPinned,
 }: PlaylistCardProps) => {
 	const sourceLabel = playlist.isOwnedByUser === true
 		? "Your playlist"
 		: playlist.isOwnedByUser === false ? "Imported" : null;
+	const playlistAction = playlist.isOwnedByUser === true
+		? onDeletePlaylist
+		: playlist.isOwnedByUser === false ? onRemovePlaylist : undefined;
+	const isUnavailable = playlist.isOwnedByUser === false && playlist.isUnavailable === true;
 
 	const formatItemCount = (count: number): string => {
 		if (count === 0) return "Empty";
@@ -42,13 +48,13 @@ export const PlaylistCard = ({
 		onTogglePin(playlist.id);
 	};
 
-	const createDeleteMenu = (): Menu => {
+	const createPlaylistMenu = (): Menu => {
 		const menu = new Menu();
 		menu.addItem((item) => {
-			item.setTitle("Delete playlist");
-			item.setIcon("trash-2");
+			item.setTitle(playlist.isOwnedByUser === true ? "Delete from YouTube" : "Remove from Geulo");
+			item.setIcon(playlist.isOwnedByUser === true ? "trash-2" : "list-minus");
 			item.onClick(async () => {
-				await onDeletePlaylist?.(playlist);
+				await playlistAction?.(playlist);
 			});
 		});
 		return menu;
@@ -60,22 +66,22 @@ export const PlaylistCard = ({
 			className={`playlist-card ${isPinned ? "playlist-card--pinned" : ""}`}
 			onClick={() => onPlaylistSelect(playlist)}
 			onContextMenu={(event) => {
-				if (!onDeletePlaylist) return;
+				if (!playlistAction) return;
 				event.preventDefault();
 				event.stopPropagation();
-				createDeleteMenu().showAtMouseEvent(event.nativeEvent);
+				createPlaylistMenu().showAtMouseEvent(event.nativeEvent);
 			}}
 			role="button"
 			tabIndex={0}
 			onKeyDown={(e) => {
 				if (e.target !== e.currentTarget || e.defaultPrevented || e.nativeEvent.isComposing) return;
 				if (
-					onDeletePlaylist &&
+					playlistAction &&
 					(e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))
 				) {
 					e.preventDefault();
 					const rect = e.currentTarget.getBoundingClientRect();
-					createDeleteMenu().showAtPosition({
+					createPlaylistMenu().showAtPosition({
 						x: rect.left + 24,
 						y: rect.top + 24,
 					});
@@ -128,6 +134,13 @@ export const PlaylistCard = ({
 				<h3 className="playlist-card__title" title={playlist.title}>
 					{playlist.title}
 				</h3>
+
+				{isUnavailable && (
+					<div className="playlist-card__availability">
+						<AlertCircle size={14} aria-hidden="true" />
+						<span>Unavailable on YouTube · Showing saved details</span>
+					</div>
+				)}
 
 				{playlist.description && (
 					<p

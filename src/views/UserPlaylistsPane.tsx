@@ -26,6 +26,7 @@ function readBrowsingState(state: unknown): UserPlaylistsViewState {
 	const sortOrder = saved.sortOrder ?? localStorageService.getPlaylistsSortOrder();
 	return {
 		searchTerm: typeof saved.searchTerm === "string" ? saved.searchTerm : "",
+		sourceFilter: saved.sourceFilter === "owned" || saved.sourceFilter === "imported" ? saved.sourceFilter : "all",
 		sortOption: sortOption === "itemCount" || sortOption === "publishedAt" ? sortOption : "title",
 		sortOrder: sortOrder === "DESC" ? "DESC" : "ASC",
 	};
@@ -44,6 +45,7 @@ export class UserPlaylistsPane extends ItemView {
 	private isDeletingPlaylist = false;
 	private loadRequestId = 0;
 	private activeLoadId: number | null = null;
+	private unsubscribeSavedPlaylists: (() => void) | null = null;
 	private browsingState: UserPlaylistsViewState = readBrowsingState(undefined);
 
 	constructor(leaf: WorkspaceLeaf, plugin: GoogleLikedVideoPlugin) {
@@ -88,11 +90,16 @@ export class UserPlaylistsPane extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.root = createRoot(this.containerEl.children[1]);
+		this.unsubscribeSavedPlaylists = localStorageService.subscribeSavedPlaylists(() => {
+			this.playlists = this.mergeSavedPlaylists(this.playlists);
+			this.renderView();
+		});
 		await this.loadPlaylists();
 	}
 
 	private mergeSavedPlaylists(playlists: PlaylistInfo[]): PlaylistInfo[] {
-		const playlistIds = new Set(playlists.map((playlist) => playlist.id));
+		const ownedPlaylists = playlists.filter((playlist) => playlist.isOwnedByUser === true);
+		const playlistIds = new Set(ownedPlaylists.map((playlist) => playlist.id));
 		const savedPlaylists = localStorageService.getSavedPlaylists()
 			.filter((saved) => !playlistIds.has(saved.id))
 			.map((saved): PlaylistInfo => ({
@@ -103,8 +110,9 @@ export class UserPlaylistsPane extends ItemView {
 				thumbnailUrl: saved.thumbnailUrl,
 				publishedAt: saved.publishedAt,
 				isOwnedByUser: false,
+				isUnavailable: saved.isUnavailable,
 			}));
-		return [...playlists, ...savedPlaylists];
+		return [...ownedPlaylists, ...savedPlaylists];
 	}
 
 	private async loadPlaylists(): Promise<void> {
@@ -113,6 +121,7 @@ export class UserPlaylistsPane extends ItemView {
 		this.activeLoadId = requestId;
 		this.isLoading = true;
 		this.error = null;
+		let refreshingImported = false;
 
 		try {
 			this.playlists = this.mergeSavedPlaylists(this.playlists);
@@ -122,6 +131,23 @@ export class UserPlaylistsPane extends ItemView {
 			if (this.activeLoadId !== requestId) return;
 			this.playlists = this.mergeSavedPlaylists(userPlaylists);
 			this.hasLoaded = true;
+			this.renderView();
+
+			const ownedIds = new Set(userPlaylists.map((playlist) => playlist.id));
+			const savedPlaylists = localStorageService.getSavedPlaylists()
+				.filter((playlist) => !ownedIds.has(playlist.id));
+			if (savedPlaylists.length === 0) return;
+			refreshingImported = true;
+			const refreshed = await this.plugin.playlistApi.fetchPlaylistsByIds(savedPlaylists.map((playlist) => playlist.id));
+			if (this.activeLoadId !== requestId) return;
+			const refreshedById = new Map(refreshed.map((playlist) => [playlist.id, playlist]));
+			const originalById = new Map(savedPlaylists.map((playlist) => [playlist.id, JSON.stringify(playlist)]));
+			const updated = localStorageService.getSavedPlaylists().map((saved) => {
+				if (originalById.get(saved.id) !== JSON.stringify(saved)) return saved;
+				const metadata = refreshedById.get(saved.id);
+				return { ...saved, ...metadata, isUnavailable: !metadata };
+			});
+			localStorageService.setSavedPlaylists(updated);
 		} catch (error) {
 			if (this.activeLoadId !== requestId) return;
 			debugLogger.error("Failed to load playlists:", error);
@@ -133,7 +159,7 @@ export class UserPlaylistsPane extends ItemView {
 			} else if (error instanceof YouTubeRequestError && error.status === 403) {
 				this.error = "YouTube did not allow access to these playlists.";
 			} else {
-				this.error = `Failed to load playlists: ${error instanceof Error ? error.message : "Unknown error"}`;
+				this.error = `${refreshingImported ? "Failed to refresh imported playlists" : "Failed to load playlists"}: ${error instanceof Error ? error.message : "Unknown error"}`;
 			}
 			new Notice(this.error);
 		} finally {
@@ -173,6 +199,9 @@ export class UserPlaylistsPane extends ItemView {
 						}
 						onDeletePlaylist={(playlist: PlaylistInfo) =>
 							this.handleDeletePlaylist(playlist)
+						}
+						onRemovePlaylist={(playlist: PlaylistInfo) =>
+							this.handleRemovePlaylist(playlist)
 						}
 					/>
 				</PluginContext.Provider>
@@ -225,28 +254,47 @@ export class UserPlaylistsPane extends ItemView {
 		}
 	}
 
-	private async handleAddPlaylist(playlistId: string): Promise<boolean> {
+	private handleRemovePlaylist(playlist: PlaylistInfo): void {
+		if (!this.root || playlist.isOwnedByUser !== false) return;
+
+		try {
+			localStorageService.removeSavedPlaylist(playlist.id);
+			localStorageService.unpinPlaylist(playlist.id);
+			new Notice(`Playlist "${playlist.title}" removed from Geulo. No changes were made on YouTube.`);
+		} catch (error) {
+			debugLogger.error("Failed to remove imported playlist:", error);
+			new Notice(`Failed to remove playlist: ${error instanceof Error ? error.message : "Unknown error"}`);
+		}
+	}
+
+	private async handleAddPlaylist(input: string): Promise<boolean> {
 		const root = this.root;
 		if (!root) return false;
 		if (!this.plugin?.playlistApi) {
 			throw new Error("Playlist API not available");
 		}
+		if (!this.hasLoaded) {
+			throw new Error("Refresh your playlists before importing to check for duplicates.");
+		}
+
+		const playlistId = this.plugin.playlistApi.extractPlaylistId(input);
+		const alreadyExists = (id: string): boolean =>
+			this.playlists.some((playlist) => playlist.id === id)
+			|| localStorageService.isPlaylistSaved(id);
+		if (alreadyExists(playlistId)) return false;
 
 		try {
 			// Fetch playlist info from YouTube API
 			const playlistInfo =
 				await this.plugin.playlistApi.fetchPlaylistById(playlistId);
 			if (this.root !== root) return false;
+			// A refresh or another pane may have added this ID while the request was pending.
+			if (alreadyExists(playlistInfo.id)) return false;
 
 			// Try to add to local storage
 			const success = localStorageService.addSavedPlaylist(playlistInfo);
 
 			if (success) {
-				this.playlists = this.mergeSavedPlaylists(this.playlists);
-				this.renderView();
-				// Reload playlists to include the new one
-				await this.loadPlaylists();
-				if (this.root !== root) return true;
 				new Notice(
 					`Playlist "${playlistInfo.title}" added successfully!`,
 				);
@@ -261,6 +309,8 @@ export class UserPlaylistsPane extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		this.unsubscribeSavedPlaylists?.();
+		this.unsubscribeSavedPlaylists = null;
 		this.activeLoadId = null;
 		this.isLoading = false;
 		this.root?.unmount();

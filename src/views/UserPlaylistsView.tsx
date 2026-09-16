@@ -30,6 +30,7 @@ interface UserPlaylistsViewProps {
 	onRefresh: () => void;
 	onAddPlaylist: (playlistId: string) => Promise<boolean>;
 	onDeletePlaylist: (playlist: PlaylistInfo) => Promise<void>;
+	onRemovePlaylist: (playlist: PlaylistInfo) => void;
 }
 
 const SORT_OPTIONS = [
@@ -39,8 +40,15 @@ const SORT_OPTIONS = [
 ] as const;
 type PlaylistSortOption = typeof SORT_OPTIONS[number]["value"];
 
+const SOURCE_FILTERS = [
+	{ value: "all", label: "All" },
+	{ value: "owned", label: "Your playlists" },
+	{ value: "imported", label: "Imported" },
+] as const;
+
 export interface UserPlaylistsViewState {
 	searchTerm: string;
+	sourceFilter: typeof SOURCE_FILTERS[number]["value"];
 	sortOption: PlaylistSortOption;
 	sortOrder: "ASC" | "DESC";
 }
@@ -56,8 +64,9 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 	onRefresh,
 	onAddPlaylist,
 	onDeletePlaylist,
+	onRemovePlaylist,
 }) => {
-	const { searchTerm, sortOption, sortOrder } = browsingState;
+	const { searchTerm, sourceFilter, sortOption, sortOrder } = browsingState;
 	const setSearchTerm = (searchTerm: string): void => onStateChange({ searchTerm });
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [playlistIdInput, setPlaylistIdInput] = useState("");
@@ -92,15 +101,16 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 	// Sort and filter playlists
 	const sortedAndFilteredPlaylists = useMemo(() => {
 		const query = searchTerm.trim().toLowerCase();
-		// First filter by search term
 		const filtered = playlists.filter(
 			(playlist) =>
-				playlist.title
+				(sourceFilter === "all" || (sourceFilter === "owned"
+					? playlist.isOwnedByUser === true : playlist.isOwnedByUser === false)) &&
+				(playlist.title
 					.toLowerCase()
 					.includes(query) ||
 				playlist.description
 					.toLowerCase()
-					.includes(query),
+					.includes(query)),
 		);
 
 		// Then sort with pinned playlists first
@@ -137,7 +147,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 		});
 
 		return sorted;
-	}, [playlists, searchTerm, sortOption, sortOrder, pinnedIds]);
+	}, [playlists, searchTerm, sourceFilter, sortOption, sortOrder, pinnedIds]);
 
 	// Handle sort option changes
 	const handleSortOptionChange = (newSortOption: PlaylistSortOption) => {
@@ -201,7 +211,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				setShowAddForm(false);
 				setAddError(null);
 			} else {
-				setAddError("Playlist already exists in your saved playlists");
+				setAddError("Playlist already exists in Geulo");
 			}
 		} catch (error) {
 			// Check if component is still mounted before updating state
@@ -343,7 +353,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				/>
 			)}
 
-			{playlists.length > 0 && (
+			{(playlists.length > 0 || searchTerm || sourceFilter !== "all") && (
 				<div className="search-bar-container">
 					<div className="search-bar-wrapper">
 						<SearchBar
@@ -367,6 +377,16 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				</div>
 			)}
 
+			<div className="playlist-source-filters" role="group" aria-label="Playlist source">
+				{SOURCE_FILTERS.map((option) => (
+					<button key={option.value} type="button"
+						aria-pressed={sourceFilter === option.value}
+						onClick={() => onStateChange({ sourceFilter: option.value })}>
+						{option.label}
+					</button>
+				))}
+			</div>
+
 			{playlists.length > 0 && (
 				<div className="liked-video-result-count" aria-live="polite" aria-atomic="true">
 					<span>{sortedAndFilteredPlaylists.length} of {playlists.length} playlists</span>
@@ -377,7 +397,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				</div>
 			)}
 
-			{playlists.length === 0 ? (
+			{playlists.length === 0 && !searchTerm && sourceFilter === "all" ? (
 				<div className="no-videos-found">
 					<div className="no-videos-found__icon">
 						<Video size={32} aria-hidden="true" />
@@ -398,15 +418,14 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 						No matching playlists
 					</div>
 					<div className="no-videos-found__text">
-						No playlists match "{searchTerm}". Try a different
-						search term.
+						No playlists match your search and filters.
 					</div>
 					<button
 						type="button"
 						className="no-videos-found__clear-button"
-						onClick={() => setSearchTerm("")}
+						onClick={() => onStateChange({ searchTerm: "", sourceFilter: "all" })}
 					>
-						Clear search
+						Clear search and filters
 					</button>
 				</div>
 			) : (
@@ -418,11 +437,8 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 								playlist={playlist}
 								onPlaylistSelect={onPlaylistSelect}
 								onTogglePin={handleTogglePin}
-								onDeletePlaylist={
-									playlist.isOwnedByUser === true
-										? onDeletePlaylist
-										: undefined
-								}
+								onDeletePlaylist={onDeletePlaylist}
+								onRemovePlaylist={onRemovePlaylist}
 								isPinned={pinnedIds.has(playlist.id)}
 							/>
 						),

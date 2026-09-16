@@ -1,7 +1,7 @@
 import type { RequestUrlResponse } from "obsidian";
 import { YouTubeVideo, YouTubeVideosResponse, YouTubeCategory, YoutubeCategoriesResponse, PlaylistCache, YouTubePlaylistResponse, PlaylistSource, PaginatedResult, PlaylistInfo } from "./types";
 import { debugLogger } from "./debug";
-import { YouTubeApiClient } from "./services/youtubeApiClient";
+import { YouTubeApiClient, YouTubeRequestError } from "./services/youtubeApiClient";
 import type { YouTubeRequestOptions } from "./services/youtubeApiClient";
 
 type RequestOptions = Pick<YouTubeRequestOptions, 'body' | 'contentType'>;
@@ -307,7 +307,50 @@ export class PlaylistApi {
         };
     }
 
-    private extractPlaylistId(input: string): string {
+	async fetchPlaylistsByIds(playlistIds: readonly string[]): Promise<PlaylistInfo[]> {
+		const ids = [...new Set(playlistIds)];
+		const playlists: PlaylistInfo[] = [];
+		for (let offset = 0; offset < ids.length; offset += 50) {
+			const batch = ids.slice(offset, offset + 50);
+			const params = new URLSearchParams({
+				part: 'snippet,contentDetails',
+				id: batch.join(','),
+				maxResults: '50',
+			});
+			let response: RequestUrlResponse;
+			try {
+				response = await this.sendRequest('GET', `playlists?${params.toString()}`, {});
+			} catch (error) {
+				if (!(error instanceof YouTubeRequestError) || !error.reasons.some((reason) =>
+					reason === 'playlistNotFound' || reason === 'playlistForbidden' || reason === 'playlistOperationUnsupported')) {
+					throw error;
+				}
+				if (batch.length > 1) {
+					for (const id of batch) {
+						playlists.push(...await this.fetchPlaylistsByIds([id]));
+					}
+				}
+				continue;
+			}
+			const data: unknown = response.json;
+			if (!isRecord(data) || !Array.isArray(data.items) ||
+				!data.items.every((item: unknown) => this.validatePlaylistResponse(item))) {
+				throw new Error('Invalid YouTube playlist response');
+			}
+			playlists.push(...data.items.map((playlist: YouTubePlaylistResponse): PlaylistInfo => ({
+				id: playlist.id,
+				title: playlist.snippet.title,
+				description: playlist.snippet.description || '',
+				itemCount: playlist.contentDetails.itemCount,
+				thumbnailUrl: playlist.snippet.thumbnails?.medium?.url,
+				publishedAt: playlist.snippet.publishedAt,
+				isOwnedByUser: false,
+			})));
+		}
+		return playlists;
+	}
+
+    extractPlaylistId(input: string): string {
         const trimmed = input.trim();
 
         // If it's already just an ID, return it

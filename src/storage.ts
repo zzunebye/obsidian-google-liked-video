@@ -20,6 +20,7 @@ class LocalStorageService {
     private reportWriteError: (error: unknown) => void = () => { };
     private likedVideoListeners = new Set<(videos: YouTubeVideo[]) => void>();
     private pinnedPlaylistListeners = new Set<(playlistIds: readonly string[]) => void>();
+	private savedPlaylistListeners = new Set<() => void>();
     private temporarilyUnlikedVideos = new Map<string, number>();
 
     initializeLikedVideos(storage: LikedVideoStorageService, reportError: (error: unknown) => void): void {
@@ -301,6 +302,12 @@ class LocalStorageService {
 
     setSavedPlaylists(playlists: SavedPlaylist[]): void {
         window.localStorage.setItem("googleYtbSavedPlaylists", JSON.stringify(playlists));
+		this.savedPlaylistListeners.forEach((listener) => listener());
+    }
+
+	subscribeSavedPlaylists(listener: () => void): () => void {
+		this.savedPlaylistListeners.add(listener);
+		return () => this.savedPlaylistListeners.delete(listener);
     }
 
     addSavedPlaylist(playlistInfo: PlaylistInfo): boolean {
