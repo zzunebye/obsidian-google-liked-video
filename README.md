@@ -26,6 +26,7 @@ Mobile version is still experimental!
 - [Tips](#tips)
 - [Requirements](#requirements)
 - [Release Notes](#release-notes)
+- [Support](#support)
 
 ## Features
 
@@ -237,3 +238,11 @@ Existing liked videos in localStorage migrate automatically after the new file i
 - **Performance optimization**: Video display limit for better performance
 - **Improved caching**: Enhanced cache management in PlaylistApi
 - **UI refinements**: Updated ribbon icon labels and command names for clarity
+
+## Support
+
+If you're enjoying Geulo, you can support my work by [buying me a coffee](https://www.buymeacoffee.com/junyoungbang).
+
+You can also help spread the word by sharing Geulo with other Obsidian users on Reddit, X, or your favorite community.
+
+Thank you for using Geulo and supporting its development!
