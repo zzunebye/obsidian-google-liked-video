@@ -1,14 +1,16 @@
 # Geulo: YouTube Library Manager and AI Summarizer for Obsidian
 
-**Your YouTube library, connected to your Obsidian notes.**
-
-Browse your liked videos, playlists, and subscriptions in Obsidian. Rediscover videos with search and filters, read transcripts, generate AI summaries, and turn what you watch into notes.
-
 [![Latest release](https://img.shields.io/github/v/release/zzunebye/obsidian-google-liked-video?label=release)](https://github.com/zzunebye/obsidian-google-liked-video/releases/latest)
 [![Obsidian 1.13.0+](https://img.shields.io/badge/Obsidian-1.13.0%2B-7C3AED?logo=obsidian)](https://obsidian.md/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> Setup requires your own Google OAuth credentials.
+**Your YouTube library, connected to your Obsidian notes.**
+
+Geulo helps you consume YouTube content more intentionally. YouTube is designed to keep you watching more and more content, rather than helping you revisit what you've already watched and review it with your own notes.
+
+This Obsidian plugin brings your liked videos, playlists, and subscriptions into Obsidian. You can rediscover videos through search and filters, read transcripts, generate AI summaries, and turn what you watch into Markdown notes.
+
+> To set up Geulo, you'll need to provide your own Google OAuth credentials. This involves creating a project in the [Google Cloud Console](https://console.cloud.google.com/), enabling the YouTube Data API v3, and generating OAuth client credentials. These credentials allow the plugin to access your YouTube account securely and retrieve information such as your liked videos, playlists, and subscriptions. Detailed setup instructions are provided below in the Requirements section.
 
 ## Table of Contents
 
@@ -39,21 +41,6 @@ Browse your liked videos, playlists, and subscriptions in Obsidian. Rediscover v
 - **Search by channel name**: Search by channel title when channel is clicked in the video card
 
 It is inspired by the [obsidian-google-calendar](https://github.com/YukiGasai/obsidian-google-calendar) plugin.
-
-## AI Summary Setup
-
-1. Enable **AI Summary** in the plugin settings
-2. Choose a provider: **Gemini** (direct video analysis), **OpenRouter**, or **OpenAI** (transcript-based)
-3. Enter the API key for your chosen provider
-4. (OpenRouter or OpenAI) Select or enter a model ID
-5. Optionally customize the summary prompt
-6. Click the summary button on any video card to generate a summary
-
-## Tips
-
-![image](https://github.com/user-attachments/assets/81f68f4e-3313-4bf1-a1aa-7e1a0566de7e)
-
-You can watch youtube video and take a note within Obsidian if you turn on **Core Plugin > Web Viewer**.
 
 ## Requirements
 
@@ -130,7 +117,33 @@ Liked videos are stored in `liked-videos.json` in this plugin's folder, separate
 
 Existing liked videos in localStorage migrate automatically after the new file is written and verified. Invalid files stop loading instead of being overwritten with an empty list. To restore a backup or edit the JSON manually, disable the plugin first, replace/edit `liked-videos.json`, and enable it again. Other devices do not automatically refresh the in-memory list when a synced file changes; reload the plugin after syncing. This change does not add conflict merging or incremental YouTube fetching.
 
+## AI Summary Setup
+
+1. Enable **AI Summary** in the plugin settings
+2. Choose a provider: **Gemini** (direct video analysis), **OpenRouter**, or **OpenAI** (transcript-based)
+3. Enter the API key for your chosen provider
+4. (OpenRouter or OpenAI) Select or enter a model ID
+5. Optionally customize the summary prompt
+6. Click the summary button on any video card to generate a summary
+
+## Tips
+
+You can watch youtube video and take a note within Obsidian if you turn on **Core Plugin > Web Viewer**.
+
 ## Release Notes
+
+### 5.0.0 (upcoming)
+
+**Read, listen, and take notes from your YouTube library**
+
+- **Transcript reader**: Search captions, switch between paragraphs and original timestamps, choose a preferred language, copy text, and save transcripts as notes. No extra API key is needed; caption availability varies by video.
+- **More ways to summarize**: OpenAI joins Gemini and OpenRouter. OpenAI and OpenRouter use transcripts; Gemini analyzes the video directly. Read summaries alongside transcripts, see their source and model, and customize line spacing.
+- **Listen to summaries**: Read AI summaries aloud with playback speed and volume controls. Generated audio is saved for replay. Set up an OpenRouter API key, model, and voice separately in **Settings → Speech**.
+- **Better video discovery**: Filter liked videos and playlist videos by upload date, duration, language, audio language, and whether they have an AI summary or video note.
+- **Easier playlist management**: Pin favorites, filter your own and imported playlists, import by URL or ID, and open playlists on YouTube. Remove imported playlists from Geulo without deleting them on YouTube. Add liked videos to your own playlists from the video menu, with a duplicate check.
+- **Web Viewer actions**: On desktop, open transcripts, AI summaries, video notes, and playlist imports from the menu on a YouTube page in Obsidian Web Viewer.
+- **Your likes in notes**: The new `liked` property tracks your connected account’s confirmed like status. `likes` remains the total like count; editing a note does not change YouTube.
+- **Account-aware saved lists**: Confirm how existing liked videos and subscriptions should be used when connecting a different or previously unverified YouTube account.
 
 ### 4.3
 
@@ -231,6 +244,8 @@ Existing liked videos in localStorage migrate automatically after the new file i
 - **UI refinements**: Updated ribbon icon labels and command names for clarity
 
 ## Support
+
+Report bugs and request features on [GitHub Issues](https://github.com/zzunebye/obsidian-google-liked-video/issues).
 
 If you're enjoying Geulo, you can support my work by [buying me a coffee](https://www.buymeacoffee.com/junyoungbang).
 
