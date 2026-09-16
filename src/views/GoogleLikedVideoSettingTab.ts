@@ -79,7 +79,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             ),
             this.createSectionDefinition(
                 'Video display',
-                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags', 'Maximum Shorts duration', 'Transcript language', 'Captions', 'AI summary line spacing', 'Line height'],
+                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags', 'Maximum Short-form duration', 'Transcript language', 'Captions', 'AI summary line spacing', 'Line height'],
                 (containerEl) => this.renderVideoDisplaySection(containerEl),
             ),
         ];
@@ -307,8 +307,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderShortVideoDurationSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
-            .setName('Maximum Shorts duration')
-            .setDesc('Include videos up to this length in the Shorts filter.')
+            .setName('Maximum Short-form duration')
+            .setDesc('Include videos up to this length in the Short-form filter.')
             .addDropdown(dropdown => {
                 SHORT_VIDEO_MAX_DURATION_OPTIONS.forEach(seconds => {
                     dropdown.addOption(String(seconds), `${seconds} seconds`);

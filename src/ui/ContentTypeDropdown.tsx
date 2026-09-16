@@ -11,6 +11,23 @@ interface ContentTypeDropdownProps {
 	shortVideoMaxDurationSeconds: number;
 }
 
+const CONTENT_TYPE_LABELS: Record<ContentTypeOption, string> = {
+	videos: UI_TEXT.CONTENT_TYPE_VIDEOS,
+	shorts: UI_TEXT.CONTENT_TYPE_SHORTS,
+	music: UI_TEXT.CONTENT_TYPE_MUSIC,
+};
+
+const COMPACT_CONTENT_TYPE_LABELS: Record<ContentTypeOption, string> = {
+	videos: "Long",
+	shorts: "Short",
+	music: UI_TEXT.CONTENT_TYPE_MUSIC,
+};
+
+export function formatContentTypeSelection(selection: ContentTypeSelection): string {
+	const labels = selection.length > 1 ? COMPACT_CONTENT_TYPE_LABELS : CONTENT_TYPE_LABELS;
+	return selection.map((type) => labels[type]).join(" + ");
+}
+
 export const ContentTypeDropdown = ({
 	selection,
 	onChange,
@@ -29,7 +46,7 @@ export const ContentTypeDropdown = ({
 	const isAll = selection.length === 0 || selection.length === options.length;
 	const label = isAll
 		? "All"
-		: options.filter((option) => selection.includes(option.value)).map((option) => option.label).join(" + ");
+		: formatContentTypeSelection(selection);
 
 	useEffect(() => {
 		if (!isOpen || !triggerRef.current) return;

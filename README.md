@@ -26,9 +26,9 @@ This Obsidian plugin brings your liked videos, playlists, and subscriptions into
 - **Video retrieval**: Access your entire YouTube liked video history
 - **Playlist browsing**: Browse your YouTube playlists and add custom playlists by ID
 - **Add liked videos to playlists**: Right-click a liked video, choose **Add to playlist**, then search and select one of your YouTube playlists. Existing entries are checked before adding; your like is kept.
-- **Searching and content-type filtering**: Search, filter, and sort videos by title, channel, tags, and content type — Videos, Shorts, or Music.
+- **Searching and content-type filtering**: Search, filter, and sort videos by title, channel, tags, and content type — Long-form, Short-form, or Music.
 
-    > About the Shorts filter - The YouTube Data API does not provide an official Shorts label for videos. Geulo therefore groups videos as Shorts based on the maximum duration selected in `Settings > Video display > Maximum Shorts duration`. This is an approximation: short regular videos may be included, and Shorts longer than the selected limit may be excluded.
+    > About the Short-form filter - The YouTube Data API does not provide an official Shorts label for videos. Geulo therefore groups videos as Short-form based on the maximum duration selected in `Settings > Video display > Maximum Short-form duration`. This is an approximation: short regular videos may be included, and Shorts longer than the selected limit may be excluded.
 
 - **Create Video Notes**: Create video notes with a single click and write your own notes. You can also organize them by channel.
 - **Your like status in video notes**: `liked: true` or `liked: false` records the last confirmed rating of your Geulo-connected YouTube account; `likes` remains the video’s total like count. Geulo checks this when creating/opening a video note from cards or Web Viewer, and updates existing notes after like/unlike/Undo and liked-video sync. Recent sync confirms fetched likes; Full scan also checks existing notes outside the fetched list. Custom templates can use `{{liked}}`. Failed or unknown lookups preserve existing values and leave new values absent. Clearing the saved list does not change this property. Editing the property does not change YouTube.
@@ -211,7 +211,7 @@ You can watch youtube video and take a note within Obsidian if you turn on **Cor
 - **AI video summaries**: Generate summaries using Google Gemini or OpenRouter with real-time streaming responses
 - **One-liner summaries**: Automatic brief summary generation after full summary completes
 - **Summary management**: Regenerate summaries, add summaries to notes, filter by AI note
-- **Content type filtering**: Filter liked videos by Videos, Shorts, or Music
+- **Content type filtering**: Filter liked videos by Long-form, Short-form, or Music
 - **Streaming UI**: Live streaming display with skeleton loading and cancel support
 - **OpenRouter support**: Use OpenRouter API as an alternative AI provider with model selection
 - **UI improvements**: Polishing the UI in general. reusable ViewHeader component, fixed thumbnail layout shift, chevron indicators for expandable sections

@@ -10,7 +10,7 @@ import { VideoCard } from "src/ui/VideoCard";
 import { SearchBar } from "src/ui/SearchBar";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { OpenYouTubeButton } from "src/ui/OpenYouTubeButton";
-import { ContentTypeDropdown } from "src/ui/ContentTypeDropdown";
+import { ContentTypeDropdown, formatContentTypeSelection } from "src/ui/ContentTypeDropdown";
 import { LikedVideoFilterSelect } from "src/ui/LikedVideoFilterSelect";
 import { LikedVideoCollection } from "src/ui/LikedVideoCollection";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
@@ -546,9 +546,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		Number(durationFilter !== "all") + Number(audioLanguageFilter !== "all") + Number(languageFilter !== "all");
 	const selectedCategoryTitle = availableCategories.find((category) =>
 		category.id === selectedCategory)?.title ?? selectedCategory;
-	const contentTypeFilterLabel = contentTypes.map((type) => type === "videos"
-		? UI_TEXT.CONTENT_TYPE_VIDEOS
-		: type === "shorts" ? UI_TEXT.CONTENT_TYPE_SHORTS : UI_TEXT.CONTENT_TYPE_MUSIC).join(", ");
+	const contentTypeFilterLabel = formatContentTypeSelection(contentTypes);
 	const aiSummaryFilterLabel = AI_SUMMARY_FILTER_OPTIONS.find((option) =>
 		option.value === aiSummaryFilter)?.activeLabel ?? aiSummaryFilter;
 	const publishedDateFilterLabel = PUBLISHED_DATE_FILTER_OPTIONS.find((option) =>

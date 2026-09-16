@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { VideoCard } from "src/ui/VideoCard";
 import { SearchBar } from "src/ui/SearchBar";
-import { ContentTypeDropdown } from "src/ui/ContentTypeDropdown";
+import { ContentTypeDropdown, formatContentTypeSelection } from "src/ui/ContentTypeDropdown";
 import { LikedVideoFilterSelect } from "src/ui/LikedVideoFilterSelect";
 import type { LikedVideoFetchStatus } from "src/main";
 import { Menu, Notice } from "obsidian";
@@ -508,9 +508,7 @@ export const LikedVideoView: React.FC = () => {
 		Number(durationFilter !== "all") + Number(audioLanguageFilter !== "all") + Number(languageFilter !== "all");
 	const selectedCategoryTitle = availableCategories.find((category) =>
 		category.id === selectedCategory)?.title ?? selectedCategory;
-	const contentTypeFilterLabel = contentTypeSelection.map((type) => type === "videos"
-		? UI_TEXT.CONTENT_TYPE_VIDEOS
-		: type === "shorts" ? UI_TEXT.CONTENT_TYPE_SHORTS : UI_TEXT.CONTENT_TYPE_MUSIC).join(", ");
+	const contentTypeFilterLabel = formatContentTypeSelection(contentTypeSelection);
 	const aiSummaryFilterLabel = AI_SUMMARY_FILTER_OPTIONS.find((option) =>
 		option.value === aiSummaryFilter)?.activeLabel ?? aiSummaryFilter;
 	const publishedDateFilterLabel = PUBLISHED_DATE_FILTER_OPTIONS.find((option) =>

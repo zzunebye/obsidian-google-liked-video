@@ -77,8 +77,8 @@ export const UI_TEXT = {
         '• Consider limiting to 1-2 full fetches per day',
 
     // Content Type Filter
-    CONTENT_TYPE_VIDEOS: 'Videos',
-    CONTENT_TYPE_SHORTS: 'Shorts',
+    CONTENT_TYPE_VIDEOS: 'Long-form',
+    CONTENT_TYPE_SHORTS: 'Short-form',
     CONTENT_TYPE_MUSIC: 'Music',
 
     // Filters
@@ -96,7 +96,7 @@ export const UI_TEXT = {
     NOTICE_UNLIKE_FAILED: 'Failed to unlike video. Check console for details.',
 
     // Tooltips
-    TOOLTIP_VIDEOS: (seconds: number) => `Regular videos longer than ${seconds} seconds (excludes music)`,
-    TOOLTIP_SHORTS: (seconds: number) => `Videos up to and including ${seconds} seconds (does not categorize YouTube Shorts)`,
+    TOOLTIP_VIDEOS: (seconds: number) => `Videos longer than ${seconds} seconds (excludes music)`,
+    TOOLTIP_SHORTS: (seconds: number) => `Videos up to and including ${seconds} seconds (duration-based, not the official YouTube Shorts designation)`,
     TOOLTIP_MUSIC: 'Music videos (YouTube category: Music)',
 } as const;

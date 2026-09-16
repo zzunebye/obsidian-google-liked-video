@@ -23,7 +23,7 @@ import {
 	parseDurationToSeconds,
 } from "src/utils/videoUtils";
 import { categoriesService } from "src/categoriesService";
-import { ContentTypeDropdown } from "src/ui/ContentTypeDropdown";
+import { ContentTypeDropdown, formatContentTypeSelection } from "src/ui/ContentTypeDropdown";
 import { LikedVideoFilterSelect } from "src/ui/LikedVideoFilterSelect";
 import { LikedVideoCollection } from "src/ui/LikedVideoCollection";
 import { useLikedVideoFocus } from "src/hooks/useLikedVideoFocus";
@@ -163,6 +163,14 @@ function formatUpdatedAt(updatedAt: number): string {
 	return `Updated ${new Date(updatedAt).toLocaleString()}`;
 }
 
+function formatSubscriptionCutoffDate(maxAgeDays: number): string {
+	return new Date(Date.now() - maxAgeDays * DAY_MS).toLocaleDateString(undefined, {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	});
+}
+
 function getPeriodStart(period: SubscriptionPeriod): number | null {
 	const now = Date.now();
 	if (period === "day") return now - DAY_MS;
@@ -180,6 +188,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 }) => {
 	const plugin = usePlugin();
 	const shortVideoMaxDurationSeconds = plugin.settings.shortVideoMaxDurationSeconds;
+	const subscriptionCutoffDate = formatSubscriptionCutoffDate(plugin.settings.subscriptionVideoMaxAgeDays);
 	const cachedSnapshot = plugin.subscriptionService.getSnapshot();
 	const [snapshot, setSnapshot] = useState<SubscriptionSnapshot | null>(cachedSnapshot);
 	const [pendingSnapshot, setPendingSnapshot] = useState<SubscriptionSnapshot | null>(null);
@@ -578,9 +587,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		Number(durationFilter !== "all") + Number(audioLanguageFilter !== "all") + Number(languageFilter !== "all");
 	const selectedCategoryTitle = availableCategories.find((category) =>
 		category.id === selectedCategory)?.title ?? selectedCategory;
-	const contentTypeFilterLabel = contentTypes.map((type) => type === "videos"
-		? UI_TEXT.CONTENT_TYPE_VIDEOS
-		: type === "shorts" ? UI_TEXT.CONTENT_TYPE_SHORTS : UI_TEXT.CONTENT_TYPE_MUSIC).join(", ");
+	const contentTypeFilterLabel = formatContentTypeSelection(contentTypes);
 	const aiSummaryFilterLabel = AI_SUMMARY_FILTER_OPTIONS.find((option) =>
 		option.value === aiSummaryFilter)?.activeLabel ?? aiSummaryFilter;
 	const periodLabel = PERIOD_FILTER_OPTIONS.find((option) =>
@@ -920,7 +927,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 			<div className="subscription-status">
 				<span>{snapshot ? formatUpdatedAt(snapshot.updatedAt) : "Not updated"}</span>
-				<span>Latest 10 uploads per channel</span>
+				<span>Latest 10 uploads per channel · Cutoff: {subscriptionCutoffDate}</span>
 			</div>
 
 			{isLoading && progress && (
