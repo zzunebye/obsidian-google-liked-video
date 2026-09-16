@@ -272,7 +272,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 		if (leaf) {
 			// "Reveal" the leaf in case it is in a collapsed sidebar
-			void workspace.revealLeaf(leaf);
+			await workspace.revealLeaf(leaf);
+			if (leaf.view instanceof LikedVideoListPane) leaf.view.focusList();
 		}
 	}
 
@@ -564,16 +565,6 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				});
 				debugLogger.debug(`[AI Summary] Summary cached successfully for video: ${videoId}`);
 
-				try {
-					const oneLinerPrompt = `Condense the following video summary into a single concise sentence (max 120 chars). Return ONLY the sentence.\n\n${result.summary}`;
-					const oneLiner = await aiService.generateTextCompletion(oneLinerPrompt);
-					const trimmed = oneLiner.trim();
-					if (trimmed) {
-						await this.summaryStorage.setOneLinerSummary(videoId, trimmed);
-					}
-				} catch (oneLinerErr) {
-					debugLogger.warn(`[AI Summary] One-liner generation failed for ${videoId}:`, oneLinerErr);
-				}
 
 				return result.summary;
 			} catch (error) {
