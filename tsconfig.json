@@ -12,7 +12,7 @@
 		"importHelpers": true,
 		"isolatedModules": true,
 		"strictNullChecks": true,
-		"lib": ["DOM", "ES2017"],
+		"lib": ["DOM", "ES2017", "ES2020.Intl"],
 		"types": ["node"]
 	},
 	"include": ["**/*.ts", "**/*.tsx", "src/views/LikedVideoListPane.tsx"]
