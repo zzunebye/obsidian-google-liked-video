@@ -1,6 +1,6 @@
 export const UI_TEXT = {
     // Header
-    HEADER_TITLE: 'My Liked videos',
+    HEADER_TITLE: 'Liked videos',
     HEADER_TITLE_USER_PLAYLISTS: 'My Playlists',
 
     // Buttons
@@ -12,11 +12,13 @@ export const UI_TEXT = {
     // Sort options
     SORT_BY_LIKED_ORDER: 'Liked Order',
     SORT_BY_VIEW_COUNT: 'View Count',
+    SORT_BY_AVERAGE_VIEWS_PER_DAY: 'Average Views/Day',
     SORT_BY_LIKE_COUNT: 'Like Count',
     SORT_BY_COMMENT_COUNT: 'Comment Count',
     SORT_BY_LIKE_VIEW_RATIO: 'Like/View Ratio',
     SORT_BY_PUBLISHED_DATE: 'Published Date',
     SORT_BY_TITLE: 'Title',
+    SORT_BY_CHANNEL_NAME: 'Channel Name',
     SORT_BY_DURATION: 'Duration',
 
     // Aria labels
@@ -62,7 +64,7 @@ export const UI_TEXT = {
         '• API Quota: ~1 call per 50 videos (100+ calls for 5,000 videos)\n' +
         '• Fetch Time: 5-30+ minutes for thousands of videos\n' +
         '• Battery/Network: Continuous pagination drains resources',
-    FULL_FETCH_NOT_RECOMMEND_AUTO_VIDEO_NOTE_WARNING: 
+    FULL_FETCH_NOT_RECOMMEND_AUTO_VIDEO_NOTE_WARNING:
         `Not Recommended to turn this on when 'Automatically create notes' option is enabled. `,
     FULL_FETCH_AGGRESSIVE_INTERVAL_WARNING: (interval: number) =>
         `⚠️ Aggressive interval detected (${interval} min). ` +

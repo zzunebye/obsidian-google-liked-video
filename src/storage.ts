@@ -131,17 +131,17 @@ class LocalStorageService {
             : "all";
     }
 
-	getLikedVideoAudioLanguageFilter(): string {
-		const stored = window.localStorage.getItem("likedVideoViewAudioLanguageFilter");
-		return stored !== null && (stored === "unknown" || /^[a-z]{2,3}$/.test(stored))
-			? stored : "all";
-	}
+    getLikedVideoAudioLanguageFilter(): string {
+        const stored = window.localStorage.getItem("likedVideoViewAudioLanguageFilter");
+        return stored !== null && (stored === "unknown" || /^[a-z]{2,3}$/.test(stored))
+            ? stored : "all";
+    }
 
-	getLikedVideoLanguageFilter(): string {
-		const stored = window.localStorage.getItem("likedVideoViewLanguageFilter");
-		return stored !== null && (stored === "unknown" || /^[a-z]{2,3}$/.test(stored))
-			? stored : "all";
-	}
+    getLikedVideoLanguageFilter(): string {
+        const stored = window.localStorage.getItem("likedVideoViewLanguageFilter");
+        return stored !== null && (stored === "unknown" || /^[a-z]{2,3}$/.test(stored))
+            ? stored : "all";
+    }
 
     getVideoNoteFilter(): "all" | "with" | "without" {
         const stored = window.localStorage.getItem("likedVideoViewVideoNoteFilter");
@@ -206,13 +206,13 @@ class LocalStorageService {
         window.localStorage.setItem("likedVideoViewDurationFilter", filter);
     }
 
-	setLikedVideoAudioLanguageFilter(language: string): void {
-		window.localStorage.setItem("likedVideoViewAudioLanguageFilter", language);
-	}
+    setLikedVideoAudioLanguageFilter(language: string): void {
+        window.localStorage.setItem("likedVideoViewAudioLanguageFilter", language);
+    }
 
-	setLikedVideoLanguageFilter(language: string): void {
-		window.localStorage.setItem("likedVideoViewLanguageFilter", language);
-	}
+    setLikedVideoLanguageFilter(language: string): void {
+        window.localStorage.setItem("likedVideoViewLanguageFilter", language);
+    }
 
     setVideoNoteFilter(filter: "all" | "with" | "without"): void {
         window.localStorage.setItem("likedVideoViewVideoNoteFilter", filter);
