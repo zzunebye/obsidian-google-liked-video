@@ -10,12 +10,13 @@ export type TranscriptState =
 	| { kind: "loaded"; transcript: VideoTranscript }
 	| { kind: "error"; message: string };
 
-export function useVideoTranscript(videoId: string, initialTranscript?: VideoTranscript) {
+export function useVideoTranscript(videoId: string, initialTranscript?: VideoTranscript, enabled = true) {
 	const plugin = usePlugin();
 	const [preferredLanguage] = useState(() => plugin.settings.transcriptLanguage === "auto" ? getLanguage() : plugin.settings.transcriptLanguage);
 	const [version, setVersion] = useState(0);
 	const [state, setState] = useState<TranscriptState>(initialTranscript ? { kind: "loaded", transcript: initialTranscript } : { kind: "loading" });
 	useEffect(() => {
+		if (!enabled) return;
 		if (version === 0 && initialTranscript?.videoId === videoId) {
 			setState({ kind: "loaded", transcript: initialTranscript });
 			return;
@@ -31,6 +32,6 @@ export function useVideoTranscript(videoId: string, initialTranscript?: VideoTra
 			},
 		);
 		return () => controller.abort();
-	}, [videoId, initialTranscript, version, preferredLanguage]);
+	}, [videoId, initialTranscript, version, preferredLanguage, enabled]);
 	return { state, retry: () => setVersion(value => value + 1) };
 }
