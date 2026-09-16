@@ -55,6 +55,7 @@ export class LikedVideoListPane
     }
 
     async onOpen() {
+        this.contentEl.tabIndex = -1;
         this.videos = localStorageService.getLikedVideos();
         this.root = createRoot(this.containerEl.children[1]);
         this.root.render(
@@ -68,6 +69,13 @@ export class LikedVideoListPane
 
     async onClose() {
         this.root?.unmount();
+    }
+
+    focusList(): void {
+        const target = this.contentEl.querySelector<HTMLElement>(".geulo-transcript-workspace__list:not([inert])")
+            ?? this.contentEl.querySelector<HTMLElement>(".geulo-transcript-reader")
+            ?? this.contentEl;
+        target.focus({ preventScroll: true });
     }
 
     async setState(

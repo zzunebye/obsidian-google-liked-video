@@ -10,6 +10,14 @@ export const VIEW_TYPE_SUBSCRIPTIONS = "subscriptions";
 
 const DEFAULT_VIEW_STATE: SubscriptionViewState = {
 	searchTerm: "",
+	selectedTag: null,
+	selectedCategory: "all",
+	sortOption: "date",
+	aiSummaryFilter: "all",
+	videoNoteFilter: "all",
+	durationFilter: "all",
+	audioLanguageFilter: "all",
+	languageFilter: "all",
 	channelId: "all",
 	period: "all",
 	contentTypes: ["videos", "shorts", "music"],
@@ -52,6 +60,7 @@ export class SubscriptionPane extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		this.contentEl.tabIndex = -1;
 		this.root = createRoot(this.containerEl.children[1]);
 		this.renderView();
 	}

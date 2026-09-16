@@ -1,5 +1,6 @@
-import { Modal, Notice } from "obsidian";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Menu, Modal, Notice } from "obsidian";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import {
 	AlertCircle,
 	ArrowDownWideNarrow,
@@ -14,7 +15,18 @@ import {
 } from "lucide-react";
 import { SearchBar } from "src/ui/SearchBar";
 import { VideoCard } from "src/ui/VideoCard";
-import { classifyVideoContent } from "src/utils/videoUtils";
+import {
+	classifyVideoContent,
+	getVideoLanguageLabel,
+	matchesDurationFilter,
+	normalizeVideoLanguage,
+	parseDurationToSeconds,
+} from "src/utils/videoUtils";
+import { categoriesService } from "src/categoriesService";
+import { ContentTypeDropdown } from "src/ui/ContentTypeDropdown";
+import { LikedVideoFilterSelect } from "src/ui/LikedVideoFilterSelect";
+import { LikedVideoCollection } from "src/ui/LikedVideoCollection";
+import { useLikedVideoFocus } from "src/hooks/useLikedVideoFocus";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { OpenYouTubeButton } from "src/ui/OpenYouTubeButton";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
@@ -22,7 +34,8 @@ import { localStorageService } from "src/storage";
 import { UI_TEXT } from "src/constants/uiText";
 import type { SubscriptionProgress, SubscriptionSnapshot } from "src/services/subscriptionService";
 import type {
-	ContentTypeOption,
+	DurationFilter,
+	PresenceFilter,
 	ContentTypeSelection,
 	SubscriptionChannel,
 	YouTubeVideo,
@@ -31,11 +44,19 @@ import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { usePlugin } from "../store/pluginContext";
 import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
 
-export type SubscriptionPeriod = "all" | "day" | "week" | "month";
+export type SubscriptionPeriod = "all" | "day" | "week" | "month" | "year";
 export type SubscriptionSortOrder = "ASC" | "DESC";
 
 export interface SubscriptionViewState {
 	searchTerm: string;
+	selectedTag: string | null;
+	selectedCategory: string;
+	sortOption: SubscriptionSortOption;
+	aiSummaryFilter: PresenceFilter;
+	videoNoteFilter: PresenceFilter;
+	durationFilter: DurationFilter;
+	audioLanguageFilter: string;
+	languageFilter: string;
 	channelId: string;
 	period: SubscriptionPeriod;
 	contentTypes: ContentTypeSelection;
@@ -51,7 +72,84 @@ interface SubscriptionViewProps {
 	onStateChange: (state: SubscriptionViewState) => void;
 }
 
-const VIDEOS_PER_BATCH = 30;
+const SORT_OPTIONS = [
+	{ value: "viewCount", label: UI_TEXT.SORT_BY_VIEW_COUNT },
+	{ value: "averageViewsPerDay", label: UI_TEXT.SORT_BY_AVERAGE_VIEWS_PER_DAY },
+	{ value: "likeCount", label: UI_TEXT.SORT_BY_LIKE_COUNT },
+	{ value: "commentCount", label: UI_TEXT.SORT_BY_COMMENT_COUNT },
+	{ value: "likeViewRatio", label: UI_TEXT.SORT_BY_LIKE_VIEW_RATIO },
+	{ value: "date", label: UI_TEXT.SORT_BY_PUBLISHED_DATE },
+	{ value: "title", label: UI_TEXT.SORT_BY_TITLE },
+	{ value: "channelTitle", label: UI_TEXT.SORT_BY_CHANNEL_NAME },
+	{ value: "duration", label: UI_TEXT.SORT_BY_DURATION },
+] as const;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const AI_SUMMARY_FILTER_OPTIONS: ReadonlyArray<{
+	value: PresenceFilter;
+	label: string;
+	activeLabel: string;
+}> = [
+	{ value: "all", label: "All", activeLabel: "All summaries" },
+	{ value: "with", label: "Has summary", activeLabel: "Has" },
+	{ value: "without", label: "No summary", activeLabel: "Missing" },
+];
+
+const PERIOD_FILTER_OPTIONS: ReadonlyArray<{
+	value: SubscriptionPeriod;
+	label: string;
+	activeLabel: string;
+}> = [
+	{ value: "all", label: "Any time", activeLabel: "Any upload date" },
+	{ value: "day", label: "Last 24 hours", activeLabel: "Last 24 hours" },
+	{ value: "week", label: "Past 7 days", activeLabel: "Past 7 days" },
+	{ value: "month", label: "Past 30 days", activeLabel: "Past 30 days" },
+	{ value: "year", label: "Past year", activeLabel: "Past year" },
+];
+
+const DURATION_FILTER_OPTIONS: ReadonlyArray<{
+	value: DurationFilter;
+	label: string;
+	activeLabel: string;
+}> = [
+	{ value: "all", label: "Any", activeLabel: "Any duration" },
+	{ value: "under5", label: "Under 5 min", activeLabel: "Under 5 min" },
+	{ value: "5to20", label: "5–20 min", activeLabel: "5–20 min" },
+	{ value: "20to60", label: "20–60 min", activeLabel: "20–60 min" },
+	{ value: "60plus", label: "60+ min", activeLabel: "60+ min" },
+];
+
+function getLanguageFilterOptions(
+	videos: readonly YouTubeVideo[],
+	field: "defaultLanguage" | "defaultAudioLanguage",
+	selectedLanguage: string,
+): { value: string; label: string; count: number }[] {
+	const counts = new Map<string, number>();
+	videos.forEach((video) => {
+		const language = normalizeVideoLanguage(video.snippet[field]);
+		counts.set(language, (counts.get(language) ?? 0) + 1);
+	});
+	if (selectedLanguage !== "all" && !counts.has(selectedLanguage)) {
+		counts.set(selectedLanguage, 0);
+	}
+	return Array.from(counts, ([value, count]) => ({
+		value, count, label: getVideoLanguageLabel(value),
+	})).sort((a, b) => {
+		if (a.value === "unknown") return 1;
+		if (b.value === "unknown") return -1;
+		return a.label.localeCompare(b.label);
+	});
+}
+
+const FilterChip = ({ label, onClear }: { label: string; onClear: () => void }) => (
+	<button type="button" className="active-tag-filter__chip" title={`Clear ${label}`} onClick={onClear}>
+		<span className="active-tag-filter__label">{label}</span>
+		<span className="active-tag-filter__remove" aria-hidden="true">×</span>
+	</button>
+);
+
+export type SubscriptionSortOption = typeof SORT_OPTIONS[number]["value"];
 
 function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === "AbortError";
@@ -66,9 +164,10 @@ function formatUpdatedAt(updatedAt: number): string {
 
 function getPeriodStart(period: SubscriptionPeriod): number | null {
 	const now = Date.now();
-	if (period === "day") return now - 24 * 60 * 60 * 1000;
-	if (period === "week") return now - 7 * 24 * 60 * 60 * 1000;
-	if (period === "month") return now - 30 * 24 * 60 * 60 * 1000;
+	if (period === "day") return now - DAY_MS;
+	if (period === "week") return now - 7 * DAY_MS;
+	if (period === "month") return now - 30 * DAY_MS;
+	if (period === "year") return now - 365 * DAY_MS;
 	return null;
 }
 
@@ -83,7 +182,24 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const cachedSnapshot = plugin.subscriptionService.getSnapshot();
 	const [snapshot, setSnapshot] = useState<SubscriptionSnapshot | null>(cachedSnapshot);
 	const [pendingSnapshot, setPendingSnapshot] = useState<SubscriptionSnapshot | null>(null);
+	const keyboardFocus = useLikedVideoFocus(snapshot !== null);
+	const filtersId = useId();
+	const videos = useMemo(() => snapshot?.videos ?? [], [snapshot]);
+	const noteExistenceMap = useNoteExistenceMap(plugin, videos);
+	const [summaryVersion, setSummaryVersion] = useState(0);
+	const [collectionVersion, setCollectionVersion] = useState(0);
 	const [searchTerm, setSearchTerm] = useState(initialState.searchTerm);
+	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(initialState.searchTerm.trim());
+	const [selectedTag, setSelectedTag] = useState(initialState.selectedTag ?? null);
+	const [selectedCategory, setSelectedCategory] = useState(initialState.selectedCategory ?? "all");
+	const [sortOption, setSortOption] = useState<SubscriptionSortOption>(initialState.sortOption ?? "date");
+	const [aiSummaryFilter, setAISummaryFilter] = useState<PresenceFilter>(initialState.aiSummaryFilter ?? "all");
+	const [videoNoteFilter, setVideoNoteFilter] = useState<PresenceFilter>(initialState.videoNoteFilter ?? "all");
+	const [durationFilter, setDurationFilter] = useState<DurationFilter>(initialState.durationFilter ?? "all");
+	const [audioLanguageFilter, setAudioLanguageFilter] = useState(initialState.audioLanguageFilter ?? "all");
+	const [languageFilter, setLanguageFilter] = useState(initialState.languageFilter ?? "all");
+	const [pendingLikeIds, setPendingLikeIds] = useState<ReadonlySet<string>>(new Set());
+	const pendingLikeIdsRef = useRef(new Set<string>());
 	const [channelId, setChannelId] = useState(initialState.channelId);
 	const [period, setPeriod] = useState<SubscriptionPeriod>(initialState.period);
 	const [contentTypes, setContentTypes] = useState<ContentTypeSelection>(initialState.contentTypes);
@@ -92,7 +208,6 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const [dismissedFailureUpdatedAt, setDismissedFailureUpdatedAt] = useState(
 		initialState.dismissedFailureUpdatedAt,
 	);
-	const [visibleCount, setVisibleCount] = useState(VIDEOS_PER_BATCH);
 	const [progress, setProgress] = useState<SubscriptionProgress | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isUnsubscribing, setIsUnsubscribing] = useState(false);
@@ -101,7 +216,6 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		() => new Set(localStorageService.getLikedVideos().map((video) => video.id)),
 	);
 	const abortControllerRef = useRef<AbortController | null>(null);
-	const endRef = useRef<HTMLParagraphElement>(null);
 
 	const openPluginSettings = (): void => {
 		if (!plugin.settingTabRef?.openVideoDisplaySettings()) {
@@ -123,6 +237,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	useEffect(() => {
 		onStateChange({
 			searchTerm,
+			selectedTag, selectedCategory, sortOption, aiSummaryFilter, videoNoteFilter,
+			durationFilter, audioLanguageFilter, languageFilter,
 			channelId,
 			period,
 			contentTypes,
@@ -132,6 +248,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		});
 	}, [
 		searchTerm,
+		selectedTag, selectedCategory, sortOption, aiSummaryFilter, videoNoteFilter,
+		durationFilter, audioLanguageFilter, languageFilter,
 		channelId,
 		period,
 		contentTypes,
@@ -142,8 +260,17 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	]);
 
 	useEffect(() => {
-		setVisibleCount(VIDEOS_PER_BATCH);
-	}, [searchTerm, channelId, period, contentTypes, sortOrder]);
+		const timer = window.setTimeout(() => setDebouncedSearchTerm(searchTerm.trim()), 300);
+		return () => window.clearTimeout(timer);
+	}, [searchTerm]);
+
+	useEffect(() => plugin.summaryStorage.subscribe(() => {
+		setSummaryVersion((version) => version + 1);
+	}), [plugin.summaryStorage]);
+
+	useEffect(() => localStorageService.subscribeLikedVideos((likedVideos) => {
+		setLikedVideoIds(new Set(likedVideos.map((video) => video.id)));
+	}), []);
 
 	const runFetch = async (stageResult: boolean): Promise<void> => {
 		abortControllerRef.current?.abort();
@@ -180,61 +307,257 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		void runFetch(snapshot !== null);
 	}, [refreshVersion]);
 
-	const filteredVideos = useMemo(() => {
-		const normalizedSearch = searchTerm.trim().toLowerCase();
-		const periodStart = getPeriodStart(period);
-		return (snapshot?.videos ?? []).filter((video) => {
-			if (channelId !== "all" && video.snippet.channelId !== channelId) return false;
-			if (periodStart !== null && Date.parse(video.snippet.publishedAt) < periodStart) return false;
+	// Get categories ready state
+	const isCategoriesReady = categoriesService.isReady();
 
-			const { isShort, isMusic, isRegularVideo } = classifyVideoContent(
+	// Get available categories for filtering
+	const availableCategories = useMemo(() => {
+		if (!isCategoriesReady) {
+			return [];
+		}
+
+		// Get unique categories from current videos
+		const videoCategories = new Set(
+			videos.map((video) => video.snippet.categoryId),
+		);
+		const allCategories = categoriesService.getAllCategories();
+
+		// Only show categories that exist in the current video collection
+		return allCategories.filter((category) =>
+			videoCategories.has(category.id),
+		);
+	}, [videos, isCategoriesReady]);
+
+	// Calculate category counts
+	const categoryCounts = useMemo(() => {
+		const counts: Record<string, number> = {};
+		videos.forEach((video) => {
+			const categoryId = video.snippet.categoryId;
+			if (categoryId) {
+				counts[categoryId] = (counts[categoryId] || 0) + 1;
+			}
+		});
+		return counts;
+	}, [videos]);
+
+	const audioLanguageOptions = useMemo(() =>
+		getLanguageFilterOptions(videos, "defaultAudioLanguage", audioLanguageFilter),
+	[videos, audioLanguageFilter]);
+	const languageOptions = useMemo(() =>
+		getLanguageFilterOptions(videos, "defaultLanguage", languageFilter),
+	[videos, languageFilter]);
+
+	// Pre-process video durations once
+	const videoDurations = useMemo(() => {
+		const durations = new Map<string, number | null>();
+		videos.forEach((video) => {
+			durations.set(
+				video.id,
+				parseDurationToSeconds(video.contentDetails?.duration),
+			);
+		});
+		return durations;
+	}, [videos]);
+
+	const videoSortMetrics = useMemo(() => {
+		const metrics = new Map<string, {
+			averageViewsPerDay: number | null;
+			likeViewRatio: number | null;
+		}>();
+		const nowMs = Date.now();
+		videos.forEach((video) => {
+			// API counts may be numeric strings; missing counts must not become zero.
+			const views = Number(video.statistics.viewCount ?? NaN);
+			const likes = Number(video.statistics.likeCount ?? NaN);
+			const hasViews = Number.isFinite(views) && views > 0;
+			const publishedAtMs = Date.parse(video.snippet.publishedAt);
+			const ageInDays = Math.max((nowMs - publishedAtMs) / DAY_MS, 1);
+			metrics.set(video.id, {
+				averageViewsPerDay: hasViews && Number.isFinite(publishedAtMs) && publishedAtMs <= nowMs
+					? views / ageInDays : null,
+				likeViewRatio: hasViews && Number.isFinite(likes) && likes >= 0
+					? likes / views : null,
+			});
+		});
+		return metrics;
+	}, [videos]);
+	const activeSortMetric = sortOption === "averageViewsPerDay" || sortOption === "likeViewRatio"
+		? sortOption : undefined;
+
+
+	const filteredVideos = useMemo(() => {
+		// Pre-calculate lowercase search term once
+		const lowerSearchTerm = debouncedSearchTerm.toLowerCase();
+		const nowMs = Date.now();
+		const periodStart = getPeriodStart(period);
+
+		return videos.filter((video) => {
+			// Search filter - only calculate if search term exists
+			let searchMatch = true;
+			if (lowerSearchTerm) {
+				const titleMatch = video.snippet.title
+					.toLowerCase()
+					.includes(lowerSearchTerm);
+				const tagsMatch = (video.snippet.tags ?? []).some((tag) =>
+					tag.toLowerCase().includes(lowerSearchTerm),
+				);
+				const channelMatch = video.snippet.channelTitle
+					.toLowerCase()
+					.includes(lowerSearchTerm);
+				searchMatch = titleMatch || tagsMatch || channelMatch;
+			}
+
+			const exactTagMatch =
+				selectedTag === null ||
+				(video.snippet.tags ?? []).some(
+					(tag) => tag.toLowerCase() === selectedTag.toLowerCase(),
+				);
+			const channelMatch = channelId === "all" ||
+				video.snippet.channelId === channelId;
+
+			// Category filter
+			const categoryMatch =
+				selectedCategory === "all" ||
+				video.snippet.categoryId === selectedCategory;
+
+			// Content type filter (OR logic - show if matches ANY selected type)
+			const durationSeconds = videoDurations.get(video.id) ?? null;
+			const { isMusic, isShort, isRegularVideo } = classifyVideoContent(
 				video,
 				shortVideoMaxDurationSeconds,
+				durationSeconds ?? 0,
 			);
-			if (contentTypes.length > 0 && contentTypes.length < 3) {
-				const contentTypeMatch = (contentTypes.includes("videos") && isRegularVideo)
-					|| (contentTypes.includes("shorts") && isShort)
-					|| (contentTypes.includes("music") && isMusic);
-				if (!contentTypeMatch) return false;
+
+			let contentTypeMatch = true;
+			// If no selection or all selected, show everything
+			if (
+				contentTypes.length > 0 &&
+				contentTypes.length < 3
+			) {
+				contentTypeMatch = false;
+				if (contentTypes.includes("videos") && isRegularVideo) {
+					contentTypeMatch = true;
+				}
+				if (contentTypes.includes("shorts") && isShort) {
+					contentTypeMatch = true;
+				}
+				if (contentTypes.includes("music") && isMusic) {
+					contentTypeMatch = true;
+				}
 			}
 
-			if (!normalizedSearch) return true;
-			return video.snippet.title.toLowerCase().includes(normalizedSearch)
-				|| video.snippet.channelTitle.toLowerCase().includes(normalizedSearch)
-				|| video.snippet.tags?.some((tag) => tag.toLowerCase().includes(normalizedSearch));
+			const hasAISummary = plugin.summaryStorage.hasVideoSummary(video.id);
+			const aiSummaryMatch = aiSummaryFilter === "all" ||
+				(aiSummaryFilter === "with" ? hasAISummary : !hasAISummary);
+			const hasVideoNote = noteExistenceMap.get(video.id) ?? false;
+			const videoNoteMatch = videoNoteFilter === "all" ||
+				(videoNoteFilter === "with" ? hasVideoNote : !hasVideoNote);
+			const publishedAt = Date.parse(video.snippet.publishedAt);
+			const publishedDateMatch = periodStart === null ||
+				(Number.isFinite(publishedAt) && publishedAt >= periodStart && publishedAt <= nowMs);
+			const durationMatch = matchesDurationFilter(durationSeconds, durationFilter);
+			const audioLanguageMatch = audioLanguageFilter === "all" ||
+				normalizeVideoLanguage(video.snippet.defaultAudioLanguage) === audioLanguageFilter;
+			const languageMatch = languageFilter === "all" ||
+				normalizeVideoLanguage(video.snippet.defaultLanguage) === languageFilter;
+
+			return (
+				searchMatch &&
+				exactTagMatch &&
+				channelMatch &&
+				categoryMatch &&
+				contentTypeMatch &&
+				aiSummaryMatch &&
+				videoNoteMatch &&
+				publishedDateMatch &&
+				durationMatch &&
+				audioLanguageMatch &&
+				languageMatch
+			);
 		});
-	}, [snapshot, searchTerm, channelId, period, contentTypes, shortVideoMaxDurationSeconds]);
-	const sortedVideos = useMemo(
-		() => [...filteredVideos].sort((left, right) => (
-			sortOrder === "ASC"
-				? left.snippet.publishedAt.localeCompare(right.snippet.publishedAt)
-				: right.snippet.publishedAt.localeCompare(left.snippet.publishedAt)
-		)),
-		[filteredVideos, sortOrder],
-	);
+	}, [
+		videos,
+		debouncedSearchTerm,
+		selectedTag,
+		channelId,
+		selectedCategory,
+		contentTypes,
+		shortVideoMaxDurationSeconds,
+		videoDurations,
+		aiSummaryFilter,
+		period,
+		durationFilter,
+		audioLanguageFilter,
+		languageFilter,
+		videoNoteFilter,
+		noteExistenceMap,
+		summaryVersion,
+	]);
 
-	const displayedVideos = useMemo(
-		() => sortedVideos.slice(0, visibleCount),
-		[sortedVideos, visibleCount],
-	);
+	const sortedVideos = useMemo(() => {
+		const sorted = [...filteredVideos];
+		switch (sortOption) {
+			case "title":
+				sorted.sort((a, b) =>
+					a.snippet.title.localeCompare(b.snippet.title),
+				);
+				break;
+			case "channelTitle":
+				sorted.sort((a, b) =>
+					a.snippet.channelTitle.localeCompare(b.snippet.channelTitle),
+				);
+				break;
+			case "viewCount":
+				sorted.sort(
+					(a, b) => a.statistics.viewCount - b.statistics.viewCount,
+				);
+				break;
+			case "averageViewsPerDay":
+				sorted.sort((a, b) =>
+					(videoSortMetrics.get(a.id)?.averageViewsPerDay ?? 0) -
+					(videoSortMetrics.get(b.id)?.averageViewsPerDay ?? 0));
+				break;
+			case "likeCount":
+				sorted.sort(
+					(a, b) => a.statistics.likeCount - b.statistics.likeCount,
+				);
+				break;
+			case "commentCount":
+				sorted.sort((a, b) => {
+					const aCommentCount =
+						parseInt(a.statistics.commentCount) || 0;
+					const bCommentCount =
+						parseInt(b.statistics.commentCount) || 0;
+					return aCommentCount - bCommentCount;
+				});
+				break;
+			case "likeViewRatio":
+				sorted.sort((a, b) =>
+					(videoSortMetrics.get(a.id)?.likeViewRatio ?? -1) -
+					(videoSortMetrics.get(b.id)?.likeViewRatio ?? -1));
+				break;
 
-	useEffect(() => {
-		const end = endRef.current;
-		const scrollElement = end?.closest<HTMLElement>(".view-content");
-		const ownerWindow = end?.ownerDocument.defaultView;
-		if (!end || !scrollElement || !ownerWindow || visibleCount >= filteredVideos.length) return;
+			case "date":
+				sorted.sort(
+					(a, b) =>
+						new Date(a.snippet.publishedAt).getTime() -
+						new Date(b.snippet.publishedAt).getTime(),
+				);
+				break;
+			case "duration":
+				sorted.sort((a, b) => {
+					const aDuration = videoDurations.get(a.id) ?? 0;
+					const bDuration = videoDurations.get(b.id) ?? 0;
+					return aDuration - bDuration;
+				});
+				break;
+		}
+		if (sortOrder === "DESC") {
+			sorted.reverse();
+		}
+		return sorted;
+	}, [filteredVideos, sortOption, videos, sortOrder, videoDurations, videoSortMetrics]);
 
-		const observer = new ownerWindow.IntersectionObserver((entries) => {
-			if (entries.some((entry) => entry.isIntersecting)) {
-				setVisibleCount((count) => Math.min(count + VIDEOS_PER_BATCH, filteredVideos.length));
-			}
-		}, { root: scrollElement, rootMargin: "0px 0px 600px 0px" });
-		observer.observe(end);
-
-		return () => observer.disconnect();
-	}, [filteredVideos.length, visibleCount]);
-
-	const noteExistenceMap = useNoteExistenceMap(plugin, displayedVideos);
 	const newVideoCount = useMemo(() => {
 		if (!snapshot || !pendingSnapshot) return 0;
 		const currentIds = new Set(snapshot.videos.map((video) => video.id));
@@ -244,10 +567,38 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		(channel) => snapshot.failureDetails[channel.id]?.retryable !== false,
 	) ?? false;
 	const hasContentTypeFilter = contentTypes.length > 0 && contentTypes.length < 3;
-	const activeFilterCount = Number(period !== "all") + Number(hasContentTypeFilter);
-	const sortDirectionLabel = sortOrder === "DESC" ? "newest first" : "oldest first";
+	const activeFilterCount = Number(selectedTag !== null) + Number(channelId !== "all") +
+		Number(selectedCategory !== "all") + Number(hasContentTypeFilter) + Number(aiSummaryFilter !== "all") +
+		Number(videoNoteFilter !== "all") + Number(period !== "all") +
+		Number(durationFilter !== "all") + Number(audioLanguageFilter !== "all") + Number(languageFilter !== "all");
+	const selectedCategoryTitle = availableCategories.find((category) =>
+		category.id === selectedCategory)?.title ?? selectedCategory;
+	const contentTypeFilterLabel = contentTypes.map((type) => type === "videos"
+		? UI_TEXT.CONTENT_TYPE_VIDEOS
+		: type === "shorts" ? UI_TEXT.CONTENT_TYPE_SHORTS : UI_TEXT.CONTENT_TYPE_MUSIC).join(", ");
+	const aiSummaryFilterLabel = AI_SUMMARY_FILTER_OPTIONS.find((option) =>
+		option.value === aiSummaryFilter)?.activeLabel ?? aiSummaryFilter;
+	const periodLabel = PERIOD_FILTER_OPTIONS.find((option) =>
+		option.value === period)?.activeLabel ?? period;
+	const durationFilterLabel = DURATION_FILTER_OPTIONS.find((option) =>
+		option.value === durationFilter)?.activeLabel ?? durationFilter;
+	const hasActiveQuery = debouncedSearchTerm.length > 0 || activeFilterCount > 0;
+	const selectedSortLabel = SORT_OPTIONS.find((option) => option.value === sortOption)?.label;
+	const sortDirectionLabel = sortOption === "title" || sortOption === "channelTitle"
+		? sortOrder === "ASC" ? "A to Z" : "Z to A"
+		: sortOption === "date"
+			? sortOrder === "ASC" ? "oldest first" : "newest first"
+			: sortOrder === "ASC" ? "lowest first" : "highest first";
+
+	const browsingKey = JSON.stringify([debouncedSearchTerm, selectedTag, channelId, period,
+		contentTypes, sortOption, sortOrder, selectedCategory, aiSummaryFilter, videoNoteFilter,
+		durationFilter, audioLanguageFilter, languageFilter, collectionVersion]);
+	const selectedChannel = snapshot?.channels.find((channel) => channel.id === channelId);
 
 	const handleLikeVideo = async (video: YouTubeVideo): Promise<void> => {
+		if (pendingLikeIdsRef.current.has(video.id)) return;
+		pendingLikeIdsRef.current.add(video.id);
+		setPendingLikeIds(new Set(pendingLikeIdsRef.current));
 		try {
 			await likeVideoAndPersist(plugin.likedVideoApi, video);
 			setLikedVideoIds((current) => new Set(current).add(video.id));
@@ -255,21 +606,61 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		} catch (likeError) {
 			console.error("Failed to like subscription video:", likeError);
 			new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+		} finally {
+			pendingLikeIdsRef.current.delete(video.id);
+			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
 		}
 	};
 
 	const handleUnlikeVideo = async (video: YouTubeVideo): Promise<void> => {
+		if (pendingLikeIdsRef.current.has(video.id)) return;
+		pendingLikeIdsRef.current.add(video.id);
+		setPendingLikeIds(new Set(pendingLikeIdsRef.current));
 		try {
+			const likedVideos = localStorageService.getLikedVideos();
+			const index = likedVideos.findIndex((item) => item.id === video.id);
+			const previousVideoId = index > 0 ? likedVideos[index - 1].id : null;
 			await unlikeVideoAndPersist(plugin.likedVideoApi, video.id);
 			setLikedVideoIds((current) => {
 				const next = new Set(current);
 				next.delete(video.id);
 				return next;
 			});
-			new Notice(UI_TEXT.NOTICE_VIDEO_UNLIKED(video.snippet.title));
+			const fragment = new DocumentFragment();
+			fragment.createSpan({ text: `Unliked "${video.snippet.title}" ` });
+			const undoButton = fragment.createEl("button", { text: "Undo", cls: "geulo-undo-btn" });
+			const notice = new Notice(fragment, 5000);
+			undoButton.addEventListener("click", () => {
+				if (pendingLikeIdsRef.current.has(video.id)) return;
+				pendingLikeIdsRef.current.add(video.id);
+				setPendingLikeIds(new Set(pendingLikeIdsRef.current));
+				undoButton.disabled = true;
+				void (async () => {
+					try {
+						await likeVideoAndPersist(plugin.likedVideoApi, video, () => {
+							const current = localStorageService.getLikedVideos();
+							const previousIndex = previousVideoId
+								? current.findIndex((item) => item.id === previousVideoId) : -1;
+							return previousIndex >= 0 ? previousIndex + 1 : Math.max(0, Math.min(index, current.length));
+						});
+						setLikedVideoIds((current) => new Set(current).add(video.id));
+						notice.hide();
+					} catch (undoError) {
+						console.error("Failed to undo subscription video unlike:", undoError);
+						new Notice(UI_TEXT.NOTICE_LIKE_FAILED);
+						undoButton.disabled = false;
+					} finally {
+						pendingLikeIdsRef.current.delete(video.id);
+						setPendingLikeIds(new Set(pendingLikeIdsRef.current));
+					}
+				})();
+			});
 		} catch (unlikeError) {
 			console.error("Failed to unlike subscription video:", unlikeError);
 			new Notice(UI_TEXT.NOTICE_UNLIKE_FAILED);
+		} finally {
+			pendingLikeIdsRef.current.delete(video.id);
+			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
 		}
 	};
 
@@ -292,7 +683,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		if (!pendingSnapshot) return;
 		setSnapshot(pendingSnapshot);
 		setPendingSnapshot(null);
-		setVisibleCount(VIDEOS_PER_BATCH);
+		setCollectionVersion((version) => version + 1);
 	};
 
 	const retryFailedChannels = async (): Promise<void> => {
@@ -320,13 +711,63 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		}
 	};
 
-	const toggleContentType = (type: ContentTypeOption): void => {
-		setContentTypes((current) =>
-			current.includes(type)
-				? current.filter((currentType) => currentType !== type)
-				: [...current, type],
+	const handleTagClick = (tag: string) => {
+		setSelectedTag((current) =>
+			current?.toLowerCase() === tag.toLowerCase() ? null : tag,
 		);
 	};
+
+	const handleViewKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+		keyboardFocus.handleKeyDown(event);
+		if (
+			event.key !== "Escape" ||
+			event.defaultPrevented ||
+			searchTerm.length === 0
+		) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		setSearchTerm("");
+	};
+	const clearAllFilters = (): void => {
+		setSearchTerm("");
+		setDebouncedSearchTerm("");
+		setSelectedTag(null);
+		setChannelId("all");
+		setSelectedCategory("all");
+		setContentTypes([]);
+		setAISummaryFilter("all");
+		setVideoNoteFilter("all");
+		setPeriod("all");
+		setDurationFilter("all");
+		setAudioLanguageFilter("all");
+		setLanguageFilter("all");
+	};
+
+	const openSortMenu = (event: MouseEvent<HTMLButtonElement>): void => {
+		const menu = new Menu().setUseNativeMenu(false);
+		menu.addItem((item) => item.setTitle("Sort by").setIsLabel(true));
+		SORT_OPTIONS.forEach((option) => {
+			menu.addItem((item) => item
+				.setTitle(option.label)
+				.setChecked(sortOption === option.value)
+				.onClick(() => setSortOption(option.value)));
+		});
+		menu.addSeparator();
+		menu.addItem((item) => item
+			.setTitle("Ascending")
+			.setChecked(sortOrder === "ASC")
+			.onClick(() => setSortOrder("ASC")));
+		menu.addItem((item) => item
+			.setTitle("Descending")
+			.setChecked(sortOrder === "DESC")
+			.onClick(() => setSortOrder("DESC")));
+		const rect = event.currentTarget.getBoundingClientRect();
+		menu.showAtPosition({ x: rect.left, y: rect.bottom }, event.currentTarget.ownerDocument);
+	};
+
 
 	const unsubscribeChannels = async (channels: SubscriptionChannel[]): Promise<void> => {
 		setIsUnsubscribing(true);
@@ -452,7 +893,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	}
 
 	return (
-		<div className="subscription-view">
+		<div ref={keyboardFocus.viewRef} className="subscription-view" onKeyDown={handleViewKeyDown}>
 			<ViewHeader
 				icon={<Rss className="video-view-header__icon" />}
 				title="Subscriptions"
@@ -535,80 +976,170 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 			<div className="subscription-search search-bar-container">
 				<div className="search-bar-wrapper">
-					<SearchBar searchTerm={searchTerm} onSearchTermChange={setSearchTerm} />
+					<SearchBar
+						searchTerm={searchTerm}
+						onSearchTermChange={setSearchTerm}
+						escapeClearsSearch
+						ariaLabel="Search subscriptions"
+					/>
 				</div>
 				<button
 					type="button"
 					className={`filter-toggle-button ${activeFilterCount > 0 ? "filter-toggle-button--active" : ""}`}
-					title={filtersExpanded ? UI_TEXT.FILTERS_HIDE : UI_TEXT.FILTERS_SHOW}
+					title={
+						filtersExpanded
+							? UI_TEXT.FILTERS_HIDE
+							: UI_TEXT.FILTERS_SHOW
+					}
 					aria-expanded={filtersExpanded}
-					aria-controls="subscription-filter-options"
-					onClick={() => setFiltersExpanded((current) => !current)}
+					aria-controls={filtersId}
+					onClick={() => setFiltersExpanded((prev) => !prev)}
 				>
 					<SlidersHorizontal size={16} />
 					{activeFilterCount > 0 && (
 						<span className="filter-toggle-button__count">{activeFilterCount}</span>
 					)}
 				</button>
-			</div>
-			<div className="subscription-filters">
-				<select value={channelId} onChange={(event) => setChannelId(event.target.value)} aria-label="Filter by channel">
-					<option value="all">All channels</option>
-					{(snapshot?.channels ?? []).map((channel) => (
-						<option key={channel.id} value={channel.id}>{channel.title}</option>
-					))}
-				</select>
-				<span>{filteredVideos.length} videos</span>
-			</div>
-			{filtersExpanded && (
-				<div
-					id="subscription-filter-options"
-					className="filters-container filters-container--expanded"
+				<button
+					type="button"
+					className="sort-menu-button"
+					title={`Sort by: ${selectedSortLabel}, ${sortDirectionLabel}`}
+					aria-label={`Sort videos. Current: ${selectedSortLabel}, ${sortDirectionLabel}`}
+					aria-haspopup="menu"
+					onClick={openSortMenu}
 				>
-					<div className="video-view-sort-left-group subscription-filter-options">
-						<select
-							value={period}
-							onChange={(event) => setPeriod(event.target.value as SubscriptionPeriod)}
-							aria-label="Filter by published date"
-						>
-							<option value="all">All collected videos</option>
-							<option value="day">Last 24 hours</option>
-							<option value="week">Last 7 days</option>
-							<option value="month">Last 30 days</option>
-						</select>
-						<div className="content-type-filter" role="group" aria-label="Filter by content type">
-							{(["videos", "shorts", "music"] as ContentTypeOption[]).map((option) => (
-								<label
-									key={option}
-									className={`content-type-filter__option ${contentTypes.includes(option) ? "content-type-filter__option--selected" : ""}`}
-								>
-									<input
-										type="checkbox"
-										checked={contentTypes.includes(option)}
-										onChange={() => toggleContentType(option)}
-										className="content-type-filter__input"
-									/>
-									<span className="content-type-filter__text">
-										{option === "videos" ? "Videos" : option === "shorts" ? "Shorts" : "Music"}
-									</span>
-								</label>
-							))}
-						</div>
-						<div className="filters-divider" />
-						<button
-							type="button"
-							title={`Current order: ${sortDirectionLabel}`}
-							aria-label={`Change sort order. Current order: ${sortDirectionLabel}`}
-							className="video-view-sort__order"
-							onClick={() => setSortOrder((current) => current === "ASC" ? "DESC" : "ASC")}
-						>
-							{sortOrder === "DESC"
-								? <ArrowDownWideNarrow size={16} />
-								: <ArrowUpNarrowWide size={16} />}
-						</button>
-					</div>
+					{sortOrder === "DESC" ? (
+						<ArrowDownWideNarrow size={16} aria-hidden="true" />
+					) : (
+						<ArrowUpNarrowWide size={16} aria-hidden="true" />
+					)}
+				</button>
+			</div>
+			{activeFilterCount > 0 && (
+				<div className="active-tag-filter active-filter-list" aria-label="Active filters">
+					{selectedTag && <FilterChip label={`Tag: ${selectedTag}`} onClear={() => setSelectedTag(null)} />}
+					{channelId !== "all" && <FilterChip label={`Channel: ${selectedChannel?.title ?? channelId}`} onClear={() => setChannelId("all")} />}
+					{selectedCategory !== "all" && <FilterChip label={`Category: ${selectedCategoryTitle}`} onClear={() => setSelectedCategory("all")} />}
+					{hasContentTypeFilter && <FilterChip label={`Type: ${contentTypeFilterLabel}`} onClear={() => setContentTypes([])} />}
+					{aiSummaryFilter !== "all" && (
+						<FilterChip label={`AI summary: ${aiSummaryFilterLabel}`} onClear={() => setAISummaryFilter("all")} />
+					)}
+					{videoNoteFilter !== "all" && (
+						<FilterChip label={videoNoteFilter === "with" ? "Has video note" : "No video note"} onClear={() => setVideoNoteFilter("all")} />
+					)}
+					{period !== "all" && (
+						<FilterChip label={`Uploaded: ${periodLabel}`} onClear={() => setPeriod("all")} />
+					)}
+					{durationFilter !== "all" && (
+						<FilterChip label={`Duration: ${durationFilterLabel}`} onClear={() => setDurationFilter("all")} />
+					)}
+					{audioLanguageFilter !== "all" && (
+						<FilterChip label={`Audio language: ${getVideoLanguageLabel(audioLanguageFilter)}`} onClear={() => setAudioLanguageFilter("all")} />
+					)}
+					{languageFilter !== "all" && (
+						<FilterChip label={`Language: ${getVideoLanguageLabel(languageFilter)}`} onClear={() => setLanguageFilter("all")} />
+					)}
+					<button type="button" className="active-filter-list__clear" onClick={clearAllFilters}>Clear all</button>
 				</div>
 			)}
+
+			{filtersExpanded && (
+				<div id={filtersId} className="filters-container liked-video-filters">
+					<section className="liked-video-filter-group" aria-label="Channel">
+						<h3 className="liked-video-filter-group__title">Channel</h3>
+						<div className="liked-video-filter-group__fields liked-video-filter-group__fields--category">
+							<LikedVideoFilterSelect
+								label="Channel" ariaLabel="Filter by channel" showLabel={false}
+								value={channelId} onChange={setChannelId}
+								options={[
+									{ value: "all", label: "All channels", count: videos.length },
+									...(snapshot?.channels ?? []).map((channel) => ({ value: channel.id, label: channel.title })),
+								]}
+							/>
+						</div>
+					</section>
+					<section className="liked-video-filter-group" aria-label="Category">
+						<h3 className="liked-video-filter-group__title">Category</h3>
+						<div className="liked-video-filter-group__fields liked-video-filter-group__fields--category">
+							<LikedVideoFilterSelect
+								label="Category" ariaLabel="Filter by category" showLabel={false}
+								value={selectedCategory} onChange={setSelectedCategory}
+								disabled={!isCategoriesReady || availableCategories.length === 0}
+								options={[
+									{ value: "all", label: "All", count: videos.length },
+									...availableCategories.map((category) => ({
+										value: category.id, label: category.title, count: categoryCounts[category.id] || 0,
+									})),
+									...(!isCategoriesReady ? [{ value: "loading", label: "Loading categories...", disabled: true }] : []),
+								]}
+							/>
+						</div>
+					</section>
+					<section className="liked-video-filter-group" aria-label="Content">
+						<h3 className="liked-video-filter-group__title">Content</h3>
+						<div className="liked-video-filter-group__fields">
+							<ContentTypeDropdown
+								selection={contentTypes} onChange={setContentTypes}
+								shortVideoMaxDurationSeconds={shortVideoMaxDurationSeconds}
+							/>
+							<LikedVideoFilterSelect
+								label="Upload date" ariaLabel="Filter by upload date"
+								value={period} options={PERIOD_FILTER_OPTIONS}
+								onChange={(value) => setPeriod(value as SubscriptionPeriod)}
+							/>
+							<LikedVideoFilterSelect
+								label="Duration" ariaLabel="Filter by duration"
+								value={durationFilter} options={DURATION_FILTER_OPTIONS}
+								onChange={(value) => setDurationFilter(value as DurationFilter)}
+							/>
+						</div>
+					</section>
+					<section className="liked-video-filter-group" aria-label="Language">
+						<h3 className="liked-video-filter-group__title">Language</h3>
+						<div className="liked-video-filter-group__fields">
+							<LikedVideoFilterSelect
+								label="Title & description" ariaLabel="Filter by language"
+								description="Language of the video's title and description. Videos without language information appear under Unknown."
+								value={languageFilter} onChange={setLanguageFilter}
+								options={[{ value: "all", label: "All", count: videos.length }, ...languageOptions]}
+							/>
+							<LikedVideoFilterSelect
+								label="Audio" ariaLabel="Filter by audio language"
+								description="Audio language of the default track. Videos without language information appear under Unknown."
+								value={audioLanguageFilter} onChange={setAudioLanguageFilter}
+								options={[{ value: "all", label: "All", count: videos.length }, ...audioLanguageOptions]}
+							/>
+						</div>
+					</section>
+					<section className="liked-video-filter-group" aria-label="Saved state">
+						<h3 className="liked-video-filter-group__title">Saved state</h3>
+						<div className="liked-video-filter-group__fields">
+							<LikedVideoFilterSelect
+								label="AI summary" ariaLabel="Filter by AI summary"
+								value={aiSummaryFilter} options={AI_SUMMARY_FILTER_OPTIONS}
+								onChange={(value) => setAISummaryFilter(value as PresenceFilter)}
+							/>
+							<LikedVideoFilterSelect
+								label="Video note" ariaLabel="Filter by video note"
+								value={videoNoteFilter}
+								onChange={(value) => setVideoNoteFilter(value as PresenceFilter)}
+								options={[
+									{ value: "all", label: "All" },
+									{ value: "with", label: "Has note" },
+									{ value: "without", label: "No note" },
+								]}
+							/>
+						</div>
+					</section>
+				</div>
+			)}
+			<div className="liked-video-result-count" aria-live="polite" aria-atomic="true">
+				<span>{filteredVideos.length} of {videos.length} videos</span>
+				<span aria-hidden="true">·</span>
+				<span className="liked-video-result-sort" aria-label={`Sorted by ${selectedSortLabel}, ${sortDirectionLabel}`}>
+					{selectedSortLabel} <span aria-hidden="true">{sortOrder === "DESC" ? "↓" : "↑"}</span>
+				</span>
+			</div>
 
 			{snapshot?.channels.length === 0 ? (
 				<div className="no-videos-found">
@@ -622,52 +1153,53 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 					<div className="no-videos-found__title">No matching videos</div>
 					<div className="no-videos-found__text">No collected videos match these filters.</div>
 					<OpenYouTubeButton query={searchTerm} />
+					{hasActiveQuery && (
+						<button type="button" className="no-videos-found__clear-button" onClick={clearAllFilters}>
+							Clear search and filters
+						</button>
+					)}
 				</div>
-			) : (
-				<>
-					<div className="video-view__video-grid">
-						{displayedVideos.map((video) => {
-							const channel = snapshot?.channels.find(
-								(candidate) => candidate.id === video.snippet.channelId,
-							);
-							return (
-								<VideoCard
-								key={video.id}
-								source="subscription"
-								videoInfo={video}
-								id={video.id}
-								url={`https://www.youtube.com/watch?v=${video.id}`}
-								noteExists={noteExistenceMap.get(video.id) ?? false}
-								isLiked={likedVideoIds.has(video.id)}
-								onLike={() => {
-									void handleLikeVideo(video);
-								}}
-								onUnlike={() => {
-									void handleUnlikeVideo(video);
-								}}
-								unsubscribeActionPending={isUnsubscribing}
-								onUnsubscribeChannel={channel
-									? () => confirmUnsubscribeChannels([channel])
-									: undefined}
-								onChannelClick={() => setChannelId(video.snippet.channelId)}
-								onTagClick={(tag) => setSearchTerm(tag)}
-								onLinkClick={(url) => void openVideo(url)}
-								onAddToDailyNote={async (videoData, file) => {
-									await appendNoteContent(plugin.app, file, { text: `\n${videoData}` });
-									await plugin.app.workspace.openLinkText(file.path, "", false);
-									new Notice(`Added video to ${file.basename} and opened the note`);
-								}}
-								/>
-							);
-						})}
-					</div>
-					<p ref={endRef} className="liked-video-list-end">
-						{visibleCount < filteredVideos.length
-							? `${Math.min(visibleCount, filteredVideos.length)} of ${filteredVideos.length} videos`
-							: `End of ${filteredVideos.length} ${filteredVideos.length === 1 ? "video" : "videos"}`}
-					</p>
-				</>
-			)}
+			) : null}
+			<span ref={keyboardFocus.entryRef} tabIndex={sortedVideos.length > 0 ? 0 : -1} className="liked-video-focus-entry"
+				onFocus={keyboardFocus.focusEntry}>
+				Browse subscription videos. Use Up and Down to navigate, Tab to leave the list, F2 for card controls, and Escape to return to the card.
+			</span>
+			<LikedVideoCollection ref={keyboardFocus.collectionRef} videos={sortedVideos} mode="infinite"
+				label="Subscription videos" currentPage={1} onPageChange={() => {}}
+				noteExistenceMap={noteExistenceMap} resetKey={browsingKey}
+				renderVideo={(video, noteExists, summaryState) => {
+					const channel = snapshot?.channels.find((candidate) => candidate.id === video.snippet.channelId);
+					return (
+						<VideoCard
+							{...summaryState}
+							key={video.id}
+							source="subscription"
+							videoInfo={video}
+							id={video.id}
+							url={`https://www.youtube.com/watch?v=${video.id}`}
+							noteExists={noteExists}
+							sortMetric={activeSortMetric ? {
+								kind: activeSortMetric,
+								value: videoSortMetrics.get(video.id)?.[activeSortMetric] ?? null,
+							} : undefined}
+							isLiked={likedVideoIds.has(video.id)}
+							likeActionPending={pendingLikeIds.has(video.id)}
+							onLike={() => void handleLikeVideo(video)}
+							onUnlike={() => void handleUnlikeVideo(video)}
+							unsubscribeActionPending={isUnsubscribing}
+							onUnsubscribeChannel={channel ? () => confirmUnsubscribeChannels([channel]) : undefined}
+							onChannelClick={() => setChannelId(video.snippet.channelId)}
+							onTagClick={handleTagClick}
+							onLinkClick={(url) => void openVideo(url)}
+							onAddToDailyNote={async (videoData, file) => {
+								await appendNoteContent(plugin.app, file, { text: `\n${videoData}` });
+								await plugin.app.workspace.openLinkText(file.path, "", false);
+								new Notice(`Added video to ${file.basename} and opened the note`);
+							}}
+						/>
+					);
+				}}
+			/>
 		</div>
 	);
 };

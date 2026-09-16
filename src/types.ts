@@ -140,7 +140,8 @@ export interface YouTubeVideo {
             title: string;
             description: string;
         };
-        defaultAudioLanguage: string;
+        defaultAudioLanguage?: string;
+		defaultLanguage?: string;
     };
     contentDetails: {
         duration?: string;
@@ -206,6 +207,9 @@ export type PlaylistType = 'liked' | 'playlist';
 
 export type ContentTypeOption = 'videos' | 'shorts' | 'music';
 export type ContentTypeSelection = ContentTypeOption[];
+export type PresenceFilter = 'all' | 'with' | 'without';
+export type PublishedDateFilter = 'all' | '7d' | '30d' | '365d';
+export type DurationFilter = 'all' | 'under5' | '5to20' | '20to60' | '60plus';
 
 export interface SummaryFileData {
     schemaVersion: 1;

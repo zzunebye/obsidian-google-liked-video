@@ -6,12 +6,13 @@ import { PlaylistSource, PlaylistInfo } from "src/types";
 import { confirmDangerousAction } from "src/utils/confirmationUtils";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
-import { PlaylistVideosView } from "./PlaylistVideosView";
+import { PlaylistVideosView, PlaylistVideosViewState } from "./PlaylistVideosView";
 import { TranscriptWorkspace } from "src/ui/TranscriptWorkspace";
 
 interface IPlaylistVideosViewPersistedState {
     playlistSource?: PlaylistSource;
     playlistInfo?: PlaylistInfo;
+    viewState?: Partial<PlaylistVideosViewState>;
 }
 
 export const VIEW_TYPE_PLAYLIST_VIDEOS = "playlist-videos";
@@ -24,6 +25,9 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
     playlistInfo: PlaylistInfo;
     plugin: GoogleLikedVideoPlugin | null = null;
     private isDeletingPlaylist = false;
+    private browsingState: Partial<PlaylistVideosViewState> = {};
+    private refreshVersion = 0;
+    private viewVersion = 0;
 
     constructor(
         leaf: WorkspaceLeaf,
@@ -47,6 +51,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
                 if (this.plugin?.playlistApi) {
                     this.plugin.playlistApi.clearCache(this.playlistSource);
                 }
+                this.refreshVersion += 1;
                 this.renderView();
             });
         });
@@ -76,6 +81,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
     }
 
     async onOpen() {
+        this.contentEl.tabIndex = -1;
         this.root = createRoot(this.containerEl.children[1]);
         // Only render if we have real playlist data (not defaults)
         if (this.playlistInfo.id !== 'liked' || this.playlistInfo.title !== 'Loading...') {
@@ -89,10 +95,13 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         this.root.render(
             <StrictMode>
                 <PluginContext.Provider value={this.plugin}>
-                    <TranscriptWorkspace label="playlist videos">
+                    <TranscriptWorkspace key={`${this.playlistSource.type}:${this.playlistInfo.id}:${this.viewVersion}`} label="playlist videos">
                     <PlaylistVideosView
                         playlistSource={this.playlistSource}
                         playlistInfo={this.playlistInfo}
+                        initialState={this.browsingState}
+                        refreshVersion={this.refreshVersion}
+                        onStateChange={(state) => { this.browsingState = state; }}
                         onDeletePlaylist={() => this.handleDeletePlaylist()}
                     />
                     </TranscriptWorkspace>
@@ -146,6 +155,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
     }
 
     async setState(state: IPlaylistVideosViewPersistedState, result: ViewStateResult): Promise<void> {
+        const previousSource = JSON.stringify(this.playlistSource);
         if (state.playlistSource) {
             this.playlistSource = state.playlistSource;
         }
@@ -153,7 +163,14 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
             this.playlistInfo = state.playlistInfo;
         }
 
-        // Re-render with new state
+        if (JSON.stringify(this.playlistSource) !== previousSource) {
+            this.browsingState = {};
+            this.refreshVersion = 0;
+        }
+        if (state.viewState) {
+            this.browsingState = state.viewState;
+            this.viewVersion += 1;
+        }
         this.renderView();
 
         return super.setState(state, result);
@@ -163,6 +180,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         return {
             playlistSource: this.playlistSource,
             playlistInfo: this.playlistInfo,
+            viewState: { ...this.browsingState },
         };
     }
 }

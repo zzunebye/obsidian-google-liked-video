@@ -69,6 +69,11 @@ globalThis.window = {
 	clearTimeout: globalThis.clearTimeout.bind(globalThis),
 };
 globalThis.getLanguage = () => 'ko-KR';
+globalThis.fetch = async (url, options) => {
+	if (options.signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
+	const result = await globalThis.requestUrl({ url, ...options });
+	return new Response(result.text, { status: result.status, headers: result.headers });
+};
 
 const require = createRequire(import.meta.url);
 const {
@@ -304,5 +309,83 @@ globalThis.requestUrl = async () => response(streamBody);
 await openAIFromFactory.generateVideoSummaryStream('video-01', 'Factory language.', { onChunk: () => {} });
 assert.equal(transcriptCalls[0][2], 'ko-KR');
 
+const streamCases = [
+	[new OpenAIService('fixture-key', 'fixture-model'), text => ({ type: 'response.output_text.delta', delta: text })],
+	[new OpenRouterService('fixture-key', 'fixture-model'), text => ({ choices: [{ delta: { content: text } }] })],
+	[new GeminiService('fixture-key'), text => ({ candidates: [{ content: { parts: [{ text }] } }] })],
+];
+const encoder = new TextEncoder();
+const tick = () => new Promise(resolve => setImmediate(resolve));
+for (const [streamService, event] of streamCases) {
+	let streamController;
+	let transportCancelled = false;
+	globalThis.requestUrl = () => assert.fail('Streaming must not use the buffered requestUrl transport');
+	globalThis.fetch = async (url, options) => new Response(new ReadableStream({
+		start(controller) {
+			streamController = controller;
+			options.signal.addEventListener('abort', () => controller.error(new DOMException('Request aborted', 'AbortError')), { once: true });
+		},
+		cancel() { transportCancelled = true; },
+	}));
+	const chunks = [];
+	let result;
+	const run = streamService.generateVideoSummaryStream('video-01', 'Stream progressively.', {
+		onChunk: (chunk, accumulated) => chunks.push(accumulated),
+		onComplete: value => { result = value; },
+	});
+	await tick();
+	const firstEvent = encoder.encode(`data:${JSON.stringify(event('첫 응답'))}\r\n\r\n`);
+	for (const byte of firstEvent) streamController.enqueue(Uint8Array.of(byte));
+	await tick();
+	assert.deepEqual(chunks, ['첫 응답']);
+	assert.equal(result, undefined, 'First text must arrive while the response is still open');
+	streamController.enqueue(encoder.encode(`data: ${JSON.stringify(event(' 완료'))}\n\ndata: [DONE]\n\n`));
+	await run;
+	assert.equal(result.summary, '첫 응답 완료');
+	assert.equal(transportCancelled, true, 'DONE must release the live transport');
+
+	const abortController = new AbortController();
+	result = undefined;
+	const cancelledRun = streamService.generateVideoSummaryStream('video-01', 'Cancel partial response.', {
+		onChunk: () => {},
+		onComplete: value => { result = value; },
+		signal: abortController.signal,
+	});
+	await tick();
+	streamController.enqueue(encoder.encode(`data: ${JSON.stringify(event('Partial'))}\n\n`));
+	await tick();
+	abortController.abort();
+	await cancelledRun;
+	assert.equal(result, undefined, 'Cancelled partial text must not be completed or cached');
+
+	const eofRun = streamService.generateVideoSummaryStream('video-01', 'Flush final event.', {
+		onChunk: () => {},
+		onComplete: value => { result = value; },
+	});
+	await tick();
+	streamController.enqueue(encoder.encode(`data: ${JSON.stringify(event('Final event'))}`));
+	streamController.close();
+	await eofRun;
+	assert.equal(result.summary, 'Final event');
+}
+
+const originalSetTimeout = globalThis.window.setTimeout;
+globalThis.window.setTimeout = (callback, delay) => originalSetTimeout(callback, delay === 90000 ? 0 : delay);
+try {
+	for (const generate of [
+		() => service.generateVideoSummaryStream('video-01', 'Timeout stream.', {
+			onChunk: () => {},
+			onComplete: () => assert.fail('Timed-out summaries must not complete'),
+		}),
+		() => service.generateVideoSummary('video-01', 'Timeout summary.'),
+	]) {
+		await assert.rejects(generate, error => error instanceof AIServiceError
+			&& error.type === 'network_error' && /timed out/.test(error.message));
+	}
+} finally {
+	globalThis.window.setTimeout = originalSetTimeout;
+}
+
 console.log('OpenAI service: Responses payloads, transcript grounding, parsing, errors, cancellation and provider routing passed.');
+console.log('All three providers: incremental delivery before completion, split UTF-8, cancellation, DONE cleanup and final-event flushing passed. Shared stream/summary timeouts passed.');
 console.log('Actual OpenAI requests require live Obsidian and provider QA.');

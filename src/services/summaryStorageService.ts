@@ -74,51 +74,48 @@ export class SummaryStorageService {
 			source: summary.source ?? 'video',
 		};
 
-		// LRU: delete then re-insert so it goes to the end
-		this.cache.delete(videoId);
-		this.cache.set(videoId, fileData);
-
-		// LRU eviction
-		this.evictIfNeeded();
-
-		await this.persist();
-		this.listeners.forEach((listener) => listener());
+		await this.persist(cache => {
+			cache.delete(videoId);
+			cache.set(videoId, fileData);
+			this.evictIfNeeded(cache);
+		});
 		debugLogger.debug(`[SummaryStorage] Wrote summary for ${videoId}`);
 	}
 
 	async deleteVideoSummary(videoId: string): Promise<void> {
-		this.cache.delete(videoId);
-		await this.persist();
-		this.listeners.forEach((listener) => listener());
+		await this.persist(cache => { cache.delete(videoId); });
 	}
 
 	async setOneLinerSummary(videoId: string, oneLiner: string): Promise<void> {
-		const entry = this.cache.get(videoId);
-		if (!entry) return;
-		entry.oneLinerSummary = oneLiner;
-		await this.persist();
-		this.listeners.forEach((listener) => listener());
+		await this.persist(cache => {
+			const entry = cache.get(videoId);
+			if (entry) cache.set(videoId, { ...entry, oneLinerSummary: oneLiner });
+		});
 		debugLogger.debug(`[SummaryStorage] Set one-liner summary for ${videoId}`);
 	}
 
-	private persist(): Promise<void> {
-		const data: SummaryStorageFile = {
-			schemaVersion: 1,
-			summaries: Object.fromEntries(this.cache),
-		};
-		const json = JSON.stringify(data, null, 2);
-		this.writeQueue = this.writeQueue
-			.then(() => this.adapter.write(this.filePath, json))
-			.catch((err) => debugLogger.error("[SummaryStorage] Failed to persist:", err));
-		return this.writeQueue;
+	private persist(update: (cache: Map<string, SummaryFileData>) => void): Promise<void> {
+		const write = this.writeQueue.then(async () => {
+			const cache = new Map(this.cache);
+			update(cache);
+			const data: SummaryStorageFile = {
+				schemaVersion: 1,
+				summaries: Object.fromEntries(cache),
+			};
+			await this.adapter.write(this.filePath, JSON.stringify(data, null, 2));
+			this.cache = cache;
+			this.listeners.forEach(listener => listener());
+		});
+		this.writeQueue = write.catch(err => debugLogger.error("[SummaryStorage] Failed to persist:", err));
+		return write;
 	}
 
-	private evictIfNeeded(): void {
-		while (this.cache.size > this.maxEntries) {
-			const oldest = this.cache.keys().next().value;
+	private evictIfNeeded(cache: Map<string, SummaryFileData>): void {
+		while (cache.size > this.maxEntries) {
+			const oldest = cache.keys().next().value;
 			if (oldest === undefined) break;
 			debugLogger.debug(`[SummaryStorage] Evicting oldest summary: ${oldest}`);
-			this.cache.delete(oldest);
+			cache.delete(oldest);
 		}
 	}
 

@@ -13,11 +13,11 @@ import {
 	FilePlus,
 	FileCheck,
 	Bot,
+	Check,
 	Captions,
 } from "lucide-react";
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal } from "src/ui/VideoInfoModal";
-import { confirmUnlikeAction } from "src/utils/confirmationUtils";
 import { usePlugin } from "../store/pluginContext";
 import {
 	sanitizeFileName,
@@ -41,6 +41,10 @@ import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
 interface VideoCardProps {
 	source: "liked" | "playlist" | "subscription";
 	videoInfo: YouTubeVideo;
+	sortMetric?: {
+		kind: "averageViewsPerDay" | "likeViewRatio";
+		value: number | null;
+	};
 	id: string;
 	url: string;
 	noteExists: boolean;
@@ -64,6 +68,7 @@ interface VideoCardProps {
 export const VideoCard = ({
 	source,
 	videoInfo,
+	sortMetric,
 	url,
 	noteExists,
 	likeActionPending = false,
@@ -101,6 +106,19 @@ export const VideoCard = ({
 		() => plugin.summaryStorage.getOneLineSummary(videoInfo.id),
 	);
 	const hasSummary = summaryPreview !== null;
+	const isAverageViews = sortMetric?.kind === "averageViewsPerDay";
+	const metricValue = sortMetric?.value;
+	const metricText = metricValue == null ? "—"
+		: isAverageViews
+			? metricValue > 0 && metricValue < 0.1 ? "<0.1" : formatVideoCount(Math.round(metricValue * 10) / 10)
+			: metricValue > 0 && metricValue < 0.0001 ? "<0.01%" : `${(metricValue * 100).toFixed(2)}%`;
+	const metricTooltip = isAverageViews
+		? metricValue == null
+			? "Average views/day unavailable: no views or a missing/invalid upload date."
+			: `Average views/day since upload: ${metricValue.toLocaleString(undefined, { maximumFractionDigits: 6 })}. Based on saved views; minimum age is 1 day.`
+		: metricValue == null
+			? "Like/View Ratio unavailable: no views or missing like count."
+			: `${Number(videoInfo.statistics.likeCount).toLocaleString()} likes ÷ ${Number(videoInfo.statistics.viewCount).toLocaleString()} views × 100 = ${(metricValue * 100).toLocaleString(undefined, { maximumFractionDigits: 6 })}%.`;
 	const openTranscript = (trigger: HTMLElement, mode: TranscriptReaderMode = "paragraphs"): void => {
 		if (transcriptWorkspace) transcriptWorkspace.openTranscript(videoInfo, trigger, mode);
 		else void plugin.openTranscriptPane(videoInfo, undefined, mode).catch(error => {
@@ -403,7 +421,7 @@ export const VideoCard = ({
 
 		menu.addSeparator();
 
-		if (source === "liked") {
+		if (source === "liked" || isLiked) {
 			menu.addItem((item) => {
 				item.setTitle("Unlike");
 				item.setIcon("heart-off");
@@ -413,29 +431,12 @@ export const VideoCard = ({
 				});
 			});
 		} else {
-			if (isLiked) {
-				menu.addItem((item) => {
-					item.setTitle("Unlike");
-					item.setIcon("heart-off");
-					item.onClick(async () => {
-						const confirmed = await confirmUnlikeAction(
-							plugin.app,
-							videoInfo.snippet.title,
-						);
-						if (confirmed) {
-							onUnlike();
-						}
-					});
-				});
-			} else {
-				menu.addItem((item) => {
-					item.setTitle("Like");
-					item.setIcon("heart");
-					item.onClick(() => {
-						onLike?.();
-					});
-				});
-			}
+			menu.addItem((item) => {
+				item.setTitle("Like");
+				item.setIcon("heart");
+				item.setDisabled(likeActionPending);
+				item.onClick(() => onLike?.());
+			});
 		}
 
 		if (source === "subscription" && onUnsubscribeChannel) {
@@ -496,89 +497,89 @@ export const VideoCard = ({
 				</div>
 				<div className="video-bottom-row">
 					<div className="video-statistics">
-						<div className="video-stat">
-							<Eye size={16} className="video-stat-icon" />
-							<span className="video-stat-count">
-								{formatVideoCount(videoInfo.statistics.viewCount, false)}
+						<div className={`video-stat${sortMetric ? " video-stat--views-with-metric" : ""}`}>
+							<span className="video-stat-views">
+								<Eye size={16} className="video-stat-icon" />
+								<span className="video-stat-count">
+									{formatVideoCount(videoInfo.statistics.viewCount, false)}
+								</span>
 							</span>
+							{sortMetric && (
+								<span className="video-sort-metric" title={metricTooltip}>
+									<span className="video-sort-metric__separator" aria-hidden="true">·</span>
+									<span className="video-sort-metric__value">{metricText}</span>
+									<span className="video-sort-metric__unit">{isAverageViews ? "/day" : " Like/View"}</span>
+								</span>
+							)}
 						</div>
-						<button
-							type="button"
-							className="video-stat video-stat--clickable video-stat--button"
-							disabled={likeActionPending}
-							aria-label={
-								source === "liked"
-									? "Unlike"
-									: isLiked
+						<div className="video-stat-actions">
+							<button
+								type="button"
+								className="video-stat video-stat--clickable video-stat--button"
+								disabled={likeActionPending}
+								aria-label={
+									source === "liked"
 										? "Unlike"
-										: "Like"
-							}
-							title={
-								source === "liked"
-									? "Unlike"
-									: isLiked
-										? "Unlike"
-										: "Like"
-							}
-							onClick={(e) => {
-								e.stopPropagation();
-								void (async () => {
-									if (source === "liked") {
-										onUnlike();
-									} else if (isLiked) {
-										const confirmed = await confirmUnlikeAction(
-											plugin.app,
-											videoInfo.snippet.title,
-										);
-										if (confirmed) onUnlike();
-									} else {
-										onLike?.();
-									}
-								})();
-							}}
-						>
-							<ThumbsUp
-								size={16}
-								fill={
-									source === "liked" || isLiked
-										? "currentColor"
-										: "none"
+										: isLiked
+											? "Unlike"
+											: "Like"
 								}
-								className={`video-stat-icon${source === "liked" || isLiked ? " video-stat-icon--liked" : ""}`}
-							/>
-							<span className="video-stat-count">
-								{formatVideoCount(videoInfo.statistics.likeCount, false)}
-							</span>
-						</button>
-						<button
-							type="button"
-							className="video-stat video-stat--clickable video-stat--button video-stat--comment"
-							aria-label={`Show comments for ${videoInfo.snippet.title}`}
-							title="Show comments"
-							onClick={(e) => {
-								e.preventDefault();
-								e.stopPropagation();
-								const trigger = e.currentTarget;
-								const modal = new VideoCommentsModal(
-									plugin.app,
-									videoInfo.id,
-									videoInfo.snippet.title,
-									plugin.commentService,
-									() => {
-										if (trigger.isConnected) trigger.focus({ preventScroll: true });
-									},
-								);
-								modal.open();
-							}}
-						>
-							<MessageCircle
-								size={16}
-								className="video-stat-icon"
-							/>
-							<span className="video-stat-count">
-								{formatVideoCount(videoInfo.statistics.commentCount, false)}
-							</span>
-						</button>
+								title={
+									source === "liked"
+										? "Unlike"
+										: isLiked
+											? "Unlike"
+											: "Like"
+								}
+								onClick={(e) => {
+									e.stopPropagation();
+									if (source === "liked" || isLiked) onUnlike();
+									else onLike?.();
+								}}
+							>
+								<ThumbsUp
+									size={16}
+									fill={
+										source === "liked" || isLiked
+											? "currentColor"
+											: "none"
+									}
+									className={`video-stat-icon${source === "liked" || isLiked ? " video-stat-icon--liked" : ""}`}
+								/>
+								<span className="video-stat-count">
+									{formatVideoCount(videoInfo.statistics.likeCount, false)}
+								</span>
+							</button>
+							<button
+								type="button"
+								className="video-stat video-stat--clickable video-stat--button video-stat--comment"
+								aria-label={`Show comments for ${videoInfo.snippet.title}`}
+								title="Show comments"
+								onClick={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									const trigger = e.currentTarget;
+									const modal = new VideoCommentsModal(
+										plugin.app,
+										videoInfo.id,
+										videoInfo.snippet.title,
+										plugin.commentService,
+										() => {
+											if (trigger.isConnected) trigger.focus({ preventScroll: true });
+										},
+									);
+									modal.open();
+								}}
+							>
+								<MessageCircle
+									size={16}
+									className="video-stat-icon"
+								/>
+								<span className="video-stat-count">
+									{formatVideoCount(videoInfo.statistics.commentCount, false)}
+								</span>
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -650,11 +651,12 @@ export const VideoCard = ({
 					</div>
 					<div className="video-card-options">
 						<button
-							className={`video-card-btn ${hasSummary ? "video-card-btn--accent" : ""}`}
-							aria-label="Open AI view"
+							className={`video-card-btn video-card-btn--ai ${hasSummary ? "video-card-btn--accent" : ""}`}
+							aria-label={hasSummary ? "Open AI summary" : "Generate AI summary"}
 							onClick={event => { event.preventDefault(); event.stopPropagation(); openTranscript(event.currentTarget, "ai"); }}
 						>
-							<Bot size={16} />
+							<Bot size={16} aria-hidden="true" />
+							{hasSummary && <Check size={10} className="video-card-btn__summary-check" aria-hidden="true" />}
 						</button>
 						{actionButtons}
 					</div>
