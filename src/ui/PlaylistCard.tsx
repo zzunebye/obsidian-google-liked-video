@@ -17,6 +17,10 @@ export const PlaylistCard = ({
 	onDeletePlaylist,
 	isPinned,
 }: PlaylistCardProps) => {
+	const sourceLabel = playlist.isOwnedByUser === true
+		? "Your playlist"
+		: playlist.isOwnedByUser === false ? "Imported" : null;
+
 	const formatItemCount = (count: number): string => {
 		if (count === 0) return "Empty";
 		if (count === 1) return "1 video";
@@ -64,6 +68,7 @@ export const PlaylistCard = ({
 			role="button"
 			tabIndex={0}
 			onKeyDown={(e) => {
+				if (e.target !== e.currentTarget || e.defaultPrevented || e.nativeEvent.isComposing) return;
 				if (
 					onDeletePlaylist &&
 					(e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))
@@ -85,10 +90,12 @@ export const PlaylistCard = ({
 		>
 			{/* Pin button */}
 			<button
+				type="button"
 				className={`playlist-card__pin-button ${isPinned ? "playlist-card__pin-button--pinned" : "playlist-card__pin-button--hover"}`}
 				onClick={handlePinClick}
 				title={isPinned ? "Unpin playlist" : "Pin playlist"}
 				aria-label={isPinned ? "Unpin playlist" : "Pin playlist"}
+				aria-pressed={isPinned}
 			>
 				<Pin
 					size={24}
@@ -132,6 +139,9 @@ export const PlaylistCard = ({
 				)}
 
 				<div className="playlist-card__meta">
+					{sourceLabel && (
+						<span className="playlist-card__source">{sourceLabel}</span>
+					)}
 					<span className="playlist-card__item-count">
 						{formatItemCount(playlist.itemCount)}
 					</span>

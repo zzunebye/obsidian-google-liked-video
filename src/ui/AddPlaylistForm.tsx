@@ -38,11 +38,14 @@ export const AddPlaylistForm = ({
 							onChange={(e) => setPlaylistIdInput(e.target.value)}
 							disabled={isAdding}
 							onKeyDown={(e) => {
+								if (e.nativeEvent.isComposing) return;
 								if (e.key === "Enter") {
 									e.preventDefault();
 									handleAddPlaylist();
 								}
 								if (e.key === "Escape") {
+									e.preventDefault();
+									e.stopPropagation();
 									resetAddForm();
 								}
 							}}
@@ -51,7 +54,7 @@ export const AddPlaylistForm = ({
 				</div>
 
 				{addError && (
-					<div className="add-playlist-form__error">
+					<div className="add-playlist-form__error" role="alert">
 						<AlertCircle size={16} />
 						{addError}
 					</div>

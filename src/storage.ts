@@ -19,6 +19,7 @@ class LocalStorageService {
     private likedVideoStorage: LikedVideoStorageService | null = null;
     private reportWriteError: (error: unknown) => void = () => { };
     private likedVideoListeners = new Set<(videos: YouTubeVideo[]) => void>();
+    private pinnedPlaylistListeners = new Set<(playlistIds: readonly string[]) => void>();
     private temporarilyUnlikedVideos = new Map<string, number>();
 
     initializeLikedVideos(storage: LikedVideoStorageService, reportError: (error: unknown) => void): void {
@@ -242,6 +243,12 @@ class LocalStorageService {
 
     setPinnedPlaylistIds(playlistIds: string[]): void {
         window.localStorage.setItem("pinnedPlaylistIds", JSON.stringify(playlistIds));
+        this.pinnedPlaylistListeners.forEach((listener) => listener(playlistIds));
+    }
+
+    subscribePinnedPlaylistIds(listener: (playlistIds: readonly string[]) => void): () => void {
+        this.pinnedPlaylistListeners.add(listener);
+        return () => this.pinnedPlaylistListeners.delete(listener);
     }
 
     pinPlaylist(playlistId: string): void {

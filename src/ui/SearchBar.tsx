@@ -3,13 +3,14 @@ export const SearchBar: React.FC<{
     onSearchTermChange: (searchTerm: string) => void,
     escapeClearsSearch?: boolean,
     ariaLabel?: string,
-}> = ({ searchTerm, onSearchTermChange, escapeClearsSearch = false, ariaLabel = "Search liked videos" }) => {
+    placeholder?: string,
+}> = ({ searchTerm, onSearchTermChange, escapeClearsSearch = false, ariaLabel = "Search liked videos", placeholder = "Search by title, tags, or channel..." }) => {
     return (
         <div className="search-bar">
             <input
                 type="text"
 				aria-label={ariaLabel}
-                placeholder="Search by title, tags, or channel..."
+                placeholder={placeholder}
                 value={searchTerm}
                 onChange={(e) => onSearchTermChange(e.target.value)}
             />

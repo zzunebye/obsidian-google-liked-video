@@ -9,33 +9,42 @@ import {
 import { Root, createRoot } from "react-dom/client";
 import { StrictMode } from "react";
 import { localStorageService } from "src/storage";
+import { debugLogger } from "src/debug";
 import { PlaylistInfo } from "src/types";
 import { YouTubeRequestError } from "src/services/youtubeApiClient";
 import { confirmDangerousAction } from "src/utils/confirmationUtils";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { UserPlaylistsView } from "./UserPlaylistsView";
+import type { UserPlaylistsViewState } from "./UserPlaylistsView";
 import { VIEW_TYPE_PLAYLIST_VIDEOS } from "./PlaylistVideosPane";
 
-interface IUserPlaylistsPaneState {
-	playlists: PlaylistInfo[];
-	isLoading: boolean;
-	error: string | null;
+function readBrowsingState(state: unknown): UserPlaylistsViewState {
+	const saved = typeof state === "object" && state !== null
+		? state as Record<string, unknown> : {};
+	const sortOption = saved.sortOption ?? localStorageService.getPlaylistsSortOption();
+	const sortOrder = saved.sortOrder ?? localStorageService.getPlaylistsSortOrder();
+	return {
+		searchTerm: typeof saved.searchTerm === "string" ? saved.searchTerm : "",
+		sortOption: sortOption === "itemCount" || sortOption === "publishedAt" ? sortOption : "title",
+		sortOrder: sortOrder === "DESC" ? "DESC" : "ASC",
+	};
 }
 
 export const VIEW_TYPE_USER_PLAYLISTS = "user-playlists";
 
-export class UserPlaylistsPane
-	extends ItemView
-	implements IUserPlaylistsPaneState {
+export class UserPlaylistsPane extends ItemView {
 	root: Root | null = null;
 
-	/// Persisted State
 	playlists: PlaylistInfo[] = [];
 	isLoading = false;
+	hasLoaded = false;
 	error: string | null = null;
 	plugin: GoogleLikedVideoPlugin | null = null;
 	private isDeletingPlaylist = false;
+	private loadRequestId = 0;
+	private activeLoadId: number | null = null;
+	private browsingState: UserPlaylistsViewState = readBrowsingState(undefined);
 
 	constructor(leaf: WorkspaceLeaf, plugin: GoogleLikedVideoPlugin) {
 		super(leaf);
@@ -47,6 +56,7 @@ export class UserPlaylistsPane
 		menu.addItem((item: MenuItem) => {
 			item.setTitle("Refresh Playlists");
 			item.setIcon("refresh-cw");
+			item.setDisabled(this.isLoading);
 			item.onClick(() => {
 				void this.loadPlaylists();
 			});
@@ -76,81 +86,62 @@ export class UserPlaylistsPane
 		return "list-video";
 	}
 
-	async onOpen() {
+	async onOpen(): Promise<void> {
 		this.root = createRoot(this.containerEl.children[1]);
-		this.renderView();
-
-		// Load playlists after rendering initial view
 		await this.loadPlaylists();
 	}
 
-	private async loadPlaylists() {
-		if (!this.plugin?.playlistApi) {
-			this.error = "Playlist API not available";
-			this.renderView();
-			return;
-		}
+	private mergeSavedPlaylists(playlists: PlaylistInfo[]): PlaylistInfo[] {
+		const playlistIds = new Set(playlists.map((playlist) => playlist.id));
+		const savedPlaylists = localStorageService.getSavedPlaylists()
+			.filter((saved) => !playlistIds.has(saved.id))
+			.map((saved): PlaylistInfo => ({
+				id: saved.id,
+				title: saved.title,
+				description: saved.description,
+				itemCount: saved.itemCount,
+				thumbnailUrl: saved.thumbnailUrl,
+				publishedAt: saved.publishedAt,
+				isOwnedByUser: false,
+			}));
+		return [...playlists, ...savedPlaylists];
+	}
 
+	private async loadPlaylists(): Promise<void> {
+		if (!this.root || this.activeLoadId !== null) return;
+		const requestId = ++this.loadRequestId;
+		this.activeLoadId = requestId;
 		this.isLoading = true;
 		this.error = null;
-		this.renderView();
 
 		try {
-			// Load both user playlists from YouTube and saved playlists from local storage
-			const [userPlaylists, savedPlaylists] = await Promise.all([
-				this.plugin.playlistApi.fetchUserPlaylists().catch((error) => {
-					if (error instanceof YouTubeRequestError
-						&& error.reasons.some((reason) => reason === "quotaExceeded" || reason === "dailyLimitExceeded")) {
-						new Notice(
-							"YouTube API quota exceeded. Please try again later.",
-						);
-					} else if (error instanceof YouTubeRequestError && error.kind === "auth") {
-						new Notice(
-							"Authentication expired. Please refresh your login.",
-						);
-					} else if (error instanceof YouTubeRequestError && error.status === 403) {
-						new Notice("YouTube did not allow access to these playlists.");
-					} else {
-						new Notice(
-							`Failed to load YouTube playlists: ${error instanceof Error ? error.message : "Unknown error"}`,
-						);
-					}
-					return [];
-				}),
-				Promise.resolve(localStorageService.getSavedPlaylists()),
-			]);
-
-			// Combine and deduplicate playlists (user playlists take precedence)
-			const userPlaylistIds = new Set(userPlaylists.map((p) => p.id));
-			const uniqueSavedPlaylists = savedPlaylists.filter(
-				(p) => !userPlaylistIds.has(p.id),
-			);
-
-			// Convert saved playlists to PlaylistInfo format
-			const savedPlaylistInfos: PlaylistInfo[] = uniqueSavedPlaylists.map(
-				(saved) => ({
-					id: saved.id,
-					title: saved.title,
-					description: saved.description,
-					itemCount: saved.itemCount,
-					thumbnailUrl: saved.thumbnailUrl,
-					isOwnedByUser: false,
-				}),
-			);
-
-			// Combine all playlists (user playlists first, then saved playlists)
-			this.playlists = [...userPlaylists, ...savedPlaylistInfos];
-			this.error = null;
-		} catch (error) {
-			console.error("Failed to load playlists:", error);
-			this.error = `Failed to load playlists: ${error instanceof Error ? error.message : "Unknown error"}`;
-			this.playlists = [];
-			new Notice(
-				`Failed to load playlists: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
-		} finally {
-			this.isLoading = false;
+			this.playlists = this.mergeSavedPlaylists(this.playlists);
 			this.renderView();
+			if (!this.plugin?.playlistApi) throw new Error("Playlist API not available");
+			const userPlaylists = await this.plugin.playlistApi.fetchUserPlaylists();
+			if (this.activeLoadId !== requestId) return;
+			this.playlists = this.mergeSavedPlaylists(userPlaylists);
+			this.hasLoaded = true;
+		} catch (error) {
+			if (this.activeLoadId !== requestId) return;
+			debugLogger.error("Failed to load playlists:", error);
+			if (error instanceof YouTubeRequestError
+				&& error.reasons.some((reason) => reason === "quotaExceeded" || reason === "dailyLimitExceeded")) {
+				this.error = "YouTube API quota exceeded. Please try again later.";
+			} else if (error instanceof YouTubeRequestError && error.kind === "auth") {
+				this.error = "Authentication expired. Please refresh your login.";
+			} else if (error instanceof YouTubeRequestError && error.status === 403) {
+				this.error = "YouTube did not allow access to these playlists.";
+			} else {
+				this.error = `Failed to load playlists: ${error instanceof Error ? error.message : "Unknown error"}`;
+			}
+			new Notice(this.error);
+		} finally {
+			if (this.activeLoadId === requestId) {
+				this.activeLoadId = null;
+				this.isLoading = false;
+				this.renderView();
+			}
 		}
 	}
 
@@ -161,8 +152,15 @@ export class UserPlaylistsPane
 			<StrictMode>
 				<PluginContext.Provider value={this.plugin}>
 					<UserPlaylistsView
+						browsingState={this.browsingState}
+						onStateChange={(state) => {
+							this.browsingState = { ...this.browsingState, ...state };
+							this.renderView();
+							this.app.workspace.requestSaveLayout();
+						}}
 						playlists={this.playlists}
 						isLoading={this.isLoading}
+						hasLoaded={this.hasLoaded}
 						error={this.error}
 						onPlaylistSelect={(playlist: PlaylistInfo) => {
 							void this.openPlaylistVideos(playlist);
@@ -183,8 +181,9 @@ export class UserPlaylistsPane
 	}
 
 	private async handleDeletePlaylist(playlist: PlaylistInfo): Promise<void> {
+		const root = this.root;
 		if (
-			this.isDeletingPlaylist ||
+			!root || this.isDeletingPlaylist ||
 			playlist.isOwnedByUser !== true ||
 			!this.plugin?.playlistApi
 		) {
@@ -203,17 +202,21 @@ export class UserPlaylistsPane
 				},
 			);
 
-			if (!confirmed) return;
+			if (!confirmed || this.root !== root) return;
 
 			await this.plugin.playlistApi.deletePlaylist(playlist.id);
 			localStorageService.unpinPlaylist(playlist.id);
 			localStorageService.removeSavedPlaylist(playlist.id);
+			if (this.root !== root) return;
+			this.activeLoadId = null;
+			this.isLoading = false;
 			this.playlists = this.playlists.filter(
 				(item) => item.id !== playlist.id,
 			);
 			this.renderView();
 			new Notice(`Playlist "${playlist.title}" deleted from YouTube.`);
 		} catch (error) {
+			if (this.root !== root) return;
 			const message =
 				error instanceof Error ? error.message : "Unknown error";
 			new Notice(`Failed to delete playlist: ${message}`);
@@ -223,6 +226,8 @@ export class UserPlaylistsPane
 	}
 
 	private async handleAddPlaylist(playlistId: string): Promise<boolean> {
+		const root = this.root;
+		if (!root) return false;
 		if (!this.plugin?.playlistApi) {
 			throw new Error("Playlist API not available");
 		}
@@ -231,13 +236,17 @@ export class UserPlaylistsPane
 			// Fetch playlist info from YouTube API
 			const playlistInfo =
 				await this.plugin.playlistApi.fetchPlaylistById(playlistId);
+			if (this.root !== root) return false;
 
 			// Try to add to local storage
 			const success = localStorageService.addSavedPlaylist(playlistInfo);
 
 			if (success) {
+				this.playlists = this.mergeSavedPlaylists(this.playlists);
+				this.renderView();
 				// Reload playlists to include the new one
 				await this.loadPlaylists();
+				if (this.root !== root) return true;
 				new Notice(
 					`Playlist "${playlistInfo.title}" added successfully!`,
 				);
@@ -251,8 +260,11 @@ export class UserPlaylistsPane
 		}
 	}
 
-	async onClose() {
+	async onClose(): Promise<void> {
+		this.activeLoadId = null;
+		this.isLoading = false;
 		this.root?.unmount();
+		this.root = null;
 	}
 
 	// Open the playlist videos pane for the selected playlist
@@ -306,26 +318,15 @@ export class UserPlaylistsPane
 	}
 
 	async setState(
-		state: IUserPlaylistsPaneState,
+		state: unknown,
 		result: ViewStateResult,
 	): Promise<void> {
-		if (state.playlists) {
-			this.playlists = state.playlists;
-		}
-		if (state.isLoading !== undefined) {
-			this.isLoading = state.isLoading;
-		}
-		if (state.error !== undefined) {
-			this.error = state.error;
-		}
+		this.browsingState = readBrowsingState(state);
+		this.renderView();
 		return super.setState(state, result);
 	}
 
 	getState(): Record<string, unknown> {
-		return {
-			playlists: this.playlists,
-			isLoading: this.isLoading,
-			error: this.error,
-		};
+		return { ...this.browsingState };
 	}
 }
