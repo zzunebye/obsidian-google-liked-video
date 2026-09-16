@@ -19,15 +19,7 @@ import {
 import { YouTubeVideo } from "src/types";
 import { VideoInfoModal } from "src/ui/VideoInfoModal";
 import { usePlugin } from "../store/pluginContext";
-import {
-	sanitizeFileName,
-	generateVideoNoteContent,
-	getExpectedNotePath,
-	computeExpectedNotePath,
-} from "src/utils/noteUtils";
-import { ensureVideoNoteId, findVideoNote } from "src/utils/videoNoteUtils";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
-import { TemplateService } from "src/services/templateService";
 import { SummarySection } from "./SummarySection";
 import type { SummarySnapshot } from "./SummarySection";
 import { ResponsiveVideoTags } from "./VideoTags";
@@ -144,133 +136,22 @@ export const VideoCard = ({
 		e.stopPropagation();
 		onChannelClick(videoInfo.snippet.channelTitle, videoInfo.snippet.channelId);
 	};
-	const handleCreateVideoNote = async (e: React.MouseEvent) => {
+	const handleCreateVideoNote = async (e: React.MouseEvent): Promise<void> => {
 		e.preventDefault();
 		e.stopPropagation();
-
 		try {
-			const baseFileName = sanitizeFileName(videoInfo.snippet.title);
-			const configuredPath = plugin.settings?.videoNotePath?.trim() || "";
-			const customPath = configuredPath;
-			const organizeByChannel =
-				configuredPath.length > 0 && (plugin.settings?.organizeByChannel || false);
-			const channelName = videoInfo.snippet.channelTitle;
-			const appInstance = plugin.app;
-
-			const expectedPath = computeExpectedNotePath(
-				appInstance,
-				baseFileName,
-				customPath,
-				organizeByChannel,
-				channelName,
-			);
-
-			const legacyPaths = configuredPath
-				? [expectedPath]
-				: [
-					expectedPath,
-					computeExpectedNotePath(appInstance, baseFileName, "Youtube", organizeByChannel, channelName),
-				];
-			const existingFile = findVideoNote(appInstance, videoInfo.id, legacyPaths);
-
-			if (!existingFile) {
-				const fullPath = await getExpectedNotePath(
-					appInstance,
-					baseFileName,
-					customPath,
-					organizeByChannel,
-					channelName,
-				);
-				const templateService = plugin.settings
-					? new TemplateService(appInstance, plugin.settings)
-					: undefined;
-
-				const noteContent = await generateVideoNoteContent(
-					videoInfo,
-					url,
-					plugin.getCategoryDisplay?.bind(plugin),
-					templateService,
-				);
-
-				const newNoteFile = await appInstance.vault.create(
-					fullPath,
-					noteContent,
-				);
-				await ensureVideoNoteId(appInstance, newNoteFile, videoInfo.id);
-
-				await appInstance.workspace.openLinkText(
-					newNoteFile.path,
-					"",
-					true,
-				);
-				new Notice(`Created note: ${newNoteFile.basename}`);
-			} else {
-				await ensureVideoNoteId(appInstance, existingFile, videoInfo.id);
-				new Notice(
-					`Note already exists for this video. Opening existing note: ${existingFile.path}`,
-				);
-				await appInstance.workspace.openLinkText(
-					existingFile.path,
-					"",
-					true,
-				);
-			}
+			const { file, created } = await plugin.videoNotes.getOrCreate(videoInfo, url);
+			await plugin.app.workspace.openLinkText(file.path, "", true);
+			new Notice(created ? `Created note: ${file.basename}` : `Opening existing note: ${file.path}`);
 		} catch (error) {
-			console.error("Error handling video note:", error);
-			new Notice(
-				"Failed to create/open video note. Check console for details.",
-			);
+			debugLogger.error("Error handling video note:", error);
+			new Notice("Failed to create/open video note. Check console for details.");
 		}
 	};
 
 	const handleAddSummaryToNote = async (summaryText: string) => {
 		const appInstance = plugin.app;
-		const baseFileName = sanitizeFileName(videoInfo.snippet.title);
-		const configuredPath = plugin.settings?.videoNotePath?.trim() || "";
-		const customPath = configuredPath;
-		const organizeByChannel = configuredPath.length > 0 && (plugin.settings?.organizeByChannel || false);
-		const channelName = videoInfo.snippet.channelTitle;
-
-		const expectedPath = computeExpectedNotePath(
-			appInstance,
-			baseFileName,
-			customPath,
-			organizeByChannel,
-			channelName,
-		);
-
-		const legacyPaths = configuredPath
-			? [expectedPath]
-			: [
-				expectedPath,
-				computeExpectedNotePath(appInstance, baseFileName, "Youtube", organizeByChannel, channelName),
-			];
-		let file = findVideoNote(appInstance, videoInfo.id, legacyPaths);
-
-		if (!file) {
-			// Create the note first
-			const fullPath = await getExpectedNotePath(
-				appInstance,
-				baseFileName,
-				customPath,
-				organizeByChannel,
-				channelName,
-			);
-
-			const templateService = plugin.settings
-				? new TemplateService(appInstance, plugin.settings)
-				: undefined;
-
-			const noteContent = await generateVideoNoteContent(
-				videoInfo,
-				url,
-				plugin.getCategoryDisplay?.bind(plugin),
-				templateService,
-			);
-
-			file = await appInstance.vault.create(fullPath, noteContent);
-		}
-		await ensureVideoNoteId(appInstance, file, videoInfo.id);
+		const { file } = await plugin.videoNotes.getOrCreate(videoInfo, url);
 
 		const summaryWasAppended = await appendNoteContent(appInstance, file, {
 			text: "\n\n## AI Summary\n" + summaryText,

@@ -4,6 +4,7 @@ export const DEFAULT_TEMPLATE = `---
 title: "{{title}}"
 type: youtube-video
 video_id: "{{video_id}}"
+liked: {{liked}}
 channel: "{{channel}}"
 channel_id: {{channel_id}}
 duration: {{duration}}
@@ -37,6 +38,7 @@ export const TEMPLATE_VARIABLES_REFERENCE: readonly CollapsibleReferenceSection[
 		items: [
 			{ variables: ['{{title}}'], description: 'Video title' },
 			{ variables: ['{{video_id}}'], description: 'Video ID' },
+			{ variables: ['{{liked}}'], description: 'Your connected YouTube account’s last confirmed like status (true/false); omitted when unknown' },
 			{ variables: ['{{video_url}}'], description: 'YouTube URL' },
 			{ variables: ['{{channel}}'], description: 'Channel name' },
 			{ variables: ['{{channel_id}}'], description: 'Channel ID' },

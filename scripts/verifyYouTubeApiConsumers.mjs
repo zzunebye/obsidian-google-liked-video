@@ -103,6 +103,27 @@ try {
 	assert.equal(requests.length, requestCountBeforeBlockedMutation);
 	console.log('PASS: liked-video mutations verify cache ownership before changing YouTube');
 
+	responses = [{ status: 200, json: { items: [
+		{ videoId: 'liked', rating: 'like' }, { videoId: 'none', rating: 'none' },
+		{ videoId: 'disliked', rating: 'dislike' }, { videoId: 'unknown', rating: 'unspecified' },
+	] } }];
+	assert.deepEqual([...await likedVideoApi.getVideoRatings(['liked', 'none', 'disliked', 'unknown', 'missing'])],
+		[['liked', true], ['none', false], ['disliked', false]]);
+	for (const items of [null, [{ videoId: 'liked', rating: ['like'] }], [{ videoId: 'liked', rating: 'invalid' }], [{ videoId: 'other', rating: 'like' }]]) {
+		responses = [{ status: 200, json: { items } }];
+		await assert.rejects(likedVideoApi.getVideoRatings(['liked']), /invalid video/);
+	}
+	const ratingIds = Array.from({ length: 51 }, (_, index) => `rating-${index}`);
+	responses = [
+		{ status: 200, json: { items: ratingIds.slice(0, 50).map(videoId => ({ videoId, rating: 'like' })) } },
+		{ status: 200, json: { items: [{ videoId: ratingIds[50], rating: 'none' }] } },
+	];
+	const batchedRatings = await likedVideoApi.getVideoRatings([...ratingIds, ratingIds[0]]);
+	assert.equal(batchedRatings.size, 51); assert.equal(batchedRatings.get(ratingIds[50]), false);
+	assert.equal(new URL(requests.at(-2).url).searchParams.get('id').split(',').length, 50);
+	assert.equal(new URL(requests.at(-1).url).searchParams.get('id'), ratingIds[50]);
+	console.log('PASS: rating booleans, unknown/missing responses, validation, batching and duplicate IDs');
+
 	const savedVideo = {
 		id: 'saved-video', pulled_at: '2026-01-01T00:00:00Z',
 		snippet: { title: 'Saved video', channelTitle: 'Channel', channelId: 'channel', publishedAt: '2026-01-01', description: '', thumbnails: { medium: { url: 'https://example.com/image.jpg' } } },

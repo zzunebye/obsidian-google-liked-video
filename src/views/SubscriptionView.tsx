@@ -605,7 +605,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		pendingLikeIdsRef.current.add(video.id);
 		setPendingLikeIds(new Set(pendingLikeIdsRef.current));
 		try {
-			await likeVideoAndPersist(plugin.likedVideoApi, video);
+			await likeVideoAndPersist(plugin.likedVideoApi, video, 0, plugin.videoNotes.captureLikedUpdate());
 			setLikedVideoIds((current) => new Set(current).add(video.id));
 			new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
 		} catch (likeError) {
@@ -626,7 +626,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			const likedVideos = localStorageService.getLikedVideos();
 			const index = likedVideos.findIndex((item) => item.id === video.id);
 			const previousVideoId = index > 0 ? likedVideos[index - 1].id : null;
-			await unlikeVideoAndPersist(plugin.likedVideoApi, video.id);
+			await unlikeVideoAndPersist(plugin.likedVideoApi, video.id, plugin.videoNotes.captureLikedUpdate());
 			setLikedVideoIds((current) => {
 				const next = new Set(current);
 				next.delete(video.id);
@@ -648,7 +648,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 							const previousIndex = previousVideoId
 								? current.findIndex((item) => item.id === previousVideoId) : -1;
 							return previousIndex >= 0 ? previousIndex + 1 : Math.max(0, Math.min(index, current.length));
-						});
+						}, plugin.videoNotes.captureLikedUpdate());
 						setLikedVideoIds((current) => new Set(current).add(video.id));
 						notice.hide();
 					} catch (undoError) {

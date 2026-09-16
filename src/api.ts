@@ -628,6 +628,28 @@ export class LikedVideoApi {
         return data;
     }
 
+	async getVideoRatings(videoIds: readonly string[], signal?: AbortSignal): Promise<Map<string, boolean>> {
+		const ratings = new Map<string, boolean>();
+		const ids = [...new Set(videoIds)];
+		for (let offset = 0; offset < ids.length; offset += 50) {
+			const batch = ids.slice(offset, offset + 50);
+			const response = await this.client.request('GET',
+				`videos/getRating?id=${encodeURIComponent(batch.join(','))}`, { signal });
+			const data: unknown = response.json;
+			if (!isRecord(data) || !Array.isArray(data.items)) {
+				throw new Error('YouTube returned an invalid video-rating response.');
+			}
+			for (const item of data.items) {
+				if (!isRecord(item) || typeof item.videoId !== 'string' || !batch.includes(item.videoId)
+					|| typeof item.rating !== 'string' || !['like', 'none', 'dislike', 'unspecified'].includes(item.rating)) {
+					throw new Error('YouTube returned an invalid video rating.');
+				}
+				if (item.rating !== 'unspecified') ratings.set(item.videoId, item.rating === 'like');
+			}
+		}
+		return ratings;
+	}
+
     async fetchPlaylists(): Promise<unknown> {
         const url = 'playlists?'
             + 'part=snippet,contentDetails'

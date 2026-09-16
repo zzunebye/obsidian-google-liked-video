@@ -15,11 +15,9 @@ import { debugLogger } from './debug';
 import { UI_TEXT } from './constants/uiText';
 import { categoriesService } from './categoriesService';
 import { FEATURE_ANNOUNCEMENT, LEGACY_ANNOUNCEMENT_ID, FeatureIntroModal } from './components/FeatureIntroModal';
-import { computeExpectedNotePath, getExpectedNotePath, generateVideoNoteContent, sanitizeFileName, getVideoUrl, linkToDailyNote } from './utils/noteUtils';
-import { ensureVideoNoteId, findVideoNote } from './utils/videoNoteUtils';
+import { linkToDailyNote } from './utils/noteUtils';
 import { DEFAULT_TEMPLATE } from './utils/templateConstants';
 import { createNotesForNewVideos, fetchAndMergeLikedVideos } from './services/likedVideoFetchService';
-import { TemplateService } from './services/templateService';
 import { createAIService, getActiveApiKey } from './services/aiServiceFactory';
 import { SummaryStorageService } from './services/summaryStorageService';
 import { LikedVideoStorageService } from './services/likedVideoStorageService';
@@ -30,6 +28,7 @@ import { SubscriptionService } from './services/subscriptionService';
 import { SubscriptionStorageService } from './services/subscriptionStorageService';
 import { vaultLocalStorageService } from './services/vaultLocalStorageService';
 import { VideoNoteIndexService } from './services/videoNoteIndexService';
+import { VideoNoteService } from './services/videoNoteService';
 import { YouTubeApiClient } from './services/youtubeApiClient';
 import { CacheOwnershipError, YouTubeAccountIdentity, YouTubeAccountIdentityService } from './services/youtubeAccountIdentityService';
 import { chooseCacheOwnership } from './ui/CacheOwnershipModal';
@@ -89,6 +88,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	subscriptionService!: SubscriptionService;
 	summaryStorage!: SummaryStorageService;
 	videoNoteIndex!: VideoNoteIndexService;
+	videoNotes!: VideoNoteService;
 	accountIdentityService!: YouTubeAccountIdentityService;
 	likedVideoStorage?: LikedVideoStorageService;
 	autoFetchInterval: number | null = null;
@@ -143,6 +143,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.summaryStorage = new SummaryStorageService(this.app.vault.adapter, manifestDir, 500);
 		await this.summaryStorage.initialize();
 		this.videoNoteIndex = new VideoNoteIndexService(this.app);
+		this.videoNotes = new VideoNoteService(this);
 
 		this.registerView(
 			VIEW_TYPE_LIKED_VIDEO_LIST,
@@ -258,6 +259,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.featureAnnouncementModal = null;
 		announcementModal?.close();
 		this.stopAutoFetch();
+		this.videoNotes?.destroy();
 		this.videoNoteIndex?.destroy();
 		this.fetchStatusListeners.clear();
 		void this.likedVideoStorage?.close().catch((error: unknown) => {
@@ -421,6 +423,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 	resetGoogleAccountIdentity(): void {
 		this.accountIdentityService.reset();
+		this.videoNotes?.resetLikedState();
 		this.ownershipWarnings.clear();
 	}
 
@@ -633,11 +636,13 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					new Notice(UI_TEXT.FULL_FETCH_STARTED_NOTICE);
 				}
 
+				const likedCheckpoint = this.videoNotes.getLikedStateCheckpoint();
 				const result = await fetchAndMergeLikedVideos(this.likedVideoApi, {
 					mode: shouldFetchAllVideos ? 'full' : 'partial',
 					keepUnfetched: !shouldFetchAllVideos,
 					allowEmptyFullReplacement: ownership.replaceExisting,
 				});
+				if (!this.videoNotes.isLikedStateCurrent(likedCheckpoint)) return;
 				const { mergedVideos: updatedLikedVideos, newVideos: newLikedVideos, updatedCount } = result;
 
 				debugLogger.autoFetch(
@@ -657,6 +662,8 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 						updatedLikedVideos,
 						ownership.ownerChannelId,
 					);
+					await this.videoNotes.syncLikedVideos(result.fetchedVideoIds, shouldFetchAllVideos, likedCheckpoint);
+					if (!this.videoNotes.isLikedStateCurrent(likedCheckpoint)) return;
 					if (shouldFetchAllVideos) {
 						new Notice(UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(updatedLikedVideos.length));
 					} else if (newLikedVideos.length > 0) {
@@ -671,9 +678,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					await createNotesForNewVideos(
 						newLikedVideos,
 						this.settings.autoCreateNoteEnabled,
-						(video) => this.automateVideoProcessing(video)
+						async (video) => {
+							if (this.videoNotes.isLikedStateCurrent(likedCheckpoint)) await this.automateVideoProcessing(video);
+						}
 					);
 				} else {
+					await this.videoNotes.syncLikedVideos(result.fetchedVideoIds, false, likedCheckpoint);
 					debugLogger.autoFetch('No new videos found during auto-fetch.');
 				}
 				this.settings.lastAutoFetchTime = now;
@@ -691,67 +701,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 	}
 
-	async automateVideoProcessing(video: YouTubeVideo) {
+	async automateVideoProcessing(video: YouTubeVideo): Promise<void> {
 		try {
-			const baseFileName = sanitizeFileName(video.snippet.title);
-			const configuredPath = this.settings?.videoNotePath?.trim() || '';
-			const customPath = configuredPath;
-			const organizeByChannel = configuredPath.length > 0 && (this.settings?.organizeByChannel || false);
-			const channelName = video.snippet.channelTitle;
-
-			const expectedPath = computeExpectedNotePath(
-				this.app,
-				baseFileName,
-				customPath,
-				organizeByChannel,
-				channelName
-			);
-
-			const legacyPaths = configuredPath
-				? [expectedPath]
-				: [
-					expectedPath,
-					computeExpectedNotePath(this.app, baseFileName, 'Youtube', organizeByChannel, channelName),
-				];
-			const existingFile = findVideoNote(this.app, video.id, legacyPaths);
-
-			if (!existingFile) {
-				const fullPath = await getExpectedNotePath(
-					this.app,
-					baseFileName,
-					customPath,
-					organizeByChannel,
-					channelName
-				);
-				const templateService = new TemplateService(this.app, this.settings);
-
-				const videoUrl = getVideoUrl(video.id);
-				const noteContent = await generateVideoNoteContent(
-					video,
-					videoUrl,
-					this.getCategoryDisplay.bind(this),
-					templateService
-				);
-
-				const newNoteFile = await this.app.vault.create(fullPath, noteContent);
-				await ensureVideoNoteId(this.app, newNoteFile, video.id);
-				new Notice(`Created note: ${newNoteFile.basename}`);
-
-				// Get AI Summary
-				// TODO: Enable when auto-create summary flow is finalized and decided to be included
-				// const summary = await this.getAISummary(video.snippet.title, video.snippet.description, video.id);
-
-				// Append summary to the newly created note
-				// if (summary) {
-				// 	await this.app.vault.append(newNoteFile, `\n\n## AI Summary\n${summary}`);
-				// }
-
-				// Link to Daily Note
-				if (this.settings.linkToDailyNote) {
-					await linkToDailyNote(this.app, newNoteFile);
-				}
-			} else {
-				await ensureVideoNoteId(this.app, existingFile, video.id);
+			const { file, created } = await this.videoNotes.getOrCreate(video, undefined, { reuseConfirmedRating: true });
+			if (created) {
+				new Notice(`Created note: ${file.basename}`);
+				if (this.settings.linkToDailyNote) await linkToDailyNote(this.app, file);
 			}
 		} catch (error) {
 			console.error('Error handling video note automation:', error);

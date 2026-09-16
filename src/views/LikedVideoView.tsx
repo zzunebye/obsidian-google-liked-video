@@ -911,7 +911,7 @@ export const LikedVideoView: React.FC = () => {
 								const index = videos.findIndex((v) => v.id === video.id);
 								const previousVideoId = index > 0 ? videos[index - 1].id : null;
 								try {
-									await unlikeVideoAndPersist(plugin.likedVideoApi, video.id);
+									await unlikeVideoAndPersist(plugin.likedVideoApi, video.id, plugin.videoNotes.captureLikedUpdate());
 
 									const fragment = new DocumentFragment();
 									fragment.createSpan({ text: `Unliked "${video.snippet.title}" ` });
@@ -935,6 +935,7 @@ export const LikedVideoView: React.FC = () => {
 															? previousIndex + 1
 															: Math.min(index, current.length);
 													},
+													plugin.videoNotes.captureLikedUpdate(),
 												);
 												notice.hide();
 											} catch (error) {

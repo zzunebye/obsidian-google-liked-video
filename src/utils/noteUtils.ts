@@ -93,7 +93,8 @@ export const getLanguageName = (code: string | undefined): string => {
 export const buildTemplateVariables = (
     videoInfo: YouTubeVideo,
     videoUrl: string,
-    getCategoryDisplay?: (categoryId: string) => string
+    getCategoryDisplay?: (categoryId: string) => string,
+    liked?: boolean
 ): Record<string, string> => {
     const category = getCategoryDisplay
         ? getCategoryDisplay(videoInfo.snippet.categoryId)
@@ -103,6 +104,7 @@ export const buildTemplateVariables = (
         // Core metadata
         'title': sanitizeForYAML(videoInfo.snippet.title),
         'video_id': videoInfo.id,
+        'liked': liked === undefined ? '' : String(liked),
         'video_url': videoUrl,
         'channel': sanitizeForYAML(videoInfo.snippet.channelTitle),
         'channel_id': videoInfo.snippet.channelId,
@@ -205,9 +207,10 @@ export const generateVideoNoteContentFromTemplate = (
     template: string,
     videoInfo: YouTubeVideo,
     videoUrl: string,
-    getCategoryDisplay?: (categoryId: string) => string
+    getCategoryDisplay?: (categoryId: string) => string,
+    liked?: boolean
 ): string => {
-    const variables = buildTemplateVariables(videoInfo, videoUrl, getCategoryDisplay);
+    const variables = buildTemplateVariables(videoInfo, videoUrl, getCategoryDisplay, liked);
     // First replace Obsidian core date/time variables, then video variables
     let result = replaceDateTimeVariables(template);
     result = replaceTemplateVariables(result, variables);
@@ -218,7 +221,8 @@ export const generateVideoNoteContent = async (
     videoInfo: YouTubeVideo,
     videoUrl: string,
     getCategoryDisplay?: (categoryId: string) => string,
-    templateService?: TemplateService
+    templateService?: TemplateService,
+    liked?: boolean
 ): Promise<string> => {
     // Try to load custom template
     if (templateService) {
@@ -229,7 +233,8 @@ export const generateVideoNoteContent = async (
                     template,
                     videoInfo,
                     videoUrl,
-                    getCategoryDisplay
+                    getCategoryDisplay,
+                    liked
                 );
             }
         } catch (error) {
@@ -254,7 +259,7 @@ export const generateVideoNoteContent = async (
     const frontmatter = `---
 title: "${title.replace(/"/g, '\\"')}"
 type: "youtube-video"
-video_id: "${videoInfo.id}"
+video_id: "${videoInfo.id}"${liked === undefined ? '' : `\nliked: ${liked}`}
 channel: "${channel.replace(/"/g, '\\"')}"
 duration: "${duration}"
 published: "${published}"

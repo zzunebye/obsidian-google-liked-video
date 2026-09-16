@@ -18,6 +18,7 @@ export interface FetchAndMergeLikedVideosOptions {
 }
 
 export interface FetchAndMergeLikedVideosResult {
+	fetchedVideoIds: string[];
 	mergedVideos: YouTubeVideo[];
 	newVideos: YouTubeVideo[];
 	updatedCount: number;
@@ -75,6 +76,7 @@ export async function fetchAndMergeLikedVideos(
 	);
 
 	return {
+		fetchedVideoIds: fetchedVideos.map(video => video.id),
 		mergedVideos,
 		newVideos,
 		updatedCount,

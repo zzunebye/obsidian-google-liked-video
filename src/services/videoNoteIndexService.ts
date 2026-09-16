@@ -12,12 +12,20 @@ export class VideoNoteIndexService {
 		for (const file of app.vault.getMarkdownFiles()) this.updateFile(file, false);
 		this.vaultEventRefs = [
 			app.vault.on("create", (file) => {
-				if (file instanceof TFile) this.updateFile(file);
+				if (file instanceof TFile) { this.updateFile(file, false); this.notify(); }
 			}),
-			app.vault.on("delete", (file) => this.removePath(file.path)),
+			app.vault.on("delete", (file) => {
+				if (file instanceof TFile) { this.removePath(file.path, false); this.notify(); }
+			}),
 			app.vault.on("rename", (file, oldPath) => {
+				const previousId = this.videoIdByPath.get(oldPath);
 				this.removePath(oldPath, false);
-				if (file instanceof TFile) this.updateFile(file);
+				if (file instanceof TFile) {
+					const videoId = this.app.metadataCache.getFileCache(file)
+						? getVideoNoteId(this.app, file) : previousId ?? null;
+					this.updateMapping(file.path, videoId);
+					this.notify();
+				}
 			}),
 		];
 		this.metadataEventRef = app.metadataCache.on("changed", (file) => this.updateFile(file));
@@ -25,6 +33,35 @@ export class VideoNoteIndexService {
 
 	has(videoId: string): boolean {
 		return (this.pathsByVideoId.get(videoId)?.size ?? 0) > 0;
+	}
+
+	get(videoId: string): TFile | null {
+		const paths = this.pathsByVideoId.get(videoId);
+		if (!paths) return null;
+		for (const path of paths) {
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (file instanceof TFile) return file;
+			this.removePath(path);
+		}
+		return null;
+	}
+
+	getAll(videoId: string): TFile[] {
+		const files: TFile[] = [];
+		for (const path of this.pathsByVideoId.get(videoId) ?? []) {
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (file instanceof TFile) files.push(file);
+			else this.removePath(path);
+		}
+		return files;
+	}
+
+	getVideoIds(): string[] {
+		return [...this.pathsByVideoId.keys()];
+	}
+
+	record(file: TFile, videoId: string): void {
+		if (this.updateMapping(file.path, videoId)) this.notify();
 	}
 
 	subscribe(listener: () => void): () => void {
@@ -41,15 +78,20 @@ export class VideoNoteIndexService {
 	}
 
 	private updateFile(file: TFile, notify = true): void {
-		this.removePath(file.path, false);
-		const videoId = getVideoNoteId(this.app, file);
+		if (!this.app.metadataCache.getFileCache(file)) return;
+		if (this.updateMapping(file.path, getVideoNoteId(this.app, file)) && notify) this.notify();
+	}
+
+	private updateMapping(path: string, videoId: string | null): boolean {
+		if ((this.videoIdByPath.get(path) ?? null) === videoId) return false;
+		this.removePath(path, false);
 		if (videoId !== null) {
 			const paths = this.pathsByVideoId.get(videoId) ?? new Set<string>();
-			paths.add(file.path);
+			paths.add(path);
 			this.pathsByVideoId.set(videoId, paths);
-			this.videoIdByPath.set(file.path, videoId);
+			this.videoIdByPath.set(path, videoId);
 		}
-		if (notify) this.notify();
+		return true;
 	}
 
 	private removePath(path: string, notify = true): void {
@@ -60,7 +102,7 @@ export class VideoNoteIndexService {
 			if (paths?.size === 0) this.pathsByVideoId.delete(videoId);
 			this.videoIdByPath.delete(path);
 		}
-		if (notify) this.notify();
+		if (videoId !== undefined && notify) this.notify();
 	}
 
 	private notify(): void {
