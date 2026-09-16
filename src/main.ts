@@ -32,6 +32,8 @@ import { VideoNoteService } from './services/videoNoteService';
 import { YouTubeApiClient } from './services/youtubeApiClient';
 import { CacheOwnershipError, YouTubeAccountIdentity, YouTubeAccountIdentityService } from './services/youtubeAccountIdentityService';
 import { chooseCacheOwnership } from './ui/CacheOwnershipModal';
+import { WebViewerSummaryIntegration } from './services/webViewerSummaryIntegration';
+import { PlaylistImportService } from './services/playlistImportService';
 
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
@@ -84,6 +86,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 	vault = this.app.vault;
 	likedVideoApi!: LikedVideoApi;
 	playlistApi!: PlaylistApi;
+	playlistImports!: PlaylistImportService;
 	commentService!: CommentService;
 	subscriptionService!: SubscriptionService;
 	summaryStorage!: SummaryStorageService;
@@ -129,6 +132,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			() => this.requireLikedVideoCacheOwnership(),
 		);
 		this.playlistApi = new PlaylistApi(youtubeApiClient);
+		this.playlistImports = this.addChild(new PlaylistImportService(this.playlistApi, () => {
+			const pane = this.app.workspace.getLeavesOfType(VIEW_TYPE_USER_PLAYLISTS)
+				.map(leaf => leaf.view).find((view): view is UserPlaylistsPane =>
+					view instanceof UserPlaylistsPane && view.hasLoaded);
+			return pane?.playlists ?? null;
+		}));
 		this.commentService = new CommentService(youtubeApiClient, this.accountIdentityService);
 		const subscriptionStorage = new SubscriptionStorageService(this.app.vault.adapter, manifestDir);
 		this.subscriptionService = new SubscriptionService(youtubeApiClient, subscriptionStorage);
@@ -170,6 +179,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			(leaf) => new SubscriptionPane(leaf, this),
 		);
 		this.registerView(VIEW_TYPE_TRANSCRIPT, (leaf) => new TranscriptPane(leaf, this));
+		this.addChild(new WebViewerSummaryIntegration(this, youtubeApiClient));
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.settingTabRef = new GoogleLikedVideoSettingTab(this.app, this);

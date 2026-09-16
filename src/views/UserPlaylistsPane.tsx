@@ -270,42 +270,11 @@ export class UserPlaylistsPane extends ItemView {
 	private async handleAddPlaylist(input: string): Promise<boolean> {
 		const root = this.root;
 		if (!root) return false;
-		if (!this.plugin?.playlistApi) {
-			throw new Error("Playlist API not available");
-		}
-		if (!this.hasLoaded) {
-			throw new Error("Refresh your playlists before importing to check for duplicates.");
-		}
-
-		const playlistId = this.plugin.playlistApi.extractPlaylistId(input);
-		const alreadyExists = (id: string): boolean =>
-			this.playlists.some((playlist) => playlist.id === id)
-			|| localStorageService.isPlaylistSaved(id);
-		if (alreadyExists(playlistId)) return false;
-
-		try {
-			// Fetch playlist info from YouTube API
-			const playlistInfo =
-				await this.plugin.playlistApi.fetchPlaylistById(playlistId);
-			if (this.root !== root) return false;
-			// A refresh or another pane may have added this ID while the request was pending.
-			if (alreadyExists(playlistInfo.id)) return false;
-
-			// Try to add to local storage
-			const success = localStorageService.addSavedPlaylist(playlistInfo);
-
-			if (success) {
-				new Notice(
-					`Playlist "${playlistInfo.title}" added successfully!`,
-				);
-				return true;
-			} else {
-				return false; // Already exists
-			}
-		} catch (error) {
-			console.error("Failed to add playlist:", error);
-			throw error; // Re-throw to be handled by the UI
-		}
+		if (!this.plugin?.playlistImports) throw new Error("Playlist import is not available");
+		const result = await this.plugin.playlistImports.importPlaylist(input);
+		if (this.root !== root) return false;
+		if (result.imported) new Notice(`Playlist "${result.playlist.title}" added successfully!`);
+		return result.imported;
 	}
 
 	async onClose(): Promise<void> {
