@@ -5,7 +5,7 @@ import { AIServiceError } from './aiServiceError';
 
 export { AIServiceError } from './aiServiceError';
 
-const GEMINI_MODEL = 'gemini-3-flash-preview';
+export const GEMINI_MODEL = 'gemini-3.8-flash';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -39,7 +39,7 @@ export interface StreamOptions {
 export interface AIService {
 	generateVideoSummary(videoId: string, prompt: string): Promise<AIServiceResult>;
 	generateVideoSummaryStream?(videoId: string, prompt: string, options: StreamOptions): Promise<void>;
-	generateTextCompletion(prompt: string): Promise<string>;
+	generateTextCompletion(prompt: string, signal?: AbortSignal): Promise<string>;
 }
 
 // Keep old names as aliases for backwards compatibility with any external consumers
@@ -79,8 +79,8 @@ export class GeminiService extends BaseAIService {
 
 	protected buildRequestHeaders(): Record<string, string> {
 		return {
-				'Content-Type': 'application/json',
-				'x-goog-api-key': this.apiKey
+			'Content-Type': 'application/json',
+			'x-goog-api-key': this.apiKey
 		};
 	}
 

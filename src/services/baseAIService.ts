@@ -109,12 +109,15 @@ export abstract class BaseAIService implements AIService {
 		}
 	}
 
-	async generateTextCompletion(prompt: string): Promise<string> {
+	async generateTextCompletion(prompt: string, signal?: AbortSignal): Promise<string> {
 		this.validateApiKey();
 
 		const url = this.buildTextCompletionUrl();
 		const body = this.buildTextCompletionBody(prompt);
 		const controller = new AbortController();
+		const abort = () => controller.abort();
+		signal?.addEventListener('abort', abort, { once: true });
+		if (signal?.aborted) controller.abort();
 		const timeoutId = window.setTimeout(() => controller.abort(), TEXT_COMPLETION_TIMEOUT_MS);
 
 		try {
@@ -131,6 +134,7 @@ export abstract class BaseAIService implements AIService {
 			return this.parseTextCompletionResponse(data);
 		} catch (error: unknown) {
 			window.clearTimeout(timeoutId);
+			if (signal?.aborted) throw error;
 			if (isAbortError(error)) {
 				const timeoutError = new AIServiceError(
 					'network_error',
@@ -139,6 +143,9 @@ export abstract class BaseAIService implements AIService {
 				throw timeoutError;
 			}
 			throw toAIServiceError(error);
+		} finally {
+			window.clearTimeout(timeoutId);
+			signal?.removeEventListener('abort', abort);
 		}
 	}
 
