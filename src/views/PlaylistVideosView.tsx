@@ -1,7 +1,7 @@
 import { Menu, Notice } from "obsidian";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
-import { Play, Search, AlertCircle, RefreshCw, Trash2, Settings, SlidersHorizontal, ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
+import { Play, Search, AlertCircle, RefreshCw, Trash2, Settings, ExternalLink, SlidersHorizontal, ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import type { ContentTypeSelection, DurationFilter, PlaylistInfo, PlaylistSource, PresenceFilter, PublishedDateFilter, YouTubeVideo } from "src/types";
 import { UI_TEXT } from "src/constants/uiText";
 import { localStorageService } from "src/storage";
@@ -653,6 +653,22 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		});
 	};
 
+	const openPlaylistAction = (
+		<button
+			type="button"
+			aria-label="Open playlist on YouTube"
+			onClick={() => {
+				const url = `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId ?? "LL")}`;
+				void openVideo(url).catch((error: unknown) => {
+					debugLogger.error("Failed to open YouTube playlist:", error);
+					new Notice("Unable to open YouTube playlist. Please try again.");
+				});
+			}}
+		>
+			<ExternalLink size={16} aria-hidden="true" />
+		</button>
+	);
+
 	const handleTagClick = (tag: string) => {
 		setSelectedTag((current) =>
 			current?.toLowerCase() === tag.toLowerCase() ? null : tag,
@@ -717,6 +733,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				<ViewHeader
 					icon={<Play className="video-view-header__icon" />}
 					title={playlistInfo.title}
+					actions={openPlaylistAction}
 				/>
 
 				<div className="videos-loading-skeleton">
@@ -744,6 +761,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				<ViewHeader
 					icon={<Play className="video-view-header__icon" />}
 					title={playlistInfo.title}
+					actions={openPlaylistAction}
 				/>
 
 				<div className="videos-error">
@@ -797,6 +815,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 							</button>
 						)}
 						{settingsAction}
+						{openPlaylistAction}
 					</>
 				}
 			/>
