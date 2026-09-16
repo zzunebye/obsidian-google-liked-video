@@ -64,6 +64,13 @@ export function isShortVideoMaxDurationSeconds(
     return (SHORT_VIDEO_MAX_DURATION_OPTIONS as readonly number[]).includes(value);
 }
 
+export const SUMMARY_LINE_HEIGHT_OPTIONS = [1.3, 1.5, 1.8, 2] as const;
+export type SummaryLineHeight = typeof SUMMARY_LINE_HEIGHT_OPTIONS[number];
+
+export function isSummaryLineHeight(value: number): value is SummaryLineHeight {
+	return (SUMMARY_LINE_HEIGHT_OPTIONS as readonly number[]).includes(value);
+}
+
 export interface ObsidianGoogleLikedVideoSettings {
     googleClientId: string;
     dailyNotePath: string;
@@ -83,6 +90,7 @@ export interface ObsidianGoogleLikedVideoSettings {
     openInObsidianWebViewer: boolean;
     openWebViewerInSplitPane: boolean;
     transcriptLanguage: string;
+    summaryLineHeight: SummaryLineHeight;
     showVideoTags: boolean;
     shortVideoMaxDurationSeconds: ShortVideoMaxDurationSeconds;
     enableAISummary: boolean;

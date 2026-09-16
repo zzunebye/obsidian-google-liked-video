@@ -1577,6 +1577,34 @@ button.video-stat--button:focus-visible {
 .geulo-transcript-reader__summary .summary-section {
 	padding: 12px 0;
 }
+.geulo-transcript-reader__summary .summary-section__content {
+	line-height: var(--geulo-summary-line-height, 1.5);
+}
+.geulo-transcript-reader__summary .summary-section__content :is(p, ul, ol) {
+	margin-block: 0 1em;
+}
+.geulo-transcript-reader__summary .summary-section__content :is(ul, ol) {
+	padding-inline-start: 1.6em;
+}
+.geulo-transcript-reader__summary .summary-section__content li + li {
+	margin-top: 0.35em;
+}
+.geulo-transcript-reader__summary .summary-section__content li > :is(ul, ol) {
+	margin-block: 0.4em 0;
+}
+.geulo-transcript-reader__summary .summary-section__content li > p {
+	margin-block: 0.4em;
+}
+.geulo-transcript-reader__summary .summary-section__content :is(h1, h2, h3, h4, h5, h6) {
+	margin-block: 1.5em 0.6em;
+	line-height: 1.4;
+}
+.geulo-transcript-reader__summary .summary-section__content > :first-child {
+	margin-top: 0;
+}
+.geulo-transcript-reader__summary .summary-section__content > :last-child {
+	margin-bottom: 0;
+}
 .geulo-transcript-reader__summary .summary-section__skeleton p {
 	color: var(--text-muted);
 }

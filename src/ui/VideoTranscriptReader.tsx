@@ -67,6 +67,14 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 	useEffect(() => { rootRef.current?.focus({ preventScroll: true }); }, []);
 
 	useEffect(() => {
+		const updateLineHeight = (): void => {
+			summaryScrollRef.current?.style.setProperty("--geulo-summary-line-height", String(plugin.settings.summaryLineHeight));
+		};
+		updateLineHeight();
+		return plugin.subscribeSettings(updateLineHeight);
+	}, [plugin]);
+
+	useEffect(() => {
 		const ownerWindow = rootRef.current?.ownerDocument.defaultView;
 		if (!ownerWindow) return;
 		let stopped = false;

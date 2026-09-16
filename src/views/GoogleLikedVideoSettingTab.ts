@@ -3,7 +3,7 @@ import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
-import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isOpenAIModelPreset, isOpenRouterModelPreset, isShortVideoMaxDurationSeconds, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, SHORT_VIDEO_MAX_DURATION_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
+import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isOpenAIModelPreset, isOpenRouterModelPreset, isShortVideoMaxDurationSeconds, isSummaryLineHeight, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, SHORT_VIDEO_MAX_DURATION_OPTIONS, SUMMARY_LINE_HEIGHT_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
 import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
@@ -68,7 +68,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             ),
             this.createSectionDefinition(
                 'Video display',
-                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags', 'Maximum Shorts duration', 'Transcript language', 'Captions'],
+                ['Liked video view mode', 'Open videos in Obsidian Web Viewer', 'Open in', 'Show video tags', 'Maximum Shorts duration', 'Transcript language', 'Captions', 'AI summary line spacing', 'Line height'],
                 (containerEl) => this.renderVideoDisplaySection(containerEl),
             ),
         ];
@@ -157,6 +157,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         this.renderLikedVideoViewModeSetting(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
         this.renderTranscriptLanguageSetting(containerEl);
+        this.renderSummaryLineHeightSetting(containerEl);
         this.renderShortVideoDurationSetting(containerEl);
         this.renderVideoTagsSetting(containerEl);
     }
@@ -254,6 +255,24 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     await this.saveSetting('transcriptLanguage', value);
                 }));
     }
+
+	private renderSummaryLineHeightSetting(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('AI summary line spacing')
+			.setDesc('Line spacing for the AI summary reader. Changes apply immediately.')
+			.addDropdown(dropdown => {
+				SUMMARY_LINE_HEIGHT_OPTIONS.forEach(lineHeight => {
+					dropdown.addOption(String(lineHeight), `${lineHeight.toFixed(1)}${lineHeight === 1.5 ? ' (default)' : ''}`);
+				});
+				dropdown
+					.setValue(String(this.plugin.settings.summaryLineHeight))
+					.onChange(async value => {
+						const lineHeight = Number(value);
+						if (!isSummaryLineHeight(lineHeight)) return;
+						await this.saveSetting('summaryLineHeight', lineHeight);
+					});
+			});
+	}
 
     private renderVideoTagsSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
