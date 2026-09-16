@@ -7,6 +7,8 @@ import { isYouTubeVideo } from 'src/utils/youtubeVideoValidation';
 import { VIEW_TYPE_TRANSCRIPT } from 'src/views/TranscriptPane';
 import { PlaylistVideosPane, VIEW_TYPE_PLAYLIST_VIDEOS } from 'src/views/PlaylistVideosPane';
 import { getActiveApiKey } from './aiServiceFactory';
+import { WebViewerActionBar } from './webViewerActionBar';
+import type { WebViewerAction } from './webViewerActionBar';
 import { YouTubeApiClient, YouTubeRequestError } from './youtubeApiClient';
 
 interface ViewerElement extends HTMLElement {
@@ -15,14 +17,6 @@ interface ViewerElement extends HTMLElement {
 
 interface NativeMenuFactory {
 	buildFromTemplate(items: unknown[]): unknown;
-}
-
-interface WebViewerMenuAction {
-	label: string;
-	icon: string;
-	section: 'geulo-video' | 'geulo-playlist';
-	enabled: boolean;
-	click: () => void;
 }
 
 interface YouTubePageContext {
@@ -63,6 +57,7 @@ function getPageContext(view: View): YouTubePageContext | null {
 export class WebViewerSummaryIntegration extends Component {
 	private active = false;
 	private readonly restoreMenus = new Map<View, () => void>();
+	private readonly actionBars = new Map<View, WebViewerActionBar>();
 	private readonly opening = new Set<string>();
 	private readonly videoRequests = new Map<string, Promise<YouTubeVideo>>();
 	private readonly controller = new AbortController();
@@ -78,6 +73,8 @@ export class WebViewerSummaryIntegration extends Component {
 		workspace.onLayoutReady(() => this.syncViews());
 		this.registerEvent(workspace.on('layout-change', () => this.syncViews()));
 		this.registerEvent(workspace.on('active-leaf-change', () => this.syncViews()));
+		this.register(this.plugin.summaryStorage.subscribe(() => this.refreshActions()));
+		this.register(this.plugin.videoNoteIndex.subscribe(() => this.refreshActions()));
 	}
 
 	onunload(): void {
@@ -85,6 +82,7 @@ export class WebViewerSummaryIntegration extends Component {
 		this.controller.abort();
 		this.restoreMenus.forEach(restore => restore());
 		this.restoreMenus.clear();
+		this.actionBars.clear();
 	}
 
 	private syncViews(): void {
@@ -99,7 +97,13 @@ export class WebViewerSummaryIntegration extends Component {
 		}
 		for (const leaf of leaves) {
 			const view = leaf.view;
-			if (this.restoreMenus.has(view)) continue;
+			if (this.restoreMenus.has(view)) {
+				this.actionBars.get(view)?.refresh();
+				continue;
+			}
+			const actionBar = new WebViewerActionBar(view, () => this.getMenuActions(leaf));
+			this.actionBars.set(view, actionBar);
+			this.addChild(actionBar);
 			const original = view.onPaneMenu;
 			const descriptor = Object.getOwnPropertyDescriptor(view, 'onPaneMenu');
 			let attached = true;
@@ -116,6 +120,8 @@ export class WebViewerSummaryIntegration extends Component {
 			view.containerEl.addEventListener('context-menu', onPageMenu, true);
 			this.restoreMenus.set(view, () => {
 				attached = false;
+				this.removeChild(actionBar);
+				this.actionBars.delete(view);
 				view.containerEl.removeEventListener('context-menu', onPageMenu, true);
 				// Another plugin may have wrapped us since attachment. Do not erase it.
 				if (view.onPaneMenu !== wrapped) return;
@@ -125,6 +131,10 @@ export class WebViewerSummaryIntegration extends Component {
 		}
 	}
 
+	private refreshActions(): void {
+		for (const bar of this.actionBars.values()) bar.refresh();
+	}
+
 	private addMenuItem(menu: Menu, sourceLeaf: WorkspaceLeaf): void {
 		for (const action of this.getMenuActions(sourceLeaf)) {
 			menu.addItem(item => item.setSection(action.section).setTitle(action.label)
@@ -132,7 +142,7 @@ export class WebViewerSummaryIntegration extends Component {
 		}
 	}
 
-	private getMenuActions(sourceLeaf: WorkspaceLeaf): WebViewerMenuAction[] {
+	private getMenuActions(sourceLeaf: WorkspaceLeaf): WebViewerAction[] {
 		const context = getPageContext(sourceLeaf.view);
 		if (!context) return [];
 		const actions = context.videoId ? this.getVideoActions(context.videoId, sourceLeaf) : [];
@@ -141,6 +151,7 @@ export class WebViewerSummaryIntegration extends Component {
 			const known = id ? this.plugin.playlistImports.getKnownPlaylist(id) : undefined;
 			const busy = !!id && (this.plugin.playlistImports.isImporting(id) || this.opening.has(`playlist:${id}`));
 			actions.push({
+				id: 'playlist',
 				label: busy ? 'Geulo: Importing playlist…' : known ? 'Geulo: Open playlist in Geulo' : 'Geulo: Import playlist to Geulo',
 				icon: 'list-video', section: 'geulo-playlist', enabled: !!id && !busy,
 				click: () => { if (id) void this.importOrOpenPlaylist(id, sourceLeaf); },
@@ -149,20 +160,23 @@ export class WebViewerSummaryIntegration extends Component {
 		return actions;
 	}
 
-	private getVideoActions(videoId: string, sourceLeaf: WorkspaceLeaf): WebViewerMenuAction[] {
+	private getVideoActions(videoId: string, sourceLeaf: WorkspaceLeaf): WebViewerAction[] {
 		const readerEnabled = !this.opening.has(`reader:${videoId}`);
 		const noteExists = this.plugin.videoNoteIndex.has(videoId);
 		return [
 			{
+				id: 'ai',
 				label: this.plugin.summaryStorage.hasVideoSummary(videoId) ? 'Geulo: Open AI summary' : 'Geulo: Create AI summary',
 				icon: 'bot', section: 'geulo-video', enabled: readerEnabled,
 				click: () => { void this.openReader(videoId, sourceLeaf, 'ai'); },
 			},
 			{
+				id: 'transcript',
 				label: 'Geulo: Read transcript', icon: 'captions', section: 'geulo-video', enabled: readerEnabled,
 				click: () => { void this.openReader(videoId, sourceLeaf, 'paragraphs'); },
 			},
 			{
+				id: 'note',
 				label: noteExists ? 'Geulo: Open video note' : 'Geulo: Create video note',
 				icon: noteExists ? 'file-check' : 'file-plus', section: 'geulo-video', enabled: !this.opening.has(`note:${videoId}`),
 				click: () => { void this.openVideoNote(videoId, sourceLeaf); },
@@ -208,6 +222,7 @@ export class WebViewerSummaryIntegration extends Component {
 		const key = `playlist:${id}`;
 		if (!this.active || this.opening.has(key) || this.plugin.playlistImports.isImporting(id)) return;
 		this.opening.add(key);
+		this.refreshActions();
 		let loading: Notice | undefined;
 		try {
 			const known = this.plugin.playlistImports.getKnownPlaylist(id);
@@ -229,6 +244,7 @@ export class WebViewerSummaryIntegration extends Component {
 		} finally {
 			loading?.hide();
 			this.opening.delete(key);
+			this.refreshActions();
 		}
 	}
 
@@ -253,6 +269,7 @@ export class WebViewerSummaryIntegration extends Component {
 			return;
 		}
 		this.opening.add(key);
+		this.refreshActions();
 		let loading: Notice | undefined;
 		try {
 			const workspace = this.plugin.app.workspace;
@@ -285,6 +302,7 @@ export class WebViewerSummaryIntegration extends Component {
 		} finally {
 			loading?.hide();
 			this.opening.delete(key);
+			this.refreshActions();
 		}
 	}
 
@@ -292,6 +310,7 @@ export class WebViewerSummaryIntegration extends Component {
 		const key = `note:${videoId}`;
 		if (!this.active || this.opening.has(key)) return;
 		this.opening.add(key);
+		this.refreshActions();
 		let loading: Notice | undefined;
 		try {
 			let file = this.plugin.videoNoteIndex.get(videoId);
@@ -321,6 +340,7 @@ export class WebViewerSummaryIntegration extends Component {
 		} finally {
 			loading?.hide();
 			this.opening.delete(key);
+			this.refreshActions();
 		}
 	}
 
