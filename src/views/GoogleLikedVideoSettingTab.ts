@@ -3,7 +3,7 @@ import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
-import { AI_PROVIDERS, AI_PROVIDER_LABELS, isAIProvider, isOpenAIModelPreset, isOpenRouterModelPreset, isShortVideoMaxDurationSeconds, isSummaryLineHeight, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, SHORT_VIDEO_MAX_DURATION_OPTIONS, SUMMARY_LINE_HEIGHT_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
+import { AI_PROVIDERS, AI_PROVIDER_LABELS, DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS, isAIProvider, isOpenAIModelPreset, isOpenRouterModelPreset, isShortVideoMaxDurationSeconds, isSubscriptionVideoMaxAgeDays, isSummaryLineHeight, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, SHORT_VIDEO_MAX_DURATION_OPTIONS, SUBSCRIPTION_VIDEO_MAX_AGE_OPTIONS, SUMMARY_LINE_HEIGHT_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
 import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
@@ -74,7 +74,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             ),
             this.createSectionDefinition(
                 'Sync',
-                ['Stored videos', 'Fetch limit', 'Automatic fetch', 'Fetch interval', 'Full scan', 'Fetch recent videos', 'Fetch on startup'],
+                ['Stored videos', 'Subscription video age limit', '30 days', '60 days', '90 days', '120 days', 'Automatic fetch', 'Fetch interval', 'Full scan', 'Fetch recent videos', 'Fetch on startup'],
                 (containerEl) => this.renderSyncSection(containerEl, isLoggedIn),
             ),
             this.createSectionDefinition(
@@ -202,6 +202,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     private renderSyncSection(containerEl: HTMLElement, isLoggedIn: boolean): void {
         new Setting(containerEl).setHeading().setName('Sync');
         this.renderStoredVideos(containerEl);
+        this.renderSubscriptionVideoMaxAgeSetting(containerEl);
         if (isLoggedIn) {
             this.renderAutoFetchSection(containerEl);
         }
@@ -646,6 +647,25 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				});
 		});
+	}
+
+	private renderSubscriptionVideoMaxAgeSetting(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('Subscription video age limit')
+			.setDesc('Skip video details for subscription uploads older than this during the next sync.')
+			.addDropdown(dropdown => {
+				SUBSCRIPTION_VIDEO_MAX_AGE_OPTIONS.forEach(days => {
+					const defaultLabel = days === DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS ? ' (default)' : '';
+					dropdown.addOption(String(days), `${days} days${defaultLabel}`);
+				});
+				dropdown
+					.setValue(String(this.plugin.settings.subscriptionVideoMaxAgeDays))
+					.onChange(async value => {
+						const days = Number(value);
+						if (!isSubscriptionVideoMaxAgeDays(days)) return;
+						await this.saveSetting('subscriptionVideoMaxAgeDays', days);
+					});
+			});
 	}
 
     private renderAutoFetchSection(containerEl: HTMLElement): void {

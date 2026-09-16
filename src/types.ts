@@ -77,6 +77,16 @@ export function isShortVideoMaxDurationSeconds(
     return (SHORT_VIDEO_MAX_DURATION_OPTIONS as readonly number[]).includes(value);
 }
 
+export const SUBSCRIPTION_VIDEO_MAX_AGE_OPTIONS = [30, 60, 90, 120] as const;
+export type SubscriptionVideoMaxAgeDays = typeof SUBSCRIPTION_VIDEO_MAX_AGE_OPTIONS[number];
+export const DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS: SubscriptionVideoMaxAgeDays = 90;
+
+export function isSubscriptionVideoMaxAgeDays(
+    value: number,
+): value is SubscriptionVideoMaxAgeDays {
+    return (SUBSCRIPTION_VIDEO_MAX_AGE_OPTIONS as readonly number[]).includes(value);
+}
+
 export const SUMMARY_LINE_HEIGHT_OPTIONS = [1.3, 1.5, 1.8, 2] as const;
 export type SummaryLineHeight = typeof SUMMARY_LINE_HEIGHT_OPTIONS[number];
 
@@ -106,6 +116,7 @@ export interface ObsidianGoogleLikedVideoSettings extends SpeechSettings {
     summaryLineHeight: SummaryLineHeight;
     showVideoTags: boolean;
     shortVideoMaxDurationSeconds: ShortVideoMaxDurationSeconds;
+    subscriptionVideoMaxAgeDays: SubscriptionVideoMaxAgeDays;
     enableAISummary: boolean;
     geminiApiKey: string;
     aiProvider: AIProvider;

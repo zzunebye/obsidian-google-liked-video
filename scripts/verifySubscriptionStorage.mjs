@@ -105,6 +105,62 @@ export async function requestUrl(options) {
 		assert.deepEqual(restarted.getSnapshot(), JSON.parse(JSON.stringify(result)));
 		assert.equal(restarted.getOwnerChannelId(), 'owner-channel-a');
 	});
+	await check('skip video details only when the playlist item proves the video is older than 90 days', async () => {
+		const dayMs = 24 * 60 * 60 * 1000;
+		const recentPublishedAt = new Date(Date.now() - 89 * dayMs).toISOString();
+		const oldPublishedAt = new Date(Date.now() - 91 * dayMs).toISOString();
+		setResponses([
+			{
+				path: '/playlistItems?',
+				body: {
+					items: [
+						{ contentDetails: { videoId: 'recent', videoPublishedAt: recentPublishedAt } },
+						{ contentDetails: { videoId: 'old', videoPublishedAt: oldPublishedAt } },
+						{ contentDetails: { videoId: 'missing-date' } },
+						{ contentDetails: { videoId: 'invalid-date', videoPublishedAt: 'not-a-date' } },
+					],
+				},
+			},
+			{
+				path: '/videos?',
+				body: {
+					items: ['recent', 'missing-date', 'invalid-date'].map((id) => ({
+						...structuredClone(video),
+						id,
+					})),
+				},
+			},
+		]);
+		const service = new SubscriptionService(youtubeApiClient, storage);
+		const result = await service.fetch({ channels: [channel], commit: false });
+		assert.deepEqual(result.videos.map(({ id }) => id).sort(), ['invalid-date', 'missing-date', 'recent']);
+		assert.equal(getRequestCount(), 2);
+	});
+	await check('apply the configured age limit without recreating the subscription service', async () => {
+		const dayMs = 24 * 60 * 60 * 1000;
+		const publishedAt = new Date(Date.now() - 31 * dayMs).toISOString();
+		let maxAgeDays = 90;
+		setResponses([{
+			path: '/playlistItems?',
+			body: { items: [{ contentDetails: { videoId: 'within-90-days', videoPublishedAt: publishedAt } }] },
+		}, {
+			path: '/videos?',
+			body: { items: [{ ...structuredClone(video), id: 'within-90-days' }] },
+		}]);
+		const service = new SubscriptionService(youtubeApiClient, storage, () => maxAgeDays);
+		const initial = await service.fetch({ channels: [channel], commit: false });
+		assert.deepEqual(initial.videos.map(({ id }) => id), ['within-90-days']);
+		assert.equal(getRequestCount(), 2);
+
+		maxAgeDays = 30;
+		setResponses([{
+			path: '/playlistItems?',
+			body: { items: [{ contentDetails: { videoId: 'older-than-30-days', videoPublishedAt: publishedAt } }] },
+		}]);
+		const filtered = await service.fetch({ channels: [channel], commit: false });
+		assert.deepEqual(filtered.videos, []);
+		assert.equal(getRequestCount(), 1);
+	});
 	await check('replace a subscription snapshot and owner only after a successful fetch', async () => {
 		const service = new SubscriptionService(youtubeApiClient, storage);
 		await service.initialize();

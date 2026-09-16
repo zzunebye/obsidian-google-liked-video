@@ -1,14 +1,17 @@
 import type {
 	SubscriptionChannel,
+	SubscriptionVideoMaxAgeDays,
 	YouTubeVideo,
 } from "src/types";
+import { DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS } from "src/types";
 import { debugLogger } from "src/debug";
 import { SubscriptionStorageService } from "./subscriptionStorageService";
 import { YouTubeApiClient, YouTubeRequestError } from "./youtubeApiClient";
 
 const CHANNEL_BATCH_SIZE = 50;
 const VIDEO_BATCH_SIZE = 50;
-const RECENT_VIDEOS_PER_CHANNEL = 5;
+const RECENT_VIDEOS_PER_CHANNEL = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const CHANNEL_DETAILS_CONCURRENCY = 4;
 const CHANNEL_UPLOADS_CONCURRENCY = 6;
 const VIDEO_DETAILS_CONCURRENCY = 6;
@@ -28,7 +31,10 @@ type ChannelItem = {
 };
 
 type PlaylistItem = {
-	contentDetails?: { videoId?: string };
+	contentDetails?: {
+		videoId?: string;
+		videoPublishedAt?: string;
+	};
 	snippet?: { resourceId?: { videoId?: string } };
 };
 
@@ -181,6 +187,8 @@ export class SubscriptionService {
 	constructor(
 		private readonly client: YouTubeApiClient,
 		private readonly storage: SubscriptionStorageService,
+		private readonly getVideoMaxAgeDays: () => SubscriptionVideoMaxAgeDays =
+			() => DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS,
 	) {}
 
 	async initialize(): Promise<void> {
@@ -344,13 +352,14 @@ export class SubscriptionService {
 		options.onProgress?.({ completedChannels: 0, totalChannels: channels.length });
 
 		const videoIds = new Set<string>();
+		const publishedAfter = Date.now() - this.getVideoMaxAgeDays() * DAY_MS;
 		const failedChannels: SubscriptionChannel[] = [];
 		const failureDetails: Record<string, SubscriptionFailureDetail> = {};
 		let completedChannels = 0;
 		await forEachConcurrent(channels, CHANNEL_UPLOADS_CONCURRENCY, async (channel) => {
 			throwIfAborted(options.signal);
 			try {
-				const ids = await this.fetchRecentVideoIds(channel, options.signal);
+				const ids = await this.fetchRecentVideoIds(channel, publishedAfter, options.signal);
 				ids.forEach((id) => videoIds.add(id));
 			} catch (error) {
 				if (options.signal?.aborted) throw error;
@@ -467,6 +476,7 @@ export class SubscriptionService {
 
 	private async fetchRecentVideoIds(
 		channel: SubscriptionChannel,
+		publishedAfter: number,
 		signal?: AbortSignal,
 	): Promise<string[]> {
 		const params = new URLSearchParams({
@@ -480,6 +490,9 @@ export class SubscriptionService {
 		);
 		return (data.items ?? []).flatMap((item) => {
 			const id = item.contentDetails?.videoId ?? item.snippet?.resourceId?.videoId;
+			const publishedAt = item.contentDetails?.videoPublishedAt;
+			const publishedAtMs = publishedAt ? Date.parse(publishedAt) : Number.NaN;
+			if (Number.isFinite(publishedAtMs) && publishedAtMs < publishedAfter) return [];
 			return id ? [id] : [];
 		});
 	}

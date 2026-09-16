@@ -1,5 +1,5 @@
 import { Notice, Plugin, WorkspaceLeaf } from 'obsidian';
-import { isAIProvider, isShortVideoMaxDurationSeconds, isSummaryLineHeight, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, TRANSCRIPT_LANGUAGE_OPTIONS, YouTubeVideo } from 'src/types';
+import { DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS, isAIProvider, isShortVideoMaxDurationSeconds, isSubscriptionVideoMaxAgeDays, isSummaryLineHeight, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, TRANSCRIPT_LANGUAGE_OPTIONS, YouTubeVideo } from 'src/types';
 import { GoogleLikedVideoSettingTab } from 'src/views/GoogleLikedVideoSettingTab';
 import { LikedVideoListPane, VIEW_TYPE_LIKED_VIDEO_LIST } from 'src/views/LikedVideoListPane';
 import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlaylistsPane';
@@ -57,6 +57,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	summaryLineHeight: 1.5,
 	showVideoTags: true,
 	shortVideoMaxDurationSeconds: 90,
+	subscriptionVideoMaxAgeDays: DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS,
 	enableAISummary: false,
 	geminiApiKey: '',
 	aiProvider: 'openrouter',
@@ -145,7 +146,11 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}));
 		this.commentService = new CommentService(youtubeApiClient, this.accountIdentityService);
 		const subscriptionStorage = new SubscriptionStorageService(this.app.vault.adapter, manifestDir);
-		this.subscriptionService = new SubscriptionService(youtubeApiClient, subscriptionStorage);
+		this.subscriptionService = new SubscriptionService(
+			youtubeApiClient,
+			subscriptionStorage,
+			() => this.settings.subscriptionVideoMaxAgeDays,
+		);
 		try {
 			await this.subscriptionService.initialize();
 		} catch (error) {
@@ -361,6 +366,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		}
 		if (!isShortVideoMaxDurationSeconds(this.settings.shortVideoMaxDurationSeconds)) {
 			this.settings.shortVideoMaxDurationSeconds = DEFAULT_SETTINGS.shortVideoMaxDurationSeconds;
+		}
+		if (!isSubscriptionVideoMaxAgeDays(this.settings.subscriptionVideoMaxAgeDays)) {
+			this.settings.subscriptionVideoMaxAgeDays = DEFAULT_SETTINGS.subscriptionVideoMaxAgeDays;
 		}
 		if (!isSummaryLineHeight(this.settings.summaryLineHeight)) {
 			this.settings.summaryLineHeight = DEFAULT_SETTINGS.summaryLineHeight;
