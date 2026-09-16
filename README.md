@@ -1,23 +1,16 @@
-# Geulo - YouTube Liked Video Plugin
+# Geulo
 
-Integrate your 'liked videos' on YouTube into a powerful knowledge management system within Obsidian.
+**Your YouTube library, connected to your Obsidian notes.**
 
-**Geulo** seamlessly fetches, organizes, and integrates your liked videos in YouTube directly into your Obsidian. Perfect for researchers, content creators, knowledge workers, or anyone who believes that revisiting quality content is as valuable as discovering new ones.
+Browse your liked videos, playlists, and subscriptions in Obsidian. Rediscover videos with search and filters, read transcripts, generate AI summaries, and turn what you watch into notes.
 
-Instead of letting your liked videos disappear into YouTube's depths, Geulo brings them into your personal knowledge base where you can search, sort, manage, and reference them alongside your notes. Turn passive video consumption into active knowledge building.
+[![Latest release](https://img.shields.io/github/v/release/zzunebye/obsidian-google-liked-video?label=release)](https://github.com/zzunebye/obsidian-google-liked-video/releases/latest)
+[![Obsidian 1.13.0+](https://img.shields.io/badge/Obsidian-1.13.0%2B-7C3AED?logo=obsidian)](https://obsidian.md/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Key capabilities:**
+[Get started](#requirements) · [AI summary setup](#ai-summary-setup) · [Report an issue](https://github.com/zzunebye/obsidian-google-liked-video/issues) · [Support](#support)
 
-- Instantly access your entire YouTube 'My Liked Videos' playlist and subscriptions
-- Browse and manage your YouTube playlists saved or created
-- Search, filter and sort the videos to rediscover them
-- AI-powered video summaries (Gemini / OpenRouter / OpenAI)
-- One-click integration with your daily notes
-- Curate your playlists by removing videos directly from the sidebar
-
-I'd appreciate your feedback. Open an issue for suggestions.
-
-Mobile version is still experimental!
+> Setup requires your own Google OAuth credentials.
 
 ## Table of Contents
 
@@ -35,11 +28,10 @@ Mobile version is still experimental!
 - **Add liked videos to playlists**: Right-click a liked video, choose **Add to playlist**, then search and select one of your YouTube playlists. Existing entries are checked before adding; your like is kept.
 - **Searching and content-type filtering**: Search, filter, and sort videos by title, channel, tags, and content type — Videos, Shorts, or Music.
 
-> [!NOTE]
-> **About the Shorts filter:** The YouTube Data API does not provide an official Shorts label for videos. Geulo therefore groups videos as Shorts based on the maximum duration selected in **Settings → Video display → Maximum Shorts duration**. This is an approximation: short regular videos may be included, and Shorts longer than the selected limit may be excluded.
+    > About the Shorts filter - The YouTube Data API does not provide an official Shorts label for videos. Geulo therefore groups videos as Shorts based on the maximum duration selected in `Settings > Video display > Maximum Shorts duration`. This is an approximation: short regular videos may be included, and Shorts longer than the selected limit may be excluded.
 
 - **Create Video Notes**: Create video notes with a single click and write your own notes. You can also organize them by channel.
-- **Your like status in video notes**: `liked: true` or `liked: false` records the last confirmed rating of your Geulo-connected YouTube account; `likes` remains the video’s total like count. Geulo checks this when creating/opening a video note from cards, and updates existing notes after like/unlike/Undo and liked-video sync. Recent sync confirms fetched likes; Full scan also checks existing notes outside the fetched list. Custom templates can use `{{liked}}`. Failed or unknown lookups preserve existing values and leave new values absent. Clearing the saved list does not change this property. Editing the property does not change YouTube.
+- **Your like status in video notes**: `liked: true` or `liked: false` records the last confirmed rating of your Geulo-connected YouTube account; `likes` remains the video’s total like count. Geulo checks this when creating/opening a video note from cards or Web Viewer, and updates existing notes after like/unlike/Undo and liked-video sync. Recent sync confirms fetched likes; Full scan also checks existing notes outside the fetched list. Custom templates can use `{{liked}}`. Failed or unknown lookups preserve existing values and leave new values absent. Clearing the saved list does not change this property. Editing the property does not change YouTube.
 - **Daily note integration**: Add videos to your daily notes with a single click
 - **Collection curation**: Remove videos from your liked list directly within Obsidian
 - **AI video summaries**: Generate video summaries using Google Gemini, OpenRouter, or OpenAI. Gemini analyzes the video directly, while OpenRouter and OpenAI summarize the selected transcript. Summaries include a collapsible one-liner preview and full expandable summary.
