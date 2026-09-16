@@ -73,33 +73,33 @@ const AI_SUMMARY_FILTER_OPTIONS: ReadonlyArray<{
 	label: string;
 	activeLabel: string;
 }> = [
-	{ value: "all", label: "All", activeLabel: "All summaries" },
-	{ value: "with", label: "Has summary", activeLabel: "Has" },
-	{ value: "without", label: "No summary", activeLabel: "Missing" },
-];
+		{ value: "all", label: "All", activeLabel: "All summaries" },
+		{ value: "with", label: "Has summary", activeLabel: "Has" },
+		{ value: "without", label: "No summary", activeLabel: "Missing" },
+	];
 
 const PUBLISHED_DATE_FILTER_OPTIONS: ReadonlyArray<{
 	value: PublishedDateFilter;
 	label: string;
 	activeLabel: string;
 }> = [
-	{ value: "all", label: "Any time", activeLabel: "Any upload date" },
-	{ value: "7d", label: "Past 7 days", activeLabel: "Past 7 days" },
-	{ value: "30d", label: "Past 30 days", activeLabel: "Past 30 days" },
-	{ value: "365d", label: "Past year", activeLabel: "Past year" },
-];
+		{ value: "all", label: "Any time", activeLabel: "Any upload date" },
+		{ value: "7d", label: "Past 7 days", activeLabel: "Past 7 days" },
+		{ value: "30d", label: "Past 30 days", activeLabel: "Past 30 days" },
+		{ value: "365d", label: "Past year", activeLabel: "Past year" },
+	];
 
 const DURATION_FILTER_OPTIONS: ReadonlyArray<{
 	value: DurationFilter;
 	label: string;
 	activeLabel: string;
 }> = [
-	{ value: "all", label: "Any", activeLabel: "Any duration" },
-	{ value: "under5", label: "Under 5 min", activeLabel: "Under 5 min" },
-	{ value: "5to20", label: "5–20 min", activeLabel: "5–20 min" },
-	{ value: "20to60", label: "20–60 min", activeLabel: "20–60 min" },
-	{ value: "60plus", label: "60+ min", activeLabel: "60+ min" },
-];
+		{ value: "all", label: "Any", activeLabel: "Any duration" },
+		{ value: "under5", label: "Under 5 min", activeLabel: "Under 5 min" },
+		{ value: "5to20", label: "5–20 min", activeLabel: "5–20 min" },
+		{ value: "20to60", label: "20–60 min", activeLabel: "20–60 min" },
+		{ value: "60plus", label: "60+ min", activeLabel: "60+ min" },
+	];
 
 function getLanguageFilterOptions(
 	videos: readonly YouTubeVideo[],
@@ -218,10 +218,10 @@ export const LikedVideoView: React.FC = () => {
 
 	const audioLanguageOptions = useMemo(() =>
 		getLanguageFilterOptions(videos, "defaultAudioLanguage", audioLanguageFilter),
-	[videos, audioLanguageFilter]);
+		[videos, audioLanguageFilter]);
 	const languageOptions = useMemo(() =>
 		getLanguageFilterOptions(videos, "defaultLanguage", languageFilter),
-	[videos, languageFilter]);
+		[videos, languageFilter]);
 
 	// Pre-process video durations once
 	const videoDurations = useMemo(() => {
