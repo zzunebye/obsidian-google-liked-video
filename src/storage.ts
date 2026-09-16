@@ -1,4 +1,13 @@
-import { YouTubeVideo, ContentTypeSelection, ContentTypeOption, PlaylistInfo, LikedVideoPaginationMode } from "./types";
+import {
+    ContentTypeOption,
+    ContentTypeSelection,
+    DurationFilter,
+    LikedVideoPaginationMode,
+    PlaylistInfo,
+    PresenceFilter,
+    PublishedDateFilter,
+    YouTubeVideo,
+} from "./types";
 import type { LikedVideoStorageService } from './services/likedVideoStorageService';
 
 export interface SavedPlaylist extends PlaylistInfo {
@@ -7,61 +16,61 @@ export interface SavedPlaylist extends PlaylistInfo {
 }
 
 class LocalStorageService {
-	private likedVideoStorage: LikedVideoStorageService | null = null;
-	private reportWriteError: (error: unknown) => void = () => {};
-	private likedVideoListeners = new Set<(videos: YouTubeVideo[]) => void>();
-	private temporarilyUnlikedVideos = new Map<string, number>();
+    private likedVideoStorage: LikedVideoStorageService | null = null;
+    private reportWriteError: (error: unknown) => void = () => { };
+    private likedVideoListeners = new Set<(videos: YouTubeVideo[]) => void>();
+    private temporarilyUnlikedVideos = new Map<string, number>();
 
-	initializeLikedVideos(storage: LikedVideoStorageService, reportError: (error: unknown) => void): void {
-		this.likedVideoStorage = storage;
-		this.reportWriteError = reportError;
-	}
+    initializeLikedVideos(storage: LikedVideoStorageService, reportError: (error: unknown) => void): void {
+        this.likedVideoStorage = storage;
+        this.reportWriteError = reportError;
+    }
 
-	private getLikedVideoStorage(): LikedVideoStorageService {
-		if (!this.likedVideoStorage) throw new Error('Liked video storage has not been initialized.');
-		return this.likedVideoStorage;
-	}
-	getLikedVideoPaginationMode(): LikedVideoPaginationMode {
-		return window.localStorage.getItem("likedVideoDisplayMode") === "pagination"
-			? "pagination" : "infinite";
-	}
+    private getLikedVideoStorage(): LikedVideoStorageService {
+        if (!this.likedVideoStorage) throw new Error('Liked video storage has not been initialized.');
+        return this.likedVideoStorage;
+    }
+    getLikedVideoPaginationMode(): LikedVideoPaginationMode {
+        return window.localStorage.getItem("likedVideoDisplayMode") === "pagination"
+            ? "pagination" : "infinite";
+    }
 
-	setLikedVideoPaginationMode(mode: LikedVideoPaginationMode): void {
-		window.localStorage.setItem("likedVideoDisplayMode", mode);
-	}
+    setLikedVideoPaginationMode(mode: LikedVideoPaginationMode): void {
+        window.localStorage.setItem("likedVideoDisplayMode", mode);
+    }
     /**
      * Retrieves liked videos from local storage.
      * @returns {YouTubeVideo[]} An array of liked videos.
      */
-	getLikedVideos(): YouTubeVideo[] {
-		return this.getLikedVideoStorage().getVideos();
-	}
+    getLikedVideos(): YouTubeVideo[] {
+        return this.getLikedVideoStorage().getVideos();
+    }
 
-	subscribeLikedVideos(listener: (videos: YouTubeVideo[]) => void): () => void {
-		this.likedVideoListeners.add(listener);
-		return () => this.likedVideoListeners.delete(listener);
-	}
+    subscribeLikedVideos(listener: (videos: YouTubeVideo[]) => void): () => void {
+        this.likedVideoListeners.add(listener);
+        return () => this.likedVideoListeners.delete(listener);
+    }
 
-	updateLikedVideos(update: (videos: YouTubeVideo[]) => YouTubeVideo[]): YouTubeVideo[] {
-		const updatedVideos = update(this.getLikedVideos());
-		this.setLikedVideos(updatedVideos);
-		return updatedVideos;
-	}
+    updateLikedVideos(update: (videos: YouTubeVideo[]) => YouTubeVideo[]): YouTubeVideo[] {
+        const updatedVideos = update(this.getLikedVideos());
+        this.setLikedVideos(updatedVideos);
+        return updatedVideos;
+    }
 
-	removeLikedVideo(videoId: string): YouTubeVideo[] {
-		this.temporarilyUnlikedVideos.set(videoId, Date.now() + 60_000);
-		return this.updateLikedVideos((videos) => videos.filter((video) => video.id !== videoId));
-	}
+    removeLikedVideo(videoId: string): YouTubeVideo[] {
+        this.temporarilyUnlikedVideos.set(videoId, Date.now() + 60_000);
+        return this.updateLikedVideos((videos) => videos.filter((video) => video.id !== videoId));
+    }
 
-	restoreLikedVideo(video: YouTubeVideo, insertIndex = 0): YouTubeVideo[] {
-		this.temporarilyUnlikedVideos.delete(video.id);
-		return this.updateLikedVideos((videos) => {
-			const withoutDuplicate = videos.filter((item) => item.id !== video.id);
-			const restored = [...withoutDuplicate];
-			restored.splice(Math.min(Math.max(insertIndex, 0), restored.length), 0, video);
-			return restored;
-		});
-	}
+    restoreLikedVideo(video: YouTubeVideo, insertIndex = 0): YouTubeVideo[] {
+        this.temporarilyUnlikedVideos.delete(video.id);
+        return this.updateLikedVideos((videos) => {
+            const withoutDuplicate = videos.filter((item) => item.id !== video.id);
+            const restored = [...withoutDuplicate];
+            restored.splice(Math.min(Math.max(insertIndex, 0), restored.length), 0, video);
+            return restored;
+        });
+    }
 
     getWatchLaterVideos(): YouTubeVideo[] {
         const watchLaterVideos = window.localStorage.getItem("googleYtbLikedVideoWatchLaterVideos");
@@ -93,14 +102,51 @@ class LocalStorageService {
         return window.localStorage.getItem("likedVideoViewSelectedCategory") ?? "all";
     }
 
-	getAINoteFilter(): boolean {
-		return window.localStorage.getItem("likedVideoViewAINoteFilter") === "true";
+    getAINoteFilter(): boolean {
+        return window.localStorage.getItem("likedVideoViewAINoteFilter") === "true";
+    }
+
+    getLikedVideoAISummaryFilter(): PresenceFilter {
+        const stored = window.localStorage.getItem("likedVideoViewAISummaryFilter");
+        if (stored === "with" || stored === "without" || stored === "all") {
+            return stored;
+        }
+        if (stored === null && this.getAINoteFilter()) {
+            return "with";
+        }
+        return "all";
+    }
+
+    getLikedVideoPublishedDateFilter(): PublishedDateFilter {
+        const stored = window.localStorage.getItem("likedVideoViewPublishedDateFilter");
+        return stored === "7d" || stored === "30d" || stored === "365d"
+            ? stored
+            : "all";
+    }
+
+    getLikedVideoDurationFilter(): DurationFilter {
+        const stored = window.localStorage.getItem("likedVideoViewDurationFilter");
+        return stored === "under5" || stored === "5to20" || stored === "20to60" || stored === "60plus"
+            ? stored
+            : "all";
+    }
+
+	getLikedVideoAudioLanguageFilter(): string {
+		const stored = window.localStorage.getItem("likedVideoViewAudioLanguageFilter");
+		return stored !== null && (stored === "unknown" || /^[a-z]{2,3}$/.test(stored))
+			? stored : "all";
 	}
 
-	getVideoNoteFilter(): "all" | "with" | "without" {
-		const stored = window.localStorage.getItem("likedVideoViewVideoNoteFilter");
-		return stored === "with" || stored === "without" ? stored : "all";
+	getLikedVideoLanguageFilter(): string {
+		const stored = window.localStorage.getItem("likedVideoViewLanguageFilter");
+		return stored !== null && (stored === "unknown" || /^[a-z]{2,3}$/.test(stored))
+			? stored : "all";
 	}
+
+    getVideoNoteFilter(): "all" | "with" | "without" {
+        const stored = window.localStorage.getItem("likedVideoViewVideoNoteFilter");
+        return stored === "with" || stored === "without" ? stored : "all";
+    }
 
     getFiltersExpanded(): boolean {
         const stored = window.localStorage.getItem("likedVideoViewFiltersExpanded");
@@ -144,13 +190,33 @@ class LocalStorageService {
         window.localStorage.setItem("likedVideoViewSelectedCategory", categoryId);
     }
 
-	setAINoteFilter(enabled: boolean): void {
-		window.localStorage.setItem("likedVideoViewAINoteFilter", String(enabled));
+    setAINoteFilter(enabled: boolean): void {
+        window.localStorage.setItem("likedVideoViewAINoteFilter", String(enabled));
+    }
+
+    setLikedVideoAISummaryFilter(filter: PresenceFilter): void {
+        window.localStorage.setItem("likedVideoViewAISummaryFilter", filter);
+    }
+
+    setLikedVideoPublishedDateFilter(filter: PublishedDateFilter): void {
+        window.localStorage.setItem("likedVideoViewPublishedDateFilter", filter);
+    }
+
+    setLikedVideoDurationFilter(filter: DurationFilter): void {
+        window.localStorage.setItem("likedVideoViewDurationFilter", filter);
+    }
+
+	setLikedVideoAudioLanguageFilter(language: string): void {
+		window.localStorage.setItem("likedVideoViewAudioLanguageFilter", language);
 	}
 
-	setVideoNoteFilter(filter: "all" | "with" | "without"): void {
-		window.localStorage.setItem("likedVideoViewVideoNoteFilter", filter);
+	setLikedVideoLanguageFilter(language: string): void {
+		window.localStorage.setItem("likedVideoViewLanguageFilter", language);
 	}
+
+    setVideoNoteFilter(filter: "all" | "with" | "without"): void {
+        window.localStorage.setItem("likedVideoViewVideoNoteFilter", filter);
+    }
 
     setFiltersExpanded(expanded: boolean): void {
         window.localStorage.setItem("likedVideoViewFiltersExpanded", String(expanded));
@@ -197,19 +263,19 @@ class LocalStorageService {
         return pinnedIds.includes(playlistId);
     }
 
-	setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
-		const now = Date.now();
-		for (const [videoId, expiresAt] of this.temporarilyUnlikedVideos) {
-			if (expiresAt <= now) this.temporarilyUnlikedVideos.delete(videoId);
-		}
-		const nextVideos = this.temporarilyUnlikedVideos.size === 0
-			? likedVideos
-			: likedVideos.filter((video) => !this.temporarilyUnlikedVideos.has(video.id));
-		const storage = this.getLikedVideoStorage();
-		storage.setVideos(nextVideos);
-		void storage.flush().catch(this.reportWriteError);
-		this.likedVideoListeners.forEach((listener) => listener(nextVideos));
-	};
+    setLikedVideos = (likedVideos: YouTubeVideo[]): void => {
+        const now = Date.now();
+        for (const [videoId, expiresAt] of this.temporarilyUnlikedVideos) {
+            if (expiresAt <= now) this.temporarilyUnlikedVideos.delete(videoId);
+        }
+        const nextVideos = this.temporarilyUnlikedVideos.size === 0
+            ? likedVideos
+            : likedVideos.filter((video) => !this.temporarilyUnlikedVideos.has(video.id));
+        const storage = this.getLikedVideoStorage();
+        storage.setVideos(nextVideos);
+        void storage.flush().catch(this.reportWriteError);
+        this.likedVideoListeners.forEach((listener) => listener(nextVideos));
+    };
 
     setWatchLaterVideos = (watchLaterVideos: YouTubeVideo[]): void => {
         window.localStorage.setItem("googleYtbLikedVideoWatchLaterVideos", JSON.stringify(watchLaterVideos));
