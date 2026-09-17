@@ -478,6 +478,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 placeholder: 'Enter your Gemini API key',
                 value: this.plugin.settings.geminiApiKey,
                 secret: true,
+                copyable: true,
                 onChange: async (value) => {
                     await this.saveSetting('geminiApiKey', value);
                 },
@@ -489,6 +490,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 placeholder: 'sk-or-...',
                 value: this.plugin.settings.openRouterApiKey,
                 secret: true,
+                copyable: true,
                 onChange: async (value) => {
                     await this.saveSetting('openRouterApiKey', value);
                 },
@@ -539,6 +541,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 placeholder: 'sk-...',
                 value: this.plugin.settings.openAIApiKey,
                 secret: true,
+                copyable: true,
                 onChange: async (value) => {
                     await this.saveSetting('openAIApiKey', value);
                 },
@@ -610,6 +613,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 			name: 'Speech API key',
 			desc: 'OpenRouter key used only for speech. Clicking Read aloud sends the summary text to this provider.',
 			placeholder: 'sk-or-...', value: this.plugin.settings.speechApiKey, secret: true,
+			copyable: true,
 			onChange: async value => { await this.saveSetting('speechApiKey', value.trim()); },
 		});
 		const currentModel = this.plugin.settings.speechModel;

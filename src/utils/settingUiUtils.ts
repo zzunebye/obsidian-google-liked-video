@@ -1,4 +1,6 @@
-import { Setting } from 'obsidian';
+import { Notice, Setting } from 'obsidian';
+import type { ExtraButtonComponent } from 'obsidian';
+import { debugLogger } from 'src/debug';
 
 export interface MonospaceTextareaOptions {
 	className: string;
@@ -29,6 +31,7 @@ export interface WideTextSettingOptions {
 	placeholder: string;
 	value: string;
 	secret?: boolean;
+	copyable?: boolean;
 	onChange: (value: string) => void | Promise<void>;
 }
 
@@ -46,10 +49,13 @@ export function addWideTextSetting(
 	containerEl: HTMLElement,
 	options: WideTextSettingOptions
 ): Setting {
-	return new Setting(containerEl)
+	let inputEl: HTMLInputElement | null = null;
+	let copyButton: ExtraButtonComponent | null = null;
+	const setting = new Setting(containerEl)
 		.setName(options.name)
 		.setDesc(options.desc)
 		.addText(text => {
+			inputEl = text.inputEl;
 			if (options.secret) {
 				text.inputEl.type = 'password';
 			}
@@ -58,9 +64,34 @@ export function addWideTextSetting(
 				.setPlaceholder(options.placeholder)
 				.setValue(options.value)
 				.onChange((value) => {
+					copyButton?.setDisabled(value.length === 0);
 					void options.onChange(value);
 				});
 		});
+
+	if (options.copyable) {
+		setting.addExtraButton(button => {
+			copyButton = button;
+			button
+				.setIcon('copy')
+				.setTooltip(`Copy ${options.name}`)
+				.setDisabled(options.value.length === 0)
+				.onClick(async () => {
+					const value = inputEl?.value ?? options.value;
+					if (!value) return;
+
+					try {
+						await navigator.clipboard.writeText(value);
+						new Notice(`${options.name} copied to clipboard.`);
+					} catch (error: unknown) {
+						debugLogger.warn(`[Settings] Failed to copy ${options.name}`, error);
+						new Notice(`Could not copy ${options.name}. Please try again.`);
+					}
+				});
+		});
+	}
+
+	return setting;
 }
 
 export function createCollapsibleReference(
