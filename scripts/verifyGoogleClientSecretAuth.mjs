@@ -28,6 +28,7 @@ await build({
 			name: 'obsidian-verification-stub',
 			setup(builder) {
 				builder.onResolve({ filter: /^obsidian$/ }, () => ({ path: 'obsidian', namespace: 'verification' }));
+				builder.onResolve({ filter: /^electron$/ }, () => ({ path: 'electron', namespace: 'verification' }));
 				builder.onResolve({ filter: /^http$/ }, () => ({ path: 'http', namespace: 'verification' }));
 				builder.onLoad({ filter: /.*/, namespace: 'verification' }, (args) => ({
 					contents: args.path === 'obsidian' ? `
@@ -35,6 +36,8 @@ await build({
 						export const normalizePath = value => value;
 						export class Notice { constructor() {} }
 						export const requestUrl = (request) => globalThis.requestUrl(request);
+					` : args.path === 'electron' ? `
+						export const shell = { openExternal: url => globalThis.openExternal(url) };
 					` : `export const createServer = (...args) => globalThis.createVerificationHttpServer(...args);`,
 					loader: 'js',
 				}));
@@ -79,9 +82,14 @@ const secrets = new Map([
 	['geulo-google-refresh-token', 'refresh-from-storage'],
 ]);
 const localStorage = new FakeLocalStorage();
+const openedExternalUrls = [];
+let windowOpenCount = 0;
+globalThis.openExternal = async (url) => {
+	openedExternalUrls.push(url);
+};
 globalThis.window = {
 	localStorage,
-	open() {},
+	open() { windowOpenCount += 1; },
 	setTimeout: globalThis.setTimeout.bind(globalThis),
 	clearTimeout: globalThis.clearTimeout.bind(globalThis),
 };
@@ -183,8 +191,15 @@ try {
 	const handleLoginSuccess = () => {
 		loginSuccessCount += 1;
 	};
-	await handleGoogleLogin({ googleClientId: 'client-id', googleClientSecret: 'settings-secret' }, handleLoginSuccess);
+	await handleGoogleLogin({
+		googleClientId: 'client-id',
+		googleClientSecret: 'settings-secret',
+		openInObsidianWebViewer: true,
+	}, handleLoginSuccess);
 	assert.equal(typeof oauthCallback, 'function');
+	assert.equal(openedExternalUrls.length, 1);
+	assert.match(openedExternalUrls[0], /^https:\/\/accounts\.google\.com\/o\/oauth2\/v2\/auth\?/);
+	assert.equal(windowOpenCount, 0);
 	const firstCallbackResponse = createCallbackResponse();
 	oauthCallback({ url: '/callback?code=auth-code' }, firstCallbackResponse);
 	await waitFor(() => loginSuccessCount === 1);
@@ -314,9 +329,12 @@ try {
 	globalThis.requestUrl = async () => { throw new Error('Revocation should be skipped without an access token'); };
 	await handleGoogleLogout({ googleClientId: 'client-id' }, () => {}, () => assert.fail('Unexpected logout error'));
 	await assertSavedVideosPreserved();
+	assert.equal(openedExternalUrls.length, createServerCount);
+	assert.equal(windowOpenCount, 0);
 	console.log('PASS: expired refresh, successful/failed revocation, reconnect and tokenless logout preserve memory, JSON, backup and subscribers');
 } finally {
 	globalThis.requestUrl = originalRequestUrl;
+	delete globalThis.openExternal;
 	delete globalThis.createVerificationHttpServer;
 	await rm(outputDirectory, { recursive: true, force: true });
 }

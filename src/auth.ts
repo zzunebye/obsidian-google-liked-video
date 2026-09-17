@@ -1,4 +1,5 @@
 import { Platform, Notice, requestUrl } from 'obsidian';
+import { shell } from 'electron';
 import { createServer } from 'http';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
@@ -52,6 +53,16 @@ function isGoogleRefreshTokenResponse(value: unknown): value is GoogleRefreshTok
 		&& typeof value.expires_in === 'number'
 		&& Number.isFinite(value.expires_in)
 		&& value.expires_in > 0;
+}
+
+async function openGoogleAuthInExternalBrowser(url: string): Promise<boolean> {
+	try {
+		await shell.openExternal(url);
+		return true;
+	} catch {
+		new Notice("Couldn't open the Google sign-in page in your default browser.");
+		return false;
+	}
 }
 
 function invalidateGoogleAuth(): void {
@@ -110,7 +121,7 @@ export async function handleGoogleLogin(
 
 
     if (serverSession) {
-        window.open(requestAuthUrl);
+		await openGoogleAuthInExternalBrowser(requestAuthUrl);
         return;
 	}
 
@@ -166,7 +177,11 @@ export async function handleGoogleLogin(
 				}
 			})();
 		}).listen(PORT, () => {
-			window.open(requestAuthUrl);
+			void (async () => {
+				if (!await openGoogleAuthInExternalBrowser(requestAuthUrl)) {
+					await closeServerSession();
+				}
+			})();
 		});
 	}
 }
