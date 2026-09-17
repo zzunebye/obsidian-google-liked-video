@@ -530,6 +530,13 @@ If your plugin does not need CSS, delete this file.
 	display: block;
 }
 
+.subscription-warning__channel-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 6px;
+}
+
 .subscription-unsubscribe {
 	margin-top: 10px;
 }

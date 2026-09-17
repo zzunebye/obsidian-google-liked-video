@@ -5,6 +5,7 @@ import {
 	AlertCircle,
 	ArrowDownWideNarrow,
 	ArrowUpNarrowWide,
+	ExternalLink,
 	Loader2,
 	RefreshCw,
 	Rss,
@@ -41,9 +42,9 @@ import type {
 	YouTubeVideo,
 } from "src/types";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
-import { usePlugin } from "../store/pluginContext";
 import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
 import { CacheOwnershipError } from "src/services/youtubeAccountIdentityService";
+import { usePlugin } from "../store/pluginContext";
 
 export type SubscriptionPeriod = "all" | "day" | "week" | "month" | "year";
 export type SubscriptionSortOrder = "ASC" | "DESC";
@@ -694,6 +695,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		});
 	};
 
+	const openChannel = (channel: SubscriptionChannel): void => {
+		const url = `https://www.youtube.com/channel/${encodeURIComponent(channel.id)}`;
+		window.open(url, "_blank");
+	};
+
 	const applyPendingSnapshot = (): void => {
 		if (!pendingSnapshot) return;
 		setSnapshot(pendingSnapshot);
@@ -973,6 +979,15 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 									<li key={channel.id}>
 										<strong>{channel.title}</strong>
 										<span>{detail?.message ?? "Failure reason was not recorded. Retry once to check it."}</span>
+										<button
+											type="button"
+											className="subscription-warning__channel-link"
+											onClick={() => openChannel(channel)}
+											aria-label={`Open ${channel.title} channel on YouTube`}
+										>
+											<ExternalLink size={14} aria-hidden="true" />
+											<span>Open channel</span>
+										</button>
 									</li>
 								);
 							})}
