@@ -72,10 +72,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 ['Google account', 'Connect with Google', 'Client ID', 'Client secret', 'YouTube Data API', 'Import credentials', 'JSON'],
                 (containerEl) => this.renderSetupSection(containerEl, refreshToken),
             ),
-            this.createSectionDefinition(
-                'Sync',
-                ['Stored videos', 'Subscription video age limit', '30 days', '60 days', '90 days', '120 days', 'Automatic fetch', 'Fetch interval', 'Full scan', 'Fetch recent videos', 'Fetch on startup'],
-                (containerEl) => this.renderSyncSection(containerEl, isLoggedIn),
+			this.createSectionDefinition(
+				'Sync',
+				['Stored videos', 'Subscription video age limit', '30 days', '60 days', '90 days', '120 days', 'Automatic fetch', 'Fetch interval', 'Full scan', 'Fetch recent videos', 'Fetch on startup'],
+				(containerEl) => this.renderSyncSection(containerEl, isLoggedIn),
             ),
             this.createSectionDefinition(
                 'Video display',
@@ -200,16 +200,16 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     private renderSyncSection(containerEl: HTMLElement, isLoggedIn: boolean): void {
-        new Setting(containerEl).setHeading().setName('Sync');
-        this.renderStoredVideos(containerEl);
-        this.renderSubscriptionVideoMaxAgeSetting(containerEl);
-        if (isLoggedIn) {
+		new Setting(containerEl).setHeading().setName('Sync');
+		this.renderStoredVideos(containerEl);
+		this.renderSubscriptionVideoMaxAgeSetting(containerEl);
+		if (isLoggedIn) {
             this.renderAutoFetchSection(containerEl);
         }
         this.renderManualFetchSettings(containerEl, isLoggedIn);
     }
 
-    private renderStoredVideos(containerEl: HTMLElement): void {
+	private renderStoredVideos(containerEl: HTMLElement): void {
         const likedVideosCount = localStorageService.getLikedVideos().length;
 
         const storedVideosSetting = new Setting(containerEl)
