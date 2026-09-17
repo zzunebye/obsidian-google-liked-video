@@ -194,10 +194,11 @@ export class TranscriptService {
 		}
 		let stopReason: Error | undefined = signal?.aborted ? new DOMException("Request aborted", "AbortError") : undefined;
 		if (stopReason) throw stopReason;
-		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		let timeoutId: number | undefined;
 		let abortListener: (() => void) | undefined;
+		const getStopReason = (): Error | undefined => stopReason;
 		const stopped = new Promise<never>((_, reject) => {
-			timeoutId = setTimeout(() => {
+			timeoutId = window.setTimeout(() => {
 				stopReason = new TranscriptServiceError("timeout", "Transcript fetching timed out. Please try again.");
 				reject(stopReason);
 			}, TRANSCRIPT_TIMEOUT_MS);
@@ -211,15 +212,18 @@ export class TranscriptService {
 		// Obsidian requestUrl cannot cancel the underlying HTTP request. Guard every
 		// continuation so closing the modal stops subsequent requests and delivery.
 		const request = async (options: RequestUrlParam): Promise<string> => {
-			if (stopReason) throw stopReason;
+			const stoppedBeforeRequest = getStopReason();
+			if (stoppedBeforeRequest) throw stoppedBeforeRequest;
 			let response;
 			try {
 				response = await requestUrl({ ...options, throw: false });
 			} catch {
-				if (stopReason) throw stopReason;
+				const stoppedDuringRequest = getStopReason();
+				if (stoppedDuringRequest) throw stoppedDuringRequest;
 				throw new TranscriptServiceError("network", "Could not connect to YouTube. Check your connection and try again.");
 			}
-			if (stopReason) throw stopReason;
+			const stoppedAfterRequest = getStopReason();
+			if (stoppedAfterRequest) throw stoppedAfterRequest;
 			if (response.status === 429 || response.status === 403 || response.status === 401) {
 				throw new TranscriptServiceError("blocked", "YouTube is temporarily blocking transcript requests. Please try again later.");
 			}
@@ -263,7 +267,7 @@ export class TranscriptService {
 		try {
 			return await Promise.race([fetch(), stopped]);
 		} finally {
-			if (timeoutId !== undefined) clearTimeout(timeoutId);
+			if (timeoutId !== undefined) window.clearTimeout(timeoutId);
 			if (abortListener) signal?.removeEventListener("abort", abortListener);
 		}
 	}

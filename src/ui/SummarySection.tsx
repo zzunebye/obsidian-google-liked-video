@@ -132,7 +132,8 @@ export const SummarySection = ({
 			const contentToRender = isStreaming ? streamingContentRef.current : summary;
 			if (!contentToRender || rendering || contentToRender === renderedContent) return;
 			rendering = true;
-			const rendered = el.ownerDocument.createElement("div");
+			const rendered = el.createDiv();
+			rendered.detach();
 			const renderComponent = new Component();
 			renderComponent.load();
 			try {

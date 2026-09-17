@@ -103,7 +103,7 @@ export function SummarySpeechButton({ summary, disabled }: { summary: string | n
 			audio.onended = () => { void playChunk(index + 1, controller); };
 			audio.onerror = () => {
 				URL.revokeObjectURL(urlsRef.current[index]);
-				delete urlsRef.current[index];
+				urlsRef.current[index] = '';
 				const key = cacheKeysRef.current[index];
 				if (key) void storage.remove(key).catch(() => debugLogger.error('[Speech] Could not remove invalid cached audio'));
 				reportError(new SpeechServiceError('audio', 'Could not decode speech audio. Check the speech model and try again.'), controller);
@@ -144,7 +144,8 @@ export function SummarySpeechButton({ summary, disabled }: { summary: string | n
 			if (!chunksRef.current.length) {
 				const component = new Component();
 				component.load();
-				const rendered = ownerDocument.createElement('div');
+				const rendered = ownerDocument.body.createDiv();
+				rendered.detach();
 				try {
 					await MarkdownRenderer.render(plugin.app, summary, rendered, '', component);
 					if (controller.signal.aborted) return;
@@ -161,7 +162,8 @@ export function SummarySpeechButton({ summary, disabled }: { summary: string | n
 				await Promise.all(keys.map(key => storage.remove(key)));
 				if (controller.signal.aborted) return;
 			}
-			audioRef.current = ownerDocument.createElement('audio');
+			audioRef.current = ownerDocument.body.createEl('audio');
+			audioRef.current.detach();
 			await playChunk(0, controller);
 		} catch (error: unknown) { reportError(error, controller); }
 	};

@@ -131,6 +131,22 @@ export const VideoCard = ({
 	const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
 		e.currentTarget.classList.remove("video-card__container--dragging");
 	};
+	const getCardButton = (target: EventTarget | null, card: HTMLDivElement): HTMLButtonElement | null => {
+		const ownerWindow = card.ownerDocument.defaultView;
+		if (!ownerWindow || !(target instanceof ownerWindow.Element)) return null;
+		const button = target.closest<HTMLButtonElement>("button");
+		return button && card.contains(button) ? button : null;
+	};
+	const handleCardButtonHover = (event: React.MouseEvent<HTMLDivElement>): void => {
+		const card = event.currentTarget;
+		const button = getCardButton(event.target, card);
+		const relatedButton = getCardButton(event.relatedTarget, card);
+		if (button === relatedButton) return;
+		card.classList.toggle(
+			"video-card__container--button-hovered",
+			event.type === "mouseover" ? button !== null : relatedButton !== null,
+		);
+	};
 
 	const handleChannelClick = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -495,6 +511,8 @@ export const VideoCard = ({
 					}
 				}}
 				onContextMenu={handleContextMenu}
+				onMouseOver={handleCardButtonHover}
+				onMouseOut={handleCardButtonHover}
 				draggable
 				onDragStart={handleDragStart}
 				onDragEnd={handleDragEnd}
@@ -556,6 +574,8 @@ export const VideoCard = ({
 				}
 			}}
 			onContextMenu={handleContextMenu}
+			onMouseOver={handleCardButtonHover}
+			onMouseOut={handleCardButtonHover}
 			draggable
 			onDragStart={handleDragStart}
 			onDragEnd={handleDragEnd}

@@ -90,7 +90,9 @@ export class AddToPlaylistModal extends Modal {
 		if (!matches.some((playlist) => playlist.id === this.selectedId)) this.selectedId = '';
 		this.listEl.empty();
 		for (const playlist of matches) {
-			const row = this.listEl.createEl('label', { cls: 'geulo-add-playlist__row' });
+			const row = this.listEl.createEl('label', {
+				cls: `geulo-add-playlist__row${playlist.id === this.selectedId ? ' is-selected' : ''}${this.busy ? ' is-busy' : ''}`,
+			});
 			const radio = row.createEl('input', { type: 'radio', attr: { name: this.groupName, 'aria-label': playlist.title } });
 			radio.value = playlist.id;
 			radio.checked = playlist.id === this.selectedId;
@@ -114,6 +116,8 @@ export class AddToPlaylistModal extends Modal {
 			radio.setAttribute('aria-label', [playlist.title, ...metadata, playlist.description].filter(Boolean).join(', '));
 			radio.addEventListener('change', () => {
 				this.selectedId = playlist.id;
+				this.listEl.querySelectorAll('.geulo-add-playlist__row').forEach((element) => element.removeClass('is-selected'));
+				row.addClass('is-selected');
 				this.updateSelection();
 			});
 		}
@@ -139,6 +143,7 @@ export class AddToPlaylistModal extends Modal {
 		this.searchInput.disabled = busy;
 		this.listEl.setAttribute('aria-busy', String(busy));
 		this.listEl.querySelectorAll('input').forEach((input) => { input.disabled = busy; });
+		this.listEl.querySelectorAll('.geulo-add-playlist__row').forEach((row) => row.toggleClass('is-busy', busy));
 		this.updateSelection();
 	}
 

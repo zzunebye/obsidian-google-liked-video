@@ -104,13 +104,13 @@ export class WebViewerSummaryIntegration extends Component {
 			const actionBar = new WebViewerActionBar(view, () => this.getMenuActions(leaf));
 			this.actionBars.set(view, actionBar);
 			this.addChild(actionBar);
-			const original = view.onPaneMenu;
+			const original = view.onPaneMenu.bind(view);
 			const descriptor = Object.getOwnPropertyDescriptor(view, 'onPaneMenu');
 			let attached = true;
 			// Web Viewer has no dedicated public menu event. Wrap only this view,
 			// preserve its native items, and restore the method when detached/unloaded.
 			const wrapped: View['onPaneMenu'] = (menu, source) => {
-				original.call(view, menu, source);
+				original(menu, source);
 				if (attached && this.active) this.addMenuItem(menu, leaf);
 			};
 			view.onPaneMenu = wrapped;
@@ -193,12 +193,12 @@ export class WebViewerSummaryIntegration extends Component {
 		if (actions.length === 0 || typeof displayContextMenu !== 'function' || typeof factory?.buildFromTemplate !== 'function') return;
 		const descriptor = Object.getOwnPropertyDescriptor(factory, 'buildFromTemplate');
 		if (!descriptor?.configurable) return;
-		const original = factory.buildFromTemplate;
+		const original = factory.buildFromTemplate.bind(factory);
 		// The core viewer builds its native menu synchronously without an extension
 		// event. Restore the factory before building so nested menus stay untouched.
 		const wrapped: NativeMenuFactory['buildFromTemplate'] = items => {
 			Object.defineProperty(factory, 'buildFromTemplate', descriptor);
-			return original.call(factory, [
+			return original([
 				...items,
 				{ type: 'separator' },
 				...actions.flatMap(({ label, enabled, click, section }, index) => [
@@ -370,7 +370,7 @@ export class WebViewerSummaryIntegration extends Component {
 			{ signal: this.controller.signal });
 		const data: unknown = response.json;
 		const items: unknown = data && typeof data === 'object' && 'items' in data
-			? (data as { items: unknown }).items : undefined;
+			? Reflect.get(data, 'items') : undefined;
 		const video: unknown = Array.isArray(items) ? items.find((item: unknown) => isYouTubeVideo(item) && item.id === videoId) : undefined;
 		if (!isYouTubeVideo(video)) throw new Error('YouTube did not return this video’s details.');
 		return { ...video, pulled_at: new Date().toISOString() };

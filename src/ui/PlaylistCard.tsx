@@ -53,8 +53,8 @@ export const PlaylistCard = ({
 		menu.addItem((item) => {
 			item.setTitle(playlist.isOwnedByUser === true ? "Delete from YouTube" : "Remove from Geulo");
 			item.setIcon(playlist.isOwnedByUser === true ? "trash-2" : "list-minus");
-			item.onClick(async () => {
-				await playlistAction?.(playlist);
+			item.onClick(() => {
+				if (playlistAction) void playlistAction(playlist);
 			});
 		});
 		return menu;

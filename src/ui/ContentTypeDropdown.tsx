@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { UI_TEXT } from "src/constants/uiText";
@@ -59,7 +59,7 @@ export const ContentTypeDropdown = ({
 				setIsOpen(false);
 			}
 		};
-		const handleEscape = (event: globalThis.KeyboardEvent): void => {
+		const handleEscape = (event: KeyboardEvent): void => {
 			if (event.key !== "Escape") return;
 			event.preventDefault();
 			event.stopPropagation();
@@ -116,7 +116,7 @@ export const ContentTypeDropdown = ({
 		onChange(next.length === options.length ? [] : next);
 	};
 
-	const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+	const handleMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
 		if (event.key === "Tab") {
 			setIsOpen(false);
 			triggerRef.current?.focus();

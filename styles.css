@@ -1036,7 +1036,7 @@ If your plugin does not need CSS, delete this file.
 	opacity: 1;
 }
 
-.video-card__container:hover:not(:has(button:hover)) {
+.video-card__container:hover:not(.video-card__container--button-hovered) {
 	background-color: var(--background-modifier-hover);
 	border-color: var(--background-modifier-border-hover);
 }
@@ -2633,7 +2633,7 @@ button.geulo-undo-btn:focus-visible {
 	padding: 0;
 	margin: -1px;
 	overflow: hidden;
-	clip-path: inset(50%);
+	clip: rect(0, 0, 0, 0);
 	white-space: nowrap;
 }
 
@@ -2803,14 +2803,13 @@ button.geulo-undo-btn:focus-visible {
 /* Channel link styles */
 button.video-channel-link {
 	border: 0;
+	border-bottom: 1px solid transparent;
 	background-color: transparent;
 	background-image: none;
 	box-shadow: none;
 	font: inherit;
 	color: var(--text-normal);
 	cursor: pointer;
-	text-decoration: underline;
-	text-decoration-color: transparent;
 	transition: all 0.2s ease;
 	padding: 2px 4px;
 	border-radius: 3px;
@@ -2821,7 +2820,7 @@ button.video-channel-link:hover {
 	background-color: transparent;
 	background-image: none;
 	box-shadow: none;
-	text-decoration-color: currentColor;
+	border-bottom-color: currentColor;
 	color: var(--text-normal);
 }
 
@@ -3924,7 +3923,7 @@ button.video-channel-link:focus-visible {
 	background: var(--background-modifier-hover);
 }
 
-.geulo-add-playlist__row:has(input:checked) {
+.geulo-add-playlist__row.is-selected {
 	border-color: var(--interactive-accent);
 	background: var(--background-modifier-active-hover);
 }
@@ -3934,7 +3933,7 @@ button.video-channel-link:focus-visible {
 	outline-offset: -2px;
 }
 
-.geulo-add-playlist__row:has(input:disabled) {
+.geulo-add-playlist__row.is-busy {
 	cursor: wait;
 	opacity: 0.65;
 }

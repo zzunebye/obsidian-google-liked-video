@@ -807,7 +807,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setDesc('Remove the saved liked-video list from this vault. YouTube likes, existing video notes, playlists, and saved summaries are kept.')
             .addButton(button => button
                 .setButtonText('Clear saved videos')
-                .setWarning()
+                .setDestructive()
                 .setDisabled(storedCount === 0)
                 .onClick(async () => {
                     const result = await confirmAction(
