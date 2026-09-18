@@ -4,12 +4,12 @@ import { createRoot, Root } from 'react-dom/client';
 export const LEGACY_ANNOUNCEMENT_ID = 'ai-summaries-intro';
 
 export const FEATURE_ANNOUNCEMENT = {
-	id: '5-1-1',
+	id: '5-2-0',
 	title: 'Geulo update notes',
 	description: 'Check connections, recover blocked transcripts, and choose vault folders more easily. Earlier updates are included below.',
 	releases: [
 		{
-			version: '5.1.1',
+			version: '5.2.0',
 			title: 'More reliable connections, transcripts, and settings',
 			notes: [
 				'Run separate Google connection and transcript access checks in Settings, with clear results and next steps when something fails.',
