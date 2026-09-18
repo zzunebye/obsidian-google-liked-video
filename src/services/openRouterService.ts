@@ -4,6 +4,7 @@ import { AIServiceError } from './aiServiceError';
 import { BaseAIService } from './baseAIService';
 import { transcriptService, TranscriptServiceError } from './transcriptService';
 import type { VideoTranscript } from './transcriptService';
+import type { SummaryProgressCallback } from './geminiService';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -41,10 +42,10 @@ export class OpenRouterService extends BaseAIService {
 		return OPENROUTER_URL;
 	}
 
-	protected async buildRequestBody(videoId: string, prompt: string, signal?: AbortSignal): Promise<object> {
+	protected async buildRequestBody(videoId: string, prompt: string, signal?: AbortSignal, onProgress?: SummaryProgressCallback): Promise<object> {
 		let transcript: VideoTranscript;
 		try {
-			transcript = await transcriptService.getTranscript(videoId, signal, this.preferredLanguage);
+			transcript = await transcriptService.getTranscript(videoId, signal, this.preferredLanguage, onProgress);
 		} catch (error: unknown) {
 			if (error instanceof TranscriptServiceError) {
 				throw new AIServiceError('transcript_error', error.message);

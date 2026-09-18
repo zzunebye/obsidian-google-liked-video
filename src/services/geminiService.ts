@@ -1,5 +1,6 @@
 import { debugLogger } from '../debug';
 import type { SummarySource } from '../types';
+import type { TranscriptProgressPhase } from './transcriptService';
 import { BaseAIService } from './baseAIService';
 import { AIServiceError } from './aiServiceError';
 
@@ -28,9 +29,12 @@ export interface AIServiceResult {
 }
 
 export type StreamCallback = (chunk: string, accumulated: string) => void;
+export type SummaryProgressPhase = TranscriptProgressPhase | 'waiting-for-ai';
+export type SummaryProgressCallback = (phase: SummaryProgressPhase) => void;
 
 export interface StreamOptions {
 	onChunk: StreamCallback;
+	onPhase?: SummaryProgressCallback;
 	onComplete?: (result: AIServiceResult) => void;
 	onError?: (error: AIServiceError) => void;
 	signal?: AbortSignal;

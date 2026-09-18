@@ -101,6 +101,7 @@ let requests = [];
 
 globalThis.getTranscript = async (...args) => {
 	transcriptCalls.push(args);
+	args[3]?.('fetching-transcript');
 	return transcript;
 };
 
@@ -132,8 +133,10 @@ globalThis.requestUrl = async (request) => {
 
 const service = new OpenAIService('sk-openai-test', 'gpt-5.6-luna', 'ko');
 const streamedChunks = [];
+const progressPhases = [];
 let completedResult;
 await service.generateVideoSummaryStream('video-01', '핵심을 요약하세요.', {
+	onPhase: phase => progressPhases.push(phase),
 	onChunk: (chunk, accumulated) => streamedChunks.push({ chunk, accumulated }),
 	onComplete: (result) => {
 		completedResult = result;
@@ -143,6 +146,7 @@ await service.generateVideoSummaryStream('video-01', '핵심을 요약하세요.
 assert.equal(transcriptCalls.length, 1);
 assert.equal(transcriptCalls[0][0], 'video-01');
 assert.equal(transcriptCalls[0][2], 'ko');
+assert.deepEqual(progressPhases, ['fetching-transcript', 'waiting-for-ai']);
 assert.equal(requests.length, 1);
 assert.equal(requests[0].url, 'https://api.openai.com/v1/responses');
 assert.equal(requests[0].method, 'POST');
@@ -252,6 +256,7 @@ await assert.rejects(
 globalThis.getTranscript = async (...args) => {
 	transcriptCalls.push(args);
 	if (args[1]?.aborted) throw new DOMException('Request aborted', 'AbortError');
+	args[3]?.('fetching-transcript');
 	return transcript;
 };
 requests = [];
@@ -328,12 +333,17 @@ for (const [streamService, event] of streamCases) {
 		cancel() { transportCancelled = true; },
 	}));
 	const chunks = [];
+	const phases = [];
 	let result;
 	const run = streamService.generateVideoSummaryStream('video-01', 'Stream progressively.', {
+		onPhase: phase => phases.push(phase),
 		onChunk: (chunk, accumulated) => chunks.push(accumulated),
 		onComplete: value => { result = value; },
 	});
 	await tick();
+	assert.deepEqual(phases, streamService instanceof GeminiService
+		? ['waiting-for-ai']
+		: ['fetching-transcript', 'waiting-for-ai']);
 	const firstEvent = encoder.encode(`data:${JSON.stringify(event('첫 응답'))}\r\n\r\n`);
 	for (const byte of firstEvent) streamController.enqueue(Uint8Array.of(byte));
 	await tick();

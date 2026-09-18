@@ -2,6 +2,7 @@ import { requestUrl } from 'obsidian';
 import { debugLogger } from '../debug';
 import type { SummarySource } from '../types';
 import { AIService, AIServiceResult, StreamOptions, StreamCallback } from './geminiService';
+import type { SummaryProgressCallback } from './geminiService';
 import { AIServiceError, toAIServiceError } from './aiServiceError';
 
 const REQUEST_TIMEOUT_MS = 90000;
@@ -33,7 +34,7 @@ export abstract class BaseAIService implements AIService {
 
 	protected abstract getModel(): string;
 	protected abstract buildStreamUrl(): string;
-	protected abstract buildRequestBody(videoId: string, prompt: string, signal?: AbortSignal): object | Promise<object>;
+	protected abstract buildRequestBody(videoId: string, prompt: string, signal?: AbortSignal, onProgress?: SummaryProgressCallback): object | Promise<object>;
 	protected abstract buildRequestHeaders(): Record<string, string>;
 	protected abstract parseChunk(jsonStr: string): string | null;
 	protected abstract mapHttpStatusToError(status: number, message: string): AIServiceError;
@@ -73,7 +74,9 @@ export abstract class BaseAIService implements AIService {
 		}, REQUEST_TIMEOUT_MS);
 
 		try {
-			const body = await this.buildRequestBody(videoId, prompt, controller.signal);
+			const body = await this.buildRequestBody(videoId, prompt, controller.signal, options.onPhase);
+			if (controller.signal.aborted) throw new DOMException('Request aborted', 'AbortError');
+			options.onPhase?.('waiting-for-ai');
 			// requestUrl buffers the entire response, so SSE must use fetch's live body.
 			const response = await fetch(url, {
 				method: 'POST',

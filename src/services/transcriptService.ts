@@ -20,6 +20,9 @@ export interface VideoTranscript {
 	readonly segments: readonly TranscriptSegment[];
 }
 
+export type TranscriptProgressPhase = 'fetching-transcript' | 'opening-youtube' | 'reading-captions';
+export type TranscriptProgressCallback = (phase: TranscriptProgressPhase) => void;
+
 interface CaptionTrack {
 	baseUrl: string;
 	language: string;
@@ -169,8 +172,30 @@ function parseTranscript(text: string): TranscriptSegment[] {
 
 export class TranscriptService {
 	private cache = new Map<string, VideoTranscript>();
+	private webViewerFallback?: (videoId: string, signal?: AbortSignal, onProgress?: TranscriptProgressCallback) => Promise<VideoTranscript | null>;
 
-	async getTranscript(videoId: string, signal?: AbortSignal, preferredLanguage = 'en'): Promise<VideoTranscript> {
+	registerWebViewerFallback(fallback: (videoId: string, signal?: AbortSignal, onProgress?: TranscriptProgressCallback) => Promise<VideoTranscript | null>): () => void {
+		this.webViewerFallback = fallback;
+		return () => { if (this.webViewerFallback === fallback) this.webViewerFallback = undefined; };
+	}
+
+	cacheTranscript(transcript: VideoTranscript, preferredLanguage = transcript.language): void {
+		const keys = new Set([
+			`${transcript.videoId}:${preferredLanguage.toLowerCase()}`,
+			`${transcript.videoId}:${transcript.language.toLowerCase()}`,
+		]);
+		for (const key of keys) {
+			this.cache.delete(key);
+			this.cache.set(key, transcript);
+		}
+		while (this.cache.size > MAX_CACHED_TRANSCRIPTS) {
+			const oldest = this.cache.keys().next().value;
+			if (oldest === undefined) break;
+			this.cache.delete(oldest);
+		}
+	}
+
+	async getTranscript(videoId: string, signal?: AbortSignal, preferredLanguage = 'en', onProgress?: TranscriptProgressCallback): Promise<VideoTranscript> {
 		if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
 		const key = `${videoId}:${preferredLanguage.toLowerCase()}`;
 		const cached = this.cache.get(key);
@@ -179,12 +204,19 @@ export class TranscriptService {
 			this.cache.set(key, cached);
 			return cached;
 		}
-		const transcript = await this.fetchTranscript(videoId, signal, preferredLanguage);
-		this.cache.set(key, transcript);
-		if (this.cache.size > MAX_CACHED_TRANSCRIPTS) {
-			const oldest = this.cache.keys().next().value;
-			if (oldest !== undefined) this.cache.delete(oldest);
+		onProgress?.('fetching-transcript');
+		let transcript: VideoTranscript;
+		try {
+			transcript = await this.fetchTranscript(videoId, signal, preferredLanguage);
+		} catch (error: unknown) {
+			if (signal?.aborted) throw new DOMException("Request aborted", "AbortError");
+			if (!(error instanceof TranscriptServiceError) || error.code !== "blocked" || !this.webViewerFallback) throw error;
+			const recovered = await this.webViewerFallback(videoId, signal, onProgress);
+			if (!recovered) throw error;
+			transcript = recovered;
 		}
+		if (signal?.aborted) throw new DOMException("Request aborted", "AbortError");
+		this.cacheTranscript(transcript, preferredLanguage);
 		return transcript;
 	}
 

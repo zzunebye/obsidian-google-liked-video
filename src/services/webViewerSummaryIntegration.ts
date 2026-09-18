@@ -9,6 +9,7 @@ import { PlaylistVideosPane, VIEW_TYPE_PLAYLIST_VIDEOS } from 'src/views/Playlis
 import { getActiveApiKey } from './aiServiceFactory';
 import { WebViewerActionBar } from './webViewerActionBar';
 import type { WebViewerAction } from './webViewerActionBar';
+import { WebViewerTranscriptRecovery } from './webViewerTranscriptRecovery';
 import { YouTubeApiClient, YouTubeRequestError } from './youtubeApiClient';
 
 interface ViewerElement extends HTMLElement {
@@ -70,6 +71,7 @@ export class WebViewerSummaryIntegration extends Component {
 		if (Platform.isMobile) return;
 		this.active = true;
 		const workspace = this.plugin.app.workspace;
+		this.addChild(new WebViewerTranscriptRecovery(this.plugin.app));
 		workspace.onLayoutReady(() => this.syncViews());
 		this.registerEvent(workspace.on('layout-change', () => this.syncViews()));
 		this.registerEvent(workspace.on('active-leaf-change', () => this.syncViews()));

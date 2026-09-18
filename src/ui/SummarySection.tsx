@@ -11,6 +11,7 @@ import {
 	Square,
 } from "lucide-react";
 import { AIServiceError, AIServiceResult } from "../services/geminiService";
+import type { SummaryProgressPhase } from "../services/geminiService";
 import { createAIService, getActiveApiKey } from "../services/aiServiceFactory";
 import { usePlugin } from "../store/pluginContext";
 import { debugLogger } from "../debug";
@@ -18,6 +19,18 @@ import { parseDurationToSeconds } from "../utils/videoUtils";
 import type { SummarySource } from "../types";
 
 const LONG_VIDEO_THRESHOLD_SECONDS = 30 * 60; // 30 minutes
+type SummaryPhase = "idle" | "preparing" | SummaryProgressPhase | "generating" | "saving" | "preview";
+
+const SUMMARY_PROGRESS_LABELS: Record<Exclude<SummaryPhase, "idle">, string> = {
+	preparing: "Preparing AI summary…",
+	"fetching-transcript": "Fetching transcript…",
+	"opening-youtube": "Opening YouTube to retrieve captions…",
+	"reading-captions": "Reading YouTube captions…",
+	"waiting-for-ai": "Waiting for AI response…",
+	generating: "Generating AI summary…",
+	saving: "Saving summary…",
+	preview: "Generating one-line preview…",
+};
 
 export interface SummarySnapshot {
 	readonly summary: string | null;
@@ -74,10 +87,12 @@ export const SummarySection = ({
 	const [summarySource, setSummarySource] = useState<SummarySource>(initialSnapshot?.source ?? 'video');
 	const [summaryModel, setSummaryModel] = useState<string | undefined>(initialSnapshot?.model);
 	const activeSourceRef = useRef<SummarySource>(summarySource);
-	const [phase, setPhase] = useState<"idle" | "preparing" | "generating" | "saving" | "preview">("idle");
-	const isLoading = phase === "preparing";
+	const [phase, setPhase] = useState<SummaryPhase>("idle");
+	const isLoading = phase === "preparing" || phase === "fetching-transcript" || phase === "opening-youtube"
+		|| phase === "reading-captions" || phase === "waiting-for-ai";
 	const isStreaming = phase === "generating";
 	const isBusy = phase !== "idle";
+	const progressLabel = phase === "idle" ? "" : SUMMARY_PROGRESS_LABELS[phase];
 	const [savingNote, setSavingNote] = useState(false);
 	const savingNoteRef = useRef(false);
 	const [checkingCache, setCheckingCache] = useState(!initialSnapshot?.summary);
@@ -233,6 +248,9 @@ export const SummarySection = ({
 			let result: AIServiceResult | undefined;
 			if (aiService.generateVideoSummaryStream) {
 				await aiService.generateVideoSummaryStream(videoId, plugin.settings.summaryPrompt, {
+					onPhase: progressPhase => {
+						if (!controller.signal.aborted) setPhase(progressPhase);
+					},
 					onChunk: (_chunk, accumulated) => {
 						if (controller.signal.aborted) return;
 						streamingContentRef.current = accumulated;
@@ -407,7 +425,7 @@ export const SummarySection = ({
 
 	const progress = isBusy ? <div className="summary-section__streaming-indicator">
 		<div className="summary-section__streaming-dot" aria-hidden="true" />
-		<span role="status">{phase === "preparing" ? "Preparing AI summary…" : phase === "saving" ? "Saving…" : phase === "preview" ? "Generating one-line preview…" : "Generating AI summary…"}</span>
+		<span role="status">{progressLabel}</span>
 		{!isExpanded && onShowSummary && <button type="button" className="summary-section__action-btn" onClick={onShowSummary}>View</button>}
 		{phase !== "saving" && <button type="button" className="summary-section__cancel-btn" onClick={handleCancel} title="Cancel generation"><Square size={10} aria-hidden="true" /><span>Stop</span></button>}
 	</div> : null;
@@ -425,8 +443,8 @@ export const SummarySection = ({
 				{!summary && !isBusy && !error && <button type="button" className="mod-cta" disabled={!canGenerate} onClick={() => void generateSummary()}>Generate AI summary</button>}
 			</div> }
 			{(isLoading || (isStreaming && !streamingContent)) && (
-				<div className="summary-section__skeleton" role="status" aria-label="Loading AI summary">
-					{presentation === "reader" && <p>Preparing AI summary… This may take a moment.</p>}
+				<div className="summary-section__skeleton" aria-hidden="true">
+					{presentation === "reader" && <p>{progressLabel} This may take a moment.</p>}
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--long" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--medium" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--short" />
