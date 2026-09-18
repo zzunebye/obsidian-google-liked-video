@@ -3724,6 +3724,144 @@ button.video-channel-link:focus-visible {
 	outline-offset: 2px;
 }
 
+.geulo-health-check {
+	margin: var(--size-4-2) 0 var(--size-4-4);
+	padding: var(--size-4-4);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+}
+
+.geulo-health-check.is-healthy {
+	border-color: color-mix(in srgb, var(--text-success) 45%, var(--background-modifier-border));
+}
+
+.geulo-health-check.is-unhealthy {
+	border-color: color-mix(in srgb, var(--text-error) 45%, var(--background-modifier-border));
+}
+
+.geulo-health-check.is-inconclusive {
+	border-color: color-mix(in srgb, var(--text-accent) 35%, var(--background-modifier-border));
+}
+
+.geulo-health-check__header,
+.geulo-health-check__step {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-4-3);
+}
+
+.geulo-health-check__header-icon,
+.geulo-health-check__step-icon {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+}
+
+.geulo-health-check__header-icon {
+	width: 22px;
+	height: 22px;
+	margin-top: 1px;
+}
+
+.geulo-health-check__header-icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.geulo-health-check.is-running .geulo-health-check__header-icon {
+	color: var(--text-accent);
+	animation: geulo-health-check-spin 1s linear infinite;
+}
+
+.geulo-health-check.is-healthy .geulo-health-check__header-icon,
+.geulo-health-check__step.is-passed .geulo-health-check__step-icon {
+	color: var(--text-success);
+}
+
+.geulo-health-check.is-unhealthy .geulo-health-check__header-icon,
+.geulo-health-check__step.is-failed .geulo-health-check__step-icon {
+	color: var(--text-error);
+}
+
+.geulo-health-check.is-inconclusive .geulo-health-check__header-icon {
+	color: var(--text-accent);
+}
+
+.geulo-health-check__header-text,
+.geulo-health-check__step-text {
+	min-width: 0;
+}
+
+.geulo-health-check__title,
+.geulo-health-check__step-label {
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+}
+
+.geulo-health-check__summary,
+.geulo-health-check__step-detail,
+.geulo-health-check__time {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: var(--line-height-tight);
+}
+
+.geulo-health-check__summary {
+	margin-top: var(--size-2-1);
+}
+
+.geulo-health-check__steps {
+	display: grid;
+	gap: var(--size-4-3);
+	margin-top: var(--size-4-4);
+	padding-top: var(--size-4-4);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.geulo-health-check__step-icon {
+	width: 18px;
+	height: 18px;
+	margin-top: 1px;
+	border-radius: 50%;
+	background: var(--background-primary);
+}
+
+.geulo-health-check__step-icon svg {
+	width: 13px;
+	height: 13px;
+	stroke-width: 2.5;
+}
+
+.geulo-health-check__step.is-skipped .geulo-health-check__step-icon,
+.geulo-health-check__step.is-skipped .geulo-health-check__step-label,
+.geulo-health-check__step.is-skipped .geulo-health-check__step-detail {
+	color: var(--text-faint);
+}
+
+.geulo-health-check__step-detail {
+	margin-top: var(--size-2-1);
+}
+
+.geulo-health-check__time {
+	display: block;
+	margin-top: var(--size-4-4);
+	text-align: end;
+}
+
+@keyframes geulo-health-check-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.geulo-health-check.is-running .geulo-health-check__header-icon {
+		animation: none;
+	}
+}
+
 .geulo-stored-video-count {
 	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;

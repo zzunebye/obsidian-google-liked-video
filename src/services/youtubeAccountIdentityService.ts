@@ -43,18 +43,22 @@ export class YouTubeAccountIdentityService {
 		return this.identityPromise;
 	}
 
+	checkCurrentIdentity(): Promise<YouTubeAccountIdentity> {
+		return this.fetchCurrentIdentity(undefined, 15000);
+	}
+
 	reset(): void {
 		this.identityController?.abort();
 		this.identityController = null;
 		this.identityPromise = null;
 	}
 
-	private async fetchCurrentIdentity(signal: AbortSignal): Promise<YouTubeAccountIdentity> {
+	private async fetchCurrentIdentity(signal?: AbortSignal, timeoutMs?: number): Promise<YouTubeAccountIdentity> {
 		const params = new URLSearchParams({ part: 'id,snippet', mine: 'true' });
 		const body: unknown = (await this.client.request(
 			'GET',
 			`channels?${params.toString()}`,
-			{ signal },
+			{ signal, timeoutMs },
 		)).json;
 		if (!isRecord(body) || !Array.isArray(body.items)) {
 			throw new Error('YouTube returned an invalid account response.');

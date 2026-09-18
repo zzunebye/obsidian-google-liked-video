@@ -1,8 +1,13 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, getLanguage, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
-import { handleGoogleLogin, handleGoogleLogout } from 'src/auth';
+import { handleGoogleLogin, handleGoogleLogout, refreshAccessToken } from 'src/auth';
+import { checkGoogleConnectionHealth } from 'src/services/googleConnectionHealthService';
+import type { GoogleConnectionHealthReport, GoogleConnectionHealthStepStatus } from 'src/services/googleConnectionHealthService';
+import { checkTranscriptHealth } from 'src/services/transcriptHealthCheckService';
+import type { TranscriptHealthCheckReport } from 'src/services/transcriptHealthCheckService';
+import { transcriptService } from 'src/services/transcriptService';
 import { AI_PROVIDERS, AI_PROVIDER_LABELS, DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS, isAIProvider, isOpenAIModelPreset, isOpenRouterModelPreset, isShortVideoMaxDurationSeconds, isSubscriptionVideoMaxAgeDays, isSummaryLineHeight, ObsidianGoogleLikedVideoSettings, OPENAI_MODEL_PRESETS, OPENROUTER_MODEL_PRESETS, SHORT_VIDEO_MAX_DURATION_OPTIONS, SUBSCRIPTION_VIDEO_MAX_AGE_OPTIONS, SUMMARY_LINE_HEIGHT_OPTIONS, TRANSCRIPT_LANGUAGE_OPTIONS } from 'src/types';
 import GoogleLikedVideoPlugin from '../main';
 import { debugLogger, DebugConfig } from 'src/debug';
@@ -19,8 +24,30 @@ import type { GoogleClientCredentials } from '../utils/googleCredentialsUtils';
 const CUSTOM_OPENROUTER_MODEL_OPTION = 'custom';
 const CUSTOM_OPENAI_MODEL_OPTION = 'custom';
 
+type HealthCheckCardStatus = 'running' | 'healthy' | 'unhealthy' | 'inconclusive';
+
+interface HealthCheckCardStep {
+	label: string;
+	status: GoogleConnectionHealthStepStatus;
+	detail: string;
+}
+
+interface HealthCheckCardOptions {
+	status: HealthCheckCardStatus;
+	title: string;
+	summary: string;
+	steps?: readonly HealthCheckCardStep[];
+	checkedAt?: Date;
+}
+
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     plugin: GoogleLikedVideoPlugin;
+	private googleHealthCheckRunning = false;
+	private googleHealthCheckReport: GoogleConnectionHealthReport | null = null;
+	private googleHealthCheckRunId = 0;
+	private transcriptHealthCheckRunning = false;
+	private transcriptHealthCheckReport: TranscriptHealthCheckReport | null = null;
+	private transcriptHealthCheckRunId = 0;
 
     constructor(app: App, plugin: GoogleLikedVideoPlugin) {
         super(app, plugin);
@@ -72,6 +99,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 ['Google account', 'Connect with Google', 'Client ID', 'Client secret', 'YouTube Data API', 'Import credentials', 'JSON'],
                 (containerEl) => this.renderSetupSection(containerEl, refreshToken),
             ),
+			this.createSectionDefinition(
+				'Health checks',
+				['Health check', 'Connection health', 'Transcript access'],
+				(containerEl) => this.renderHealthChecksSection(containerEl),
+			),
 			this.createSectionDefinition(
 				'Sync',
 				['Stored videos', 'Subscription video age limit', '30 days', '60 days', '90 days', '120 days', 'Automatic fetch', 'Fetch interval', 'Full scan', 'Fetch recent videos', 'Fetch on startup'],
@@ -830,6 +862,14 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
     }
 
+	private renderHealthChecksSection(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setHeading()
+			.setName('Health checks');
+		this.renderGoogleHealthCheck(containerEl);
+		this.renderTranscriptHealthCheck(containerEl);
+	}
+
     private renderSetupSection(containerEl: HTMLElement, refreshToken: string | null): void {
         const isLoggedIn = Boolean(refreshToken);
 
@@ -846,6 +886,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 .setButtonText(isLoggedIn ? 'Disconnect' : 'Connect with Google')
                 .onClick(async (): Promise<void> => {
                     const refreshDisplay = (): void => {
+						this.invalidateGoogleHealthCheck();
                         this.plugin.resetGoogleAccountIdentity();
                         this.update();
                         void this.updateListPaneView();
@@ -919,6 +960,207 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     }
 
+	private invalidateGoogleHealthCheck(): void {
+		this.googleHealthCheckRunId += 1;
+		this.googleHealthCheckRunning = false;
+		this.googleHealthCheckReport = null;
+	}
+
+	private renderGoogleHealthCheck(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('Google connection')
+			.setDesc('Verify OAuth credentials, Google authorization, and YouTube Data API access. Runs only when requested and uses 1 YouTube quota unit.')
+			.addButton(button => button
+				.setButtonText(this.googleHealthCheckRunning
+					? 'Checking…'
+					: this.googleHealthCheckReport ? 'Check again' : 'Run health check')
+				.setDisabled(this.googleHealthCheckRunning)
+				.onClick(() => {
+					void this.runGoogleHealthCheck();
+				}));
+
+		if (!this.googleHealthCheckRunning && !this.googleHealthCheckReport) {
+			return;
+		}
+
+		if (this.googleHealthCheckRunning) {
+			this.renderHealthCheckCard(containerEl, {
+				status: 'running',
+				title: 'Checking Google connection…',
+				summary: 'Renewing authorization and contacting YouTube.',
+			});
+			return;
+		}
+
+		const healthReport = this.googleHealthCheckReport;
+		if (!healthReport) return;
+		this.renderHealthCheckCard(containerEl, {
+			status: healthReport.status,
+			title: healthReport.status === 'healthy'
+				? 'Google connection is healthy'
+				: 'Google connection needs attention',
+			summary: healthReport.status === 'healthy'
+				? 'OAuth renewal and YouTube API access both succeeded.'
+				: 'Review the failed check below, make the suggested change, and try again.',
+			steps: healthReport.steps,
+			checkedAt: healthReport.checkedAt,
+		});
+	}
+
+	private renderTranscriptHealthCheck(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('Transcript access')
+			.setDesc('Test the public YouTube transcript path with your most recently saved video. No Google OAuth or Data API quota is used.')
+			.addButton(button => button
+				.setButtonText(this.transcriptHealthCheckRunning
+					? 'Checking…'
+					: this.transcriptHealthCheckReport ? 'Check again' : 'Run health check')
+				.setDisabled(this.transcriptHealthCheckRunning)
+				.onClick(() => {
+					void this.runTranscriptHealthCheck();
+				}));
+
+		if (!this.transcriptHealthCheckRunning && !this.transcriptHealthCheckReport) {
+			return;
+		}
+		if (this.transcriptHealthCheckRunning) {
+			this.renderHealthCheckCard(containerEl, {
+				status: 'running',
+				title: 'Checking transcript access…',
+				summary: 'Contacting the public YouTube transcript endpoints.',
+			});
+			return;
+		}
+
+		const healthReport = this.transcriptHealthCheckReport;
+		if (!healthReport) return;
+		this.renderHealthCheckCard(containerEl, {
+			status: healthReport.status,
+			title: healthReport.status === 'healthy'
+				? 'Transcript access is working'
+				: healthReport.status === 'inconclusive'
+					? 'Transcript access was not verified'
+					: 'Transcript access needs attention',
+			summary: healthReport.detail,
+			checkedAt: healthReport.checkedAt,
+		});
+	}
+
+	private renderHealthCheckCard(containerEl: HTMLElement, options: HealthCheckCardOptions): void {
+		const cardEl = containerEl.createDiv({
+			cls: `geulo-health-check is-${options.status}`,
+			attr: {
+				role: options.status === 'unhealthy' ? 'alert' : 'status',
+				'aria-live': 'polite',
+			},
+		});
+		const headerEl = cardEl.createDiv('geulo-health-check__header');
+		const headerIconEl = headerEl.createSpan('geulo-health-check__header-icon');
+		setIcon(headerIconEl, options.status === 'running'
+			? 'loader-circle'
+			: options.status === 'healthy'
+				? 'circle-check'
+				: options.status === 'inconclusive' ? 'circle-help' : 'triangle-alert');
+		const headerTextEl = headerEl.createDiv('geulo-health-check__header-text');
+		headerTextEl.createDiv({ cls: 'geulo-health-check__title', text: options.title });
+		headerTextEl.createDiv({ cls: 'geulo-health-check__summary', text: options.summary });
+
+		if (options.steps && options.steps.length > 0) {
+			const stepsEl = cardEl.createDiv('geulo-health-check__steps');
+			for (const healthStep of options.steps) {
+				const stepEl = stepsEl.createDiv({
+					cls: `geulo-health-check__step is-${healthStep.status}`,
+				});
+				const stepIconEl = stepEl.createSpan('geulo-health-check__step-icon');
+				setIcon(stepIconEl, this.getGoogleHealthStepIcon(healthStep.status));
+				const stepTextEl = stepEl.createDiv('geulo-health-check__step-text');
+				stepTextEl.createDiv({ cls: 'geulo-health-check__step-label', text: healthStep.label });
+				stepTextEl.createDiv({ cls: 'geulo-health-check__step-detail', text: healthStep.detail });
+			}
+		}
+
+		if (options.checkedAt) {
+			cardEl.createEl('time', {
+				cls: 'geulo-health-check__time',
+				text: `Checked ${options.checkedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
+				attr: { datetime: options.checkedAt.toISOString() },
+			});
+		}
+	}
+
+	private getGoogleHealthStepIcon(status: GoogleConnectionHealthStepStatus): string {
+		if (status === 'passed') return 'check';
+		if (status === 'failed') return 'x';
+		return 'minus';
+	}
+
+	private async runGoogleHealthCheck(): Promise<void> {
+		if (this.googleHealthCheckRunning) return;
+		const runId = ++this.googleHealthCheckRunId;
+		this.googleHealthCheckRunning = true;
+		this.googleHealthCheckReport = null;
+		this.update();
+
+		try {
+			const healthReport = await checkGoogleConnectionHealth({
+				clientId: this.plugin.settings.googleClientId,
+				clientSecret: googleTokenStorageService.getClientSecret(),
+				refreshToken: googleTokenStorageService.getRefreshToken(),
+			}, {
+				refreshAuthorization: async (clientId): Promise<void> => {
+					await refreshAccessToken(clientId);
+				},
+				checkYouTubeAccount: () => this.plugin.accountIdentityService.checkCurrentIdentity(),
+			});
+			if (runId !== this.googleHealthCheckRunId) return;
+			this.googleHealthCheckReport = healthReport;
+		} catch (error: unknown) {
+			if (runId !== this.googleHealthCheckRunId) return;
+			new Notice(error instanceof Error
+				? `Google health check failed: ${error.message}`
+				: 'Google health check failed. Please try again.');
+		} finally {
+			if (runId === this.googleHealthCheckRunId) {
+				this.googleHealthCheckRunning = false;
+				this.update();
+			}
+		}
+	}
+
+	private async runTranscriptHealthCheck(): Promise<void> {
+		if (this.transcriptHealthCheckRunning) return;
+		const runId = ++this.transcriptHealthCheckRunId;
+		this.transcriptHealthCheckRunning = true;
+		this.transcriptHealthCheckReport = null;
+		this.update();
+
+		try {
+			const recentVideo = localStorageService.getLikedVideos()[0];
+			const preferredLanguage = this.plugin.settings.transcriptLanguage === 'auto'
+				? getLanguage()
+				: this.plugin.settings.transcriptLanguage;
+			const healthReport = await checkTranscriptHealth({
+				videoId: recentVideo?.id ?? null,
+				videoTitle: recentVideo?.snippet.title,
+				preferredLanguage,
+			}, {
+				fetchTranscript: (videoId, language) => transcriptService.fetchTranscript(videoId, undefined, language),
+			});
+			if (runId !== this.transcriptHealthCheckRunId) return;
+			this.transcriptHealthCheckReport = healthReport;
+		} catch (error: unknown) {
+			if (runId !== this.transcriptHealthCheckRunId) return;
+			new Notice(error instanceof Error
+				? `Transcript health check failed: ${error.message}`
+				: 'Transcript health check failed. Please try again.');
+		} finally {
+			if (runId === this.transcriptHealthCheckRunId) {
+				this.transcriptHealthCheckRunning = false;
+				this.update();
+			}
+		}
+	}
+
 	private async importGoogleCredentials(credentials: GoogleClientCredentials): Promise<void> {
 		if (googleTokenStorageService.getRefreshToken() || googleTokenStorageService.getAccessToken()) {
 			throw new Error('Disconnect your Google account before importing new credentials.');
@@ -940,6 +1182,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 			throw new Error('Could not save credentials. Please try again.');
 		}
 		this.plugin.settings.googleClientId = credentials.clientId;
+		this.invalidateGoogleHealthCheck();
 		this.update();
 	}
 

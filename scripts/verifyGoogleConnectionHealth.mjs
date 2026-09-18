@@ -1,0 +1,179 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { build } from 'esbuild';
+
+const outputDirectory = await mkdtemp(path.join(tmpdir(), 'geulo-google-health-'));
+const outputPath = path.join(outputDirectory, 'google-health-verification.cjs');
+
+try {
+	await build({
+		stdin: {
+			contents: `
+				export { checkGoogleConnectionHealth } from './src/services/googleConnectionHealthService.ts';
+				export { checkTranscriptHealth } from './src/services/transcriptHealthCheckService.ts';
+				export { TranscriptServiceError } from './src/services/transcriptService.ts';
+				export { YouTubeRequestError } from './src/services/youtubeApiClient.ts';
+			`,
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: 'cjs',
+		platform: 'node',
+		outfile: outputPath,
+		plugins: [{
+			name: 'google-health-fixtures',
+			setup(builder) {
+				builder.onResolve({ filter: /^(obsidian|src\/debug)$/ }, (args) => ({
+					path: args.path,
+					namespace: 'fixture',
+				}));
+				builder.onLoad({ filter: /.*/, namespace: 'fixture' }, ({ path: name }) => ({
+					contents: name === 'obsidian'
+						? 'export const requestUrl = () => { throw new Error("Unexpected request"); };'
+						: 'export const debugLogger = { api() {} };',
+					loader: 'js',
+				}));
+			},
+		}],
+	});
+
+	const require = createRequire(import.meta.url);
+	const {
+		checkGoogleConnectionHealth,
+		checkTranscriptHealth,
+		TranscriptServiceError,
+		YouTubeRequestError,
+	} = require(outputPath);
+	let authorizationChecks = 0;
+	let apiChecks = 0;
+	const healthyDependencies = {
+		async refreshAuthorization() {
+			authorizationChecks += 1;
+		},
+		async checkYouTubeAccount() {
+			apiChecks += 1;
+			return { channelId: 'channel-id', channelTitle: 'Geulo test channel' };
+		},
+	};
+
+	const missingCredentials = await checkGoogleConnectionHealth({
+		clientId: '',
+		clientSecret: '',
+		refreshToken: '',
+	}, healthyDependencies);
+	assert.equal(missingCredentials.status, 'unhealthy');
+	assert.deepEqual(missingCredentials.steps.map((step) => step.status), ['failed', 'skipped', 'skipped']);
+	assert.deepEqual([authorizationChecks, apiChecks], [0, 0]);
+
+	const disconnected = await checkGoogleConnectionHealth({
+		clientId: 'client-id',
+		clientSecret: 'client-secret',
+		refreshToken: '',
+	}, healthyDependencies);
+	assert.equal(disconnected.status, 'unhealthy');
+	assert.deepEqual(disconnected.steps.map((step) => step.status), ['passed', 'failed', 'skipped']);
+	assert.deepEqual([authorizationChecks, apiChecks], [0, 0]);
+
+	const healthy = await checkGoogleConnectionHealth({
+		clientId: ' client-id ',
+		clientSecret: 'client-secret',
+		refreshToken: 'refresh-token',
+	}, healthyDependencies);
+	assert.equal(healthy.status, 'healthy');
+	assert.deepEqual(healthy.steps.map((step) => step.status), ['passed', 'passed', 'passed']);
+	assert.equal(healthy.steps[2].detail, 'YouTube responded for Geulo test channel.');
+	assert.deepEqual([authorizationChecks, apiChecks], [1, 1]);
+
+	const expiredAuthorization = await checkGoogleConnectionHealth({
+		clientId: 'client-id',
+		clientSecret: 'client-secret',
+		refreshToken: 'expired-refresh-token',
+	}, {
+		async refreshAuthorization() {
+			throw new Error('Google token refresh failed (400)');
+		},
+		async checkYouTubeAccount() {
+			throw new Error('Unexpected API check');
+		},
+	});
+	assert.deepEqual(expiredAuthorization.steps.map((step) => step.status), ['passed', 'failed', 'skipped']);
+	assert.match(expiredAuthorization.steps[1].detail, /Reconnect your account/);
+
+	const apiDisabled = await checkGoogleConnectionHealth({
+		clientId: 'client-id',
+		clientSecret: 'client-secret',
+		refreshToken: 'refresh-token',
+	}, {
+		async refreshAuthorization() {},
+		async checkYouTubeAccount() {
+			throw new YouTubeRequestError('http', 'API disabled', 403, ['accessNotConfigured']);
+		},
+	});
+	assert.equal(apiDisabled.status, 'unhealthy');
+	assert.deepEqual(apiDisabled.steps.map((step) => step.status), ['passed', 'passed', 'failed']);
+	assert.match(apiDisabled.steps[2].detail, /Enable YouTube Data API v3/);
+
+	let transcriptChecks = 0;
+	const noSavedVideo = await checkTranscriptHealth({
+		videoId: null,
+		preferredLanguage: 'en',
+	}, {
+		async fetchTranscript() {
+			transcriptChecks += 1;
+			throw new Error('Unexpected transcript check');
+		},
+	});
+	assert.equal(noSavedVideo.status, 'inconclusive');
+	assert.equal(transcriptChecks, 0);
+
+	const transcriptHealthy = await checkTranscriptHealth({
+		videoId: 'abcdefghijk',
+		videoTitle: 'Captioned video',
+		preferredLanguage: 'ko',
+	}, {
+		async fetchTranscript(videoId, preferredLanguage) {
+			transcriptChecks += 1;
+			assert.equal(videoId, 'abcdefghijk');
+			assert.equal(preferredLanguage, 'ko');
+			return {
+				videoId,
+				language: 'ko',
+				languageName: 'Korean',
+				isAutoGenerated: false,
+				segments: [{ start: 0, duration: 1, text: 'Hello' }],
+			};
+		},
+	});
+	assert.equal(transcriptHealthy.status, 'healthy');
+	assert.match(transcriptHealthy.detail, /1 transcript segments from “Captioned video”/);
+	assert.equal(transcriptChecks, 1);
+
+	const noCaptions = await checkTranscriptHealth({
+		videoId: 'abcdefghijk',
+		preferredLanguage: 'en',
+	}, {
+		async fetchTranscript() {
+			throw new TranscriptServiceError('unavailable', 'No captions');
+		},
+	});
+	assert.equal(noCaptions.status, 'inconclusive');
+	assert.match(noCaptions.detail, /does not indicate a service problem/);
+
+	const transcriptBlocked = await checkTranscriptHealth({
+		videoId: 'abcdefghijk',
+		preferredLanguage: 'en',
+	}, {
+		async fetchTranscript() {
+			throw new TranscriptServiceError('blocked', 'Blocked');
+		},
+	});
+	assert.equal(transcriptBlocked.status, 'unhealthy');
+	assert.match(transcriptBlocked.detail, /blocking transcript requests/);
+
+	console.log('settings health-check verification passed');
+} finally {
+	await rm(outputDirectory, { recursive: true, force: true });
+}
