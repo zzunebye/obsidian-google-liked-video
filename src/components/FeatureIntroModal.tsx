@@ -4,10 +4,20 @@ import { createRoot, Root } from 'react-dom/client';
 export const LEGACY_ANNOUNCEMENT_ID = 'ai-summaries-intro';
 
 export const FEATURE_ANNOUNCEMENT = {
-	id: '5-0-0',
+	id: '5-1-1',
 	title: 'Geulo update notes',
-	description: 'Read transcripts, listen to AI summaries, and turn more of your YouTube library into notes. Earlier updates are included below.',
+	description: 'Check connections, recover blocked transcripts, and choose vault folders more easily. Earlier updates are included below.',
 	releases: [
+		{
+			version: '5.1.1',
+			title: 'More reliable connections, transcripts, and settings',
+			notes: [
+				'Run separate Google connection and transcript access checks in Settings, with clear results and next steps when something fails.',
+				'When direct transcript access is blocked, Geulo can recover captions through Obsidian Web Viewer. Follow the on-screen prompt if YouTube requires sign-in or Show transcript.',
+				'Google sign-in now always opens in your default browser. API keys have one-click copy buttons, and Video note location suggests matching folders from your current vault as you type.',
+				'Open a failed subscription channel directly on YouTube from the sync warning to review or fix the channel more quickly.'
+			]
+		},
 		{
 			version: '5.0.0',
 			title: 'Big update: AI summaries, transcripts, better filter & sort, and designs',

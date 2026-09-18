@@ -1,4 +1,4 @@
-import { App, getLanguage, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
+import { AbstractInputSuggest, App, getLanguage, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
@@ -38,6 +38,34 @@ interface HealthCheckCardOptions {
 	summary: string;
 	steps?: readonly HealthCheckCardStep[];
 	checkedAt?: Date;
+}
+
+class VaultFolderSuggest extends AbstractInputSuggest<string> {
+	private readonly inputEl: HTMLInputElement;
+
+	constructor(app: App, inputEl: HTMLInputElement) {
+		super(app, inputEl);
+		this.inputEl = inputEl;
+	}
+
+	protected getSuggestions(query: string): string[] {
+		const normalizedQuery = query.trim().toLocaleLowerCase();
+		return this.app.vault
+			.getAllFolders(false)
+			.map(folder => folder.path)
+			.filter(path => path.toLocaleLowerCase().includes(normalizedQuery))
+			.sort((left, right) => left.localeCompare(right));
+	}
+
+	renderSuggestion(folderPath: string, el: HTMLElement): void {
+		el.setText(folderPath);
+	}
+
+	selectSuggestion(folderPath: string): void {
+		this.setValue(folderPath);
+		this.inputEl.trigger('input');
+		this.close();
+	}
 }
 
 export class GoogleLikedVideoSettingTab extends PluginSettingTab {
@@ -367,12 +395,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Video note location')
             .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path.')
-            .addText(text => text
-                .setPlaceholder('e.g. Youtube, Youtube/Videos')
-                .setValue(this.plugin.settings.videoNotePath)
-                .onChange(async (value) => {
-                    await this.saveSetting('videoNotePath', value.trim());
-                }));
+            .addText(text => {
+                text
+                    .setPlaceholder('e.g. Youtube, Youtube/Videos')
+                    .setValue(this.plugin.settings.videoNotePath)
+                    .onChange(async (value) => {
+                        await this.saveSetting('videoNotePath', value.trim());
+                    });
+                new VaultFolderSuggest(this.app, text.inputEl);
+            });
 
         new Setting(containerEl)
             .setName('Organize by channel')
