@@ -26,7 +26,7 @@ async function createSummaryCopy(plugin: GoogleLikedVideoPlugin, video: YouTubeV
 }
 
 async function save(plugin: GoogleLikedVideoPlugin, video: YouTubeVideo, summary: string): Promise<void> {
-	const block = createSummaryNoteBlock(summary);
+	const block = createSummaryNoteBlock(summary, plugin.settings.saveAISummariesAsBlockquotes);
 	const { file } = await plugin.videoNotes.getOrCreate(video);
 	const region = getSummaryNoteRegion(await readNoteContent(plugin.app, file));
 	if (region.kind !== 'empty') {

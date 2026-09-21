@@ -26,6 +26,8 @@ interface YouTubePageContext {
 	hasPlaylistContext: boolean;
 }
 
+const WATCH_LATER_URL = 'https://www.youtube.com/playlist?list=WL';
+
 type ContextMenuView = View & { displayContextMenu?: (event: Event) => void };
 type ElectronWindow = Window & { electron?: { remote?: { Menu?: NativeMenuFactory } } };
 
@@ -103,7 +105,7 @@ export class WebViewerSummaryIntegration extends Component {
 				this.actionBars.get(view)?.refresh();
 				continue;
 			}
-			const actionBar = new WebViewerActionBar(view, () => this.getMenuActions(leaf));
+			const actionBar = new WebViewerActionBar(view, () => this.getActionBarActions(leaf));
 			this.actionBars.set(view, actionBar);
 			this.addChild(actionBar);
 			const original = view.onPaneMenu.bind(view);
@@ -148,7 +150,7 @@ export class WebViewerSummaryIntegration extends Component {
 		const context = getPageContext(sourceLeaf.view);
 		if (!context) return [];
 		const actions = context.videoId ? this.getVideoActions(context.videoId, sourceLeaf) : [];
-		if (context.hasPlaylistContext) {
+		if (context.hasPlaylistContext && context.playlistId !== 'WL') {
 			const id = context.playlistId;
 			const known = id ? this.plugin.playlistImports.getKnownPlaylist(id) : undefined;
 			const busy = !!id && (this.plugin.playlistImports.isImporting(id) || this.opening.has(`playlist:${id}`));
@@ -160,6 +162,21 @@ export class WebViewerSummaryIntegration extends Component {
 			});
 		}
 		return actions;
+	}
+
+	private getActionBarActions(sourceLeaf: WorkspaceLeaf): WebViewerAction[] {
+		const context = getPageContext(sourceLeaf.view);
+		if (!context) return [];
+		const isWatchLater = context.hasPlaylistContext && context.playlistId === 'WL';
+		return [
+			...this.getMenuActions(sourceLeaf),
+			{
+				id: 'watch-later',
+				label: isWatchLater ? 'Geulo: Viewing Watch Later' : 'Geulo: Open Watch Later',
+				icon: 'clock', section: 'geulo-navigation', enabled: !isWatchLater,
+				click: () => { void this.openWatchLater(sourceLeaf); },
+			},
+		];
 	}
 
 	private getVideoActions(videoId: string, sourceLeaf: WorkspaceLeaf): WebViewerAction[] {
@@ -250,6 +267,17 @@ export class WebViewerSummaryIntegration extends Component {
 		}
 	}
 
+	private async openWatchLater(sourceLeaf: WorkspaceLeaf): Promise<void> {
+		try {
+			await sourceLeaf.setViewState({
+				type: 'webviewer', state: { url: WATCH_LATER_URL, navigate: true }, active: true,
+			});
+		} catch (error: unknown) {
+			debugLogger.error('[Web Viewer] Could not open Watch Later', error);
+			new Notice('Geulo: Could not open Watch Later. Please try again.');
+		}
+	}
+
 	private async openPlaylist(playlist: PlaylistInfo, sourceLeaf: WorkspaceLeaf): Promise<void> {
 		const workspace = this.plugin.app.workspace;
 		const existing = workspace.getLeavesOfType(VIEW_TYPE_PLAYLIST_VIDEOS).find(leaf =>
@@ -275,6 +303,15 @@ export class WebViewerSummaryIntegration extends Component {
 		let loading: Notice | undefined;
 		try {
 			const workspace = this.plugin.app.workspace;
+			if (this.plugin.settings.openWebViewerReaderInRightSidebar) {
+				loading = new Notice(displayMode === 'ai' ? 'Geulo: Opening AI summary…' : 'Geulo: Opening transcript…', 0);
+				const video = await this.getVideo(videoId);
+				if (!this.active) return;
+				await workspace.ensureSideLeaf(VIEW_TYPE_TRANSCRIPT, 'right', {
+					active: true, reveal: true, state: { video, displayMode },
+				});
+				return;
+			}
 			const existing = workspace.getLeavesOfType(VIEW_TYPE_TRANSCRIPT).find(leaf => {
 				const video: unknown = leaf.view.getState().video;
 				return isYouTubeVideo(video) && video.id === videoId;

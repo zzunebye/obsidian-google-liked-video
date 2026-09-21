@@ -304,6 +304,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     await this.saveSetting('openWebViewerInSplitPane', value === 'split');
                 }));
         openInSetting.settingEl.hidden = !this.plugin.settings.openInObsidianWebViewer;
+
+		new Setting(viewerEl)
+			.setName('Open Web Viewer readers in right sidebar')
+			.setDesc('Reuse one right-sidebar view for AI summaries and transcripts instead of creating a new split for each video.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.openWebViewerReaderInRightSidebar)
+				.onChange(async (value) => {
+					await this.saveSetting('openWebViewerReaderInRightSidebar', value);
+				}));
     }
 
     private renderLikedVideoViewModeSetting(containerEl: HTMLElement): void {
@@ -518,6 +527,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         if (!this.plugin.settings.enableAISummary) {
             return;
         }
+
+        new Setting(containerEl)
+            .setName('Save summaries as block quotes')
+            .setDesc('When adding an AI summary to a note, wrap the summary content in a Markdown block quote.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.saveAISummariesAsBlockquotes)
+                .onChange(async (value) => {
+                    await this.saveSetting('saveAISummariesAsBlockquotes', value);
+                }));
 
         new Setting(containerEl)
             .setName('AI Provider')

@@ -24,11 +24,15 @@ export function getSummaryNoteRegion(content: string): SummaryNoteRegion {
 	return { kind: content.includes('geulo:ai-summary:') || content.includes('## AI Summary') ? 'legacy' : 'empty' };
 }
 
-export function createSummaryNoteBlock(summary: string): string {
+export function createSummaryNoteBlock(summary: string, asBlockquote = false): string {
 	if (!summary.trim() || summary.includes('geulo:ai-summary:')) {
 		throw new Error('This summary cannot be saved as a managed note section. Copy its text instead.');
 	}
-	return `${SUMMARY_START}\n# AI Summary\n${summary.trim()}\n${SUMMARY_END}`;
+	const content = summary.trim();
+	const formatted = asBlockquote
+		? content.split(/\r?\n/).map(line => line ? `> ${line}` : '>').join('\n')
+		: content;
+	return `${SUMMARY_START}\n# AI Summary\n${formatted}\n${SUMMARY_END}`;
 }
 
 export function getSummaryNoteEdit(content: string, block: string, expected: SummaryNoteRegion): NoteContentEdit | null {

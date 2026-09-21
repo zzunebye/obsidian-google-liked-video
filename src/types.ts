@@ -112,6 +112,7 @@ export interface ObsidianGoogleLikedVideoSettings extends SpeechSettings {
     customTemplate: string;
     openInObsidianWebViewer: boolean;
     openWebViewerInSplitPane: boolean;
+    openWebViewerReaderInRightSidebar: boolean;
     transcriptLanguage: string;
     summaryLineHeight: SummaryLineHeight;
     showVideoTags: boolean;
@@ -124,6 +125,7 @@ export interface ObsidianGoogleLikedVideoSettings extends SpeechSettings {
     openRouterModel: string;
     openAIApiKey: string;
     openAIModel: string;
+    saveAISummariesAsBlockquotes: boolean;
     summaryPrompt: string;
 }
 

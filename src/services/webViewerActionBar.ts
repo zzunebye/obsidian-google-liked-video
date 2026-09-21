@@ -2,10 +2,10 @@ import { Component, setIcon, setTooltip } from 'obsidian';
 import type { View } from 'obsidian';
 
 export interface WebViewerAction {
-	id: 'ai' | 'transcript' | 'note' | 'playlist';
+	id: 'ai' | 'transcript' | 'note' | 'playlist' | 'watch-later';
 	label: string;
 	icon: string;
-	section: 'geulo-video' | 'geulo-playlist';
+	section: 'geulo-video' | 'geulo-playlist' | 'geulo-navigation';
 	enabled: boolean;
 	click: () => void;
 }

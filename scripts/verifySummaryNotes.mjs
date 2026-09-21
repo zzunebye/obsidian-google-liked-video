@@ -58,7 +58,10 @@ try {
 	const video = { id: 'qa-video-01', snippet: { title: 'Summary "QA"', channelTitle: 'Fixture Channel' } };
 	const block = createSummaryNoteBlock('Original summary\n\n## Nested heading\nDetails');
 	const replacement = createSummaryNoteBlock('Regenerated summary');
+	const quotedBlock = createSummaryNoteBlock('Quoted summary\n\n## Nested heading\n- Detail', true);
 	assert.match(block, /^<!-- geulo:ai-summary:start -->\n# AI Summary\n/);
+	assert.equal(quotedBlock, '<!-- geulo:ai-summary:start -->\n# AI Summary\n> Quoted summary\n>\n> ## Nested heading\n> - Detail\n<!-- geulo:ai-summary:end -->');
+	assert.equal(getSummaryNoteRegion(quotedBlock).kind, 'marked');
 	assert.equal(getSummaryNoteRegion('Personal notes').kind, 'empty');
 	assert.equal(getSummaryNoteRegion('<!-- geulo:ai-summary:start -->\n## AI Summary\nEarlier managed summary\n<!-- geulo:ai-summary:end -->').kind, 'marked');
 	assert.equal(getSummaryNoteRegion('## AI Summary\nLegacy\n## Personal notes\nKeep').kind, 'legacy');
@@ -104,7 +107,7 @@ try {
 				transform(file.frontmatter);
 			} },
 		};
-		const plugin = { app, settings: { videoNotePath: 'Videos', organizeByChannel: true },
+		const plugin = { app, settings: { videoNotePath: 'Videos', organizeByChannel: true, saveAISummariesAsBlockquotes: false },
 			videoNotes: { getOrCreate: async () => { state.lookups++; return { file, created: false }; } } };
 		return { plugin, app, file, files, state };
 	};
@@ -122,6 +125,11 @@ try {
 	assert.equal(first.file.frontmatter.ai_summary, true);
 	assert.equal(first.file.frontmatter.video_id, video.id);
 	assert.deepEqual(first.state.opened, [first.file.path]);
+
+	const quoted = fixture();
+	quoted.plugin.settings.saveAISummariesAsBlockquotes = true;
+	await saveSummaryToNote(quoted.plugin, video, 'Quoted version\n\n## Details\n- Item');
+	assert.equal(quoted.file.content, 'My notes\nKeep this text.\n\n' + createSummaryNoteBlock('Quoted version\n\n## Details\n- Item', true) + '\n');
 
 	const closed = fixture('Before\n' + block + '\nAfter');
 	closed.state.beforeProcess = file => { file.content = 'Concurrent outside edit\n' + file.content; };
