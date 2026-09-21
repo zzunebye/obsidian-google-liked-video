@@ -9,7 +9,7 @@ import { TranscriptPane, VIEW_TYPE_TRANSCRIPT } from 'src/views/TranscriptPane';
 import type { VideoTranscript } from 'src/services/transcriptService';
 import type { TranscriptReaderMode } from 'src/utils/transcriptUtils';
 import { LikedVideoApi, PlaylistApi } from './api';
-import { getValidAccessToken } from './auth';
+import { getValidAccessToken, refreshAccessToken } from './auth';
 import { localStorageService } from './storage';
 import { debugLogger } from './debug';
 import { UI_TEXT } from './constants/uiText';
@@ -133,6 +133,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		});
 		const youtubeApiClient = new YouTubeApiClient(
 			() => getValidAccessToken(this.settings.googleClientId),
+			async () => (await refreshAccessToken(this.settings.googleClientId)).access_token,
 		);
 		this.accountIdentityService = new YouTubeAccountIdentityService(youtubeApiClient);
 		this.likedVideoApi = new LikedVideoApi(

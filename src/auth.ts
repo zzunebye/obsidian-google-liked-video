@@ -23,6 +23,7 @@ let activeRefresh: {
 const PORT = 42813;
 const AUTH_REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`;
 const REFRESH_TIMEOUT_MS = 90000;
+const ACCESS_TOKEN_REFRESH_MARGIN_MS = 60000;
 
 type GoogleOAuthTokenResponse = {
 	readonly access_token: string;
@@ -292,7 +293,7 @@ export async function getValidAccessToken(userClientId: string): Promise<string>
     const currentTime = new Date().getTime();
     const expirationTime = localStorageService.getAccessTokenExpirationTime();
 
-    if (currentTime >= expirationTime) {
+    if (currentTime >= expirationTime - ACCESS_TOKEN_REFRESH_MARGIN_MS) {
         const token = await refreshAccessToken(userClientId);
         return token.access_token;
     }

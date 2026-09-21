@@ -66,7 +66,10 @@ function createHttpError(response: RequestUrlResponse): YouTubeRequestError {
 }
 
 export class YouTubeApiClient {
-	constructor(private readonly accessTokenProvider: AccessTokenProvider) {}
+	constructor(
+		private readonly accessTokenProvider: AccessTokenProvider,
+		private readonly accessTokenRefresher?: AccessTokenProvider,
+	) {}
 
 	async request(
 		method: YouTubeRequestMethod,
@@ -106,38 +109,59 @@ export class YouTubeApiClient {
 		};
 
 		const operation = (async (): Promise<RequestUrlResponse> => {
-			let accessToken: string;
-			try {
-				accessToken = await this.accessTokenProvider();
-			} catch (error) {
+			const getAccessToken = async (
+				provider: AccessTokenProvider,
+				failureMessage: string,
+			): Promise<string> => {
+				let accessToken: string;
+				try {
+					accessToken = await provider();
+				} catch (error) {
+					throwIfStopped();
+					throw new YouTubeRequestError("auth", failureMessage, undefined, [], error);
+				}
 				throwIfStopped();
-				throw new YouTubeRequestError("auth", "Could not authenticate with Google.", undefined, [], error);
-			}
-			throwIfStopped();
-			if (!accessToken) {
-				throw new YouTubeRequestError("auth", "Google access token is unavailable.");
-			}
+				if (!accessToken) {
+					throw new YouTubeRequestError("auth", "Google access token is unavailable.");
+				}
+				return accessToken;
+			};
+			const sendRequest = async (accessToken: string): Promise<RequestUrlResponse> => {
+				debugLogger.api(`${method} request to: ${normalizedPath}`);
+				let response: RequestUrlResponse;
+				try {
+					response = await requestUrl({
+						url: YOUTUBE_API_BASE_URL + normalizedPath,
+						method,
+						headers: {
+							...options.headers,
+							Authorization: `Bearer ${accessToken}`,
+						},
+						body: options.body,
+						contentType: options.contentType,
+						throw: false,
+					});
+				} catch (error) {
+					throwIfStopped();
+					throw new YouTubeRequestError("network", "Could not connect to YouTube.", undefined, [], error);
+				}
+				throwIfStopped();
+				debugLogger.api(`Response status: ${response.status}`);
+				return response;
+			};
 
-			debugLogger.api(`${method} request to: ${normalizedPath}`);
-			let response: RequestUrlResponse;
-			try {
-				response = await requestUrl({
-					url: YOUTUBE_API_BASE_URL + normalizedPath,
-					method,
-					headers: {
-						...options.headers,
-						Authorization: `Bearer ${accessToken}`,
-					},
-					body: options.body,
-					contentType: options.contentType,
-					throw: false,
-				});
-			} catch (error) {
-				throwIfStopped();
-				throw new YouTubeRequestError("network", "Could not connect to YouTube.", undefined, [], error);
+			const accessToken = await getAccessToken(
+				this.accessTokenProvider,
+				"Could not authenticate with Google.",
+			);
+			let response = await sendRequest(accessToken);
+			if (response.status === 401 && this.accessTokenRefresher) {
+				const refreshedAccessToken = await getAccessToken(
+					this.accessTokenRefresher,
+					"Could not refresh Google authorization.",
+				);
+				response = await sendRequest(refreshedAccessToken);
 			}
-			throwIfStopped();
-			debugLogger.api(`Response status: ${response.status}`);
 			if (response.status < 200 || response.status >= 300) throw createHttpError(response);
 			return response;
 		})();

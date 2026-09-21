@@ -93,13 +93,44 @@ try {
 			&& error.status === 500
 			&& error.message === 'YouTube API request failed (500).',
 	);
-	response = { status: 401, json: { error: { message: 'Expired token' } } };
+	let refreshRequests = 0;
+	const retryingClient = new YouTubeApiClient(
+		async () => 'expired-access-token',
+		async () => {
+			refreshRequests += 1;
+			return 'refreshed-access-token';
+		},
+	);
+	let unauthorizedAttempts = 0;
+	globalThis.requestUrl = async (request) => {
+		requests.push(request);
+		unauthorizedAttempts += 1;
+		return unauthorizedAttempts === 1
+			? { status: 401, json: { error: { message: 'Expired token' } } }
+			: { status: 200, json: { items: [] } };
+	};
 	const requestsBeforeUnauthorized = requests.length;
+	assert.equal((await retryingClient.request('GET', 'videos')).status, 200);
+	assert.equal(refreshRequests, 1);
+	assert.equal(requests.length, requestsBeforeUnauthorized + 2);
+	assert.equal(requests.at(-2).headers.Authorization, 'Bearer expired-access-token');
+	assert.equal(requests.at(-1).headers.Authorization, 'Bearer refreshed-access-token');
+
+	globalThis.requestUrl = async (request) => {
+		requests.push(request);
+		return { status: 401, json: { error: { message: 'Expired token' } } };
+	};
+	const requestsBeforeRepeatedUnauthorized = requests.length;
 	await assert.rejects(
-		client.request('GET', 'videos'),
+		retryingClient.request('GET', 'videos'),
 		(error) => error instanceof YouTubeRequestError && error.kind === 'auth' && error.status === 401,
 	);
-	assert.equal(requests.length, requestsBeforeUnauthorized + 1);
+	assert.equal(refreshRequests, 2);
+	assert.equal(requests.length, requestsBeforeRepeatedUnauthorized + 2);
+	globalThis.requestUrl = async (request) => {
+		requests.push(request);
+		return response;
+	};
 
 	const preAborted = new AbortController();
 	preAborted.abort();

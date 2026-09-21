@@ -224,6 +224,23 @@ try {
 	assert.equal(parsedBody.client_secret, 'secret-from-storage');
 	assert.notEqual(parsedBody.client_secret, 'settings-secret');
 
+	secrets.set('geulo-google-access-token', 'near-expiry-access');
+	localStorage.setItem('googleYtbLikedVideoExpirationTime', String(Date.now() + 30_000));
+	let marginRefreshCount = 0;
+	globalThis.requestUrl = async () => {
+		marginRefreshCount += 1;
+		return { status: 200, json: { access_token: 'margin-refreshed-access', expires_in: 3600 } };
+	};
+	assert.equal(await getValidAccessToken('client-id'), 'margin-refreshed-access');
+	assert.equal(marginRefreshCount, 1);
+
+	secrets.set('geulo-google-access-token', 'valid-access');
+	localStorage.setItem('googleYtbLikedVideoExpirationTime', String(Date.now() + 120_000));
+	globalThis.requestUrl = async () => {
+		throw new Error('A token outside the refresh margin must be reused');
+	};
+	assert.equal(await getValidAccessToken('client-id'), 'valid-access');
+
 	secrets.set('geulo-google-access-token', '');
 	localStorage.setItem('googleYtbLikedVideoExpirationTime', '0');
 	let concurrentRefreshCount = 0;
