@@ -172,7 +172,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             ),
             this.createSectionDefinition(
                 'Data management',
-                ['Clear saved liked videos'],
+                ['Liked videos file size', 'Subscriptions file size', 'Summaries file size', 'Clear saved liked videos'],
                 (containerEl) => this.renderDataManagementSection(containerEl),
             ),
         );
@@ -880,9 +880,57 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     }
 
+    private renderDataFileSizeSetting(
+        containerEl: HTMLElement,
+        name: string,
+        fileName: string,
+    ): void {
+        const setting = new Setting(containerEl)
+            .setName(name)
+            .setDesc(fileName);
+        const sizeEl = setting.controlEl.createSpan({
+            cls: 'geulo-data-file-size',
+            text: 'Loading…',
+        });
+
+        const manifestDir = this.plugin.manifest.dir;
+        if (!manifestDir) {
+            sizeEl.setText('Unavailable');
+            return;
+        }
+
+        void this.app.vault.adapter.stat(`${manifestDir}/${fileName}`)
+            .then(stat => {
+                sizeEl.setText(stat ? this.formatFileSize(stat.size) : 'Not created yet');
+            })
+            .catch(() => {
+                sizeEl.setText('Unavailable');
+            });
+    }
+
+    private formatFileSize(bytes: number): string {
+        if (bytes < 1024) {
+            return `${bytes} B`;
+        }
+
+        const units = ['KB', 'MB', 'GB'];
+        let size = bytes / 1024;
+        let unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex += 1;
+        }
+
+        const fractionDigits = size >= 100 ? 0 : size >= 10 ? 1 : 2;
+        return `${size.toFixed(fractionDigits)} ${units[unitIndex]}`;
+    }
+
     private renderDataManagementSection(containerEl: HTMLElement): void {
         const storedCount = localStorageService.getLikedVideos().length;
         new Setting(containerEl).setHeading().setName('Data management');
+        this.renderDataFileSizeSetting(containerEl, 'Liked videos', 'liked-videos.json');
+        this.renderDataFileSizeSetting(containerEl, 'Subscriptions', 'subscriptions.json');
+        this.renderDataFileSizeSetting(containerEl, 'Summaries', 'summaries.json');
         new Setting(containerEl)
             .setName('Clear saved liked videos')
             .setDesc('Remove the saved liked-video list from this vault. YouTube likes, existing video notes, playlists, and saved summaries are kept.')
