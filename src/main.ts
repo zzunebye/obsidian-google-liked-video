@@ -36,6 +36,8 @@ import { WebViewerSummaryIntegration } from './services/webViewerSummaryIntegrat
 import { PlaylistImportService } from './services/playlistImportService';
 import { SPEECH_MODEL_PRESETS } from './types';
 
+const YOUTUBE_WATCH_LATER_URL = 'https://www.youtube.com/playlist?list=WL';
+
 const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	googleClientId: '',
 	dailyNotePath: '',
@@ -236,6 +238,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		});
 
 		this.addCommand({
+			id: 'open-youtube-watch-later-in-web-viewer',
+			name: 'Open YouTube Watch Later in Web Viewer',
+			callback: () => {
+				void this.openWatchLaterInWebViewer();
+			}
+		});
+
+		this.addCommand({
 			id: 'show-feature-intro-modal',
 			name: "What's new",
 			callback: () => {
@@ -274,6 +284,22 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		const leaf = this.app.workspace.getLeaf('split');
 		await leaf.setViewState({ type: VIEW_TYPE_TRANSCRIPT, state: { video, transcript, displayMode }, active: true });
 		await this.app.workspace.revealLeaf(leaf);
+	}
+
+	private async openWatchLaterInWebViewer(): Promise<void> {
+		try {
+			const leaf = this.app.workspace.getLeaf(
+				this.settings.openWebViewerInSplitPane ? 'split' : 'tab',
+			);
+			await leaf.setViewState({
+				type: 'webviewer',
+				state: { url: YOUTUBE_WATCH_LATER_URL, navigate: true },
+				active: true,
+			});
+		} catch (error: unknown) {
+			debugLogger.error('Failed to open YouTube Watch Later in Web Viewer:', error);
+			new Notice('Geulo: Unable to open YouTube Watch Later. Please try again.');
+		}
 	}
 
 	onunload() {
