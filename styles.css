@@ -1472,6 +1472,14 @@ button.video-stat--button:focus-visible {
 .geulo-transcript-reader__header button.geulo-transcript-reader__back:hover {
 	color: var(--text-accent);
 }
+.geulo-transcript-reader__header button.geulo-transcript-reader__like[aria-pressed="true"] {
+	border-color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
+	color: var(--interactive-accent);
+}
+.geulo-transcript-reader__like-spinner {
+	animation: geulo-speech-spin 1s linear infinite;
+}
 .geulo-transcript-reader__title {
 	display: flex;
 	align-items: baseline;
@@ -1620,7 +1628,8 @@ button.video-stat--button:focus-visible {
 	to { transform: rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-	.geulo-summary-speech__spinner { animation: none; }
+	.geulo-summary-speech__spinner,
+	.geulo-transcript-reader__like-spinner { animation: none; }
 }
 .geulo-transcript-reader__modes {
 	display: flex;

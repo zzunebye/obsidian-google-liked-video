@@ -1,10 +1,15 @@
 import { Menu, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, PanelRightOpen, Search } from "lucide-react";
+import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, LoaderCircle, PanelRightOpen, Search, ThumbsUp } from "lucide-react";
+import { UI_TEXT } from "src/constants/uiText";
 import { debugLogger } from "src/debug";
+import { googleTokenStorageService } from "src/services/googleTokenStorageService";
+import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
 import { saveSummaryToNote } from "src/services/summaryNoteService";
 import type { VideoTranscript } from "src/services/transcriptService";
 import { TranscriptPlaybackService } from "src/services/transcriptPlaybackService";
+import { CacheOwnershipError } from "src/services/youtubeAccountIdentityService";
+import { localStorageService } from "src/storage";
 import { usePlugin } from "src/store/pluginContext";
 import type { YouTubeVideo } from "src/types";
 import { getExpectedNotePath, sanitizeFileName } from "src/utils/noteUtils";
@@ -24,6 +29,8 @@ interface Props {
 	onBack?: () => void;
 	onOpenPane?: (transcript: VideoTranscript | undefined, mode: TranscriptReaderMode) => Promise<void>;
 }
+
+type LikeStatus = "checking" | "liked" | "unliked" | "unknown";
 
 function Highlight({ text, query }: { text: string; query: string }) {
 	if (!query) return <>{text}</>;
@@ -55,6 +62,10 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 	const [following, setFollowing] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const busyRef = useRef(false);
+	const [likeStatus, setLikeStatus] = useState<LikeStatus>(() =>
+		localStorageService.getLikedVideos().some(item => item.id === video.id) ? "liked" : "checking");
+	const [likePending, setLikePending] = useState(false);
+	const likePendingRef = useRef(false);
 	const [copied, setCopied] = useState(false);
 	const playback = useMemo(() => new TranscriptPlaybackService(plugin.app, plugin.settings), [plugin]);
 	const rows = useMemo(() => state.kind === "loaded" && mode !== "ai" ? getTranscriptRows(state.transcript.segments, mode) : [], [state, mode]);
@@ -68,6 +79,53 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 	const activeStart = activeRow?.start;
 
 	useEffect(() => { rootRef.current?.focus({ preventScroll: true }); }, []);
+
+	useEffect(() => {
+		let stopped = false;
+		let requestVersion = 0;
+		const controller = new AbortController();
+		const hasGoogleAccount = (): boolean => Boolean(
+			googleTokenStorageService.getAccessToken() || googleTokenStorageService.getRefreshToken());
+		const refreshLikeStatus = async (showChecking: boolean): Promise<void> => {
+			const cachedLiked = localStorageService.getLikedVideos().some(item => item.id === video.id);
+			if (cachedLiked) setLikeStatus("liked");
+			else if (showChecking) setLikeStatus("checking");
+
+			if (!hasGoogleAccount()) {
+				if (!cachedLiked) setLikeStatus("unknown");
+				return;
+			}
+
+			const version = ++requestVersion;
+			try {
+				const ratings = await plugin.likedVideoApi.getVideoRatings([video.id], controller.signal);
+				if (stopped || version !== requestVersion) return;
+				setLikeStatus(ratings.has(video.id)
+					? ratings.get(video.id) === true ? "liked" : "unliked"
+					: "unknown");
+			} catch (error) {
+				if (stopped || controller.signal.aborted || version !== requestVersion) return;
+				debugLogger.error("[Transcript] Could not check YouTube like status", video.id, error);
+				if (!cachedLiked) setLikeStatus("unknown");
+			}
+		};
+
+		void refreshLikeStatus(!localStorageService.getLikedVideos().some(item => item.id === video.id));
+		const unsubscribe = localStorageService.subscribeLikedVideos(likedVideos => {
+			if (likedVideos.some(item => item.id === video.id)) {
+				requestVersion++;
+				setLikeStatus("liked");
+				return;
+			}
+			void refreshLikeStatus(true);
+		});
+		return () => {
+			stopped = true;
+			requestVersion++;
+			controller.abort();
+			unsubscribe();
+		};
+	}, [plugin, video.id]);
 
 	useEffect(() => {
 		const updateLineHeight = (): void => {
@@ -142,6 +200,71 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 		await plugin.app.workspace.getLeaf("tab").openFile(file);
 	};
 
+	const changeLike = async (): Promise<void> => {
+		if (likePendingRef.current) return;
+		if (!googleTokenStorageService.getAccessToken() && !googleTokenStorageService.getRefreshToken()) {
+			new Notice("Geulo: Connect your Google account before changing video likes.");
+			return;
+		}
+
+		likePendingRef.current = true;
+		setLikePending(true);
+		const wasLiked = likeStatus === "liked";
+		try {
+			if (!wasLiked) {
+				await likeVideoAndPersist(plugin.likedVideoApi, video, 0, plugin.videoNotes.captureLikedUpdate());
+				setLikeStatus("liked");
+				new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
+				return;
+			}
+
+			const likedVideos = localStorageService.getLikedVideos();
+			const index = likedVideos.findIndex(item => item.id === video.id);
+			const previousVideoId = index > 0 ? likedVideos[index - 1].id : null;
+			await unlikeVideoAndPersist(plugin.likedVideoApi, video.id, plugin.videoNotes.captureLikedUpdate());
+			setLikeStatus("unliked");
+
+			const fragment = new DocumentFragment();
+			fragment.createSpan({ text: `Unliked "${video.snippet.title}" ` });
+			const undoButton = fragment.createEl("button", { text: "Undo", cls: "geulo-undo-btn" });
+			const notice = new Notice(fragment, 5000);
+			undoButton.addEventListener("click", () => {
+				if (likePendingRef.current) return;
+				likePendingRef.current = true;
+				setLikePending(true);
+				undoButton.disabled = true;
+				void (async () => {
+					try {
+						await likeVideoAndPersist(plugin.likedVideoApi, video, () => {
+							const current = localStorageService.getLikedVideos();
+							const previousIndex = previousVideoId
+								? current.findIndex(item => item.id === previousVideoId)
+								: -1;
+							return previousIndex >= 0 ? previousIndex + 1 : Math.max(0, Math.min(index, current.length));
+						}, plugin.videoNotes.captureLikedUpdate());
+						setLikeStatus("liked");
+						notice.hide();
+					} catch (error) {
+						debugLogger.error("[Transcript] Could not undo unlike", video.id, error);
+						new Notice(error instanceof CacheOwnershipError ? error.message : UI_TEXT.NOTICE_LIKE_FAILED);
+						undoButton.disabled = false;
+					} finally {
+						likePendingRef.current = false;
+						setLikePending(false);
+					}
+				})();
+			});
+		} catch (error) {
+			debugLogger.error(`[Transcript] Could not ${wasLiked ? "unlike" : "like"} video`, video.id, error);
+			new Notice(error instanceof CacheOwnershipError
+				? error.message
+				: wasLiked ? UI_TEXT.NOTICE_UNLIKE_FAILED : UI_TEXT.NOTICE_LIKE_FAILED);
+		} finally {
+			likePendingRef.current = false;
+			setLikePending(false);
+		}
+	};
+
 	const changeMode = (value: TranscriptReaderMode): void => {
 		if (value === mode) return;
 		setLocalDisplayMode(value);
@@ -151,6 +274,15 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 	};
 	const modes: TranscriptReaderMode[] = ["ai", "paragraphs", "original"];
 	const isAiMode = mode === "ai";
+	const isLiked = likeStatus === "liked";
+	const checkingLikeStatus = likeStatus === "checking";
+	const likeButtonTitle = checkingLikeStatus
+		? "Checking YouTube like status…"
+		: isLiked
+			? "Unlike video"
+			: likeStatus === "unknown"
+				? "Like status could not be verified. Click to like this video."
+				: "Like video";
 
 	return (
 		<section ref={rootRef} className={`geulo-transcript-reader geulo-transcript-reader--${mode}`} tabIndex={-1} aria-label={`Transcript for ${video.snippet.title}`}
@@ -168,6 +300,14 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 						</button>
 						: <span>Transcript</span>}
 					<div className="geulo-transcript-reader__navigation-actions">
+						<button type="button" className="geulo-transcript-reader__like" aria-pressed={isLiked}
+							aria-busy={checkingLikeStatus || likePending} aria-label={likeButtonTitle} title={likeButtonTitle}
+							disabled={checkingLikeStatus || likePending} onClick={() => void changeLike()}>
+							{checkingLikeStatus || likePending
+								? <LoaderCircle className="geulo-transcript-reader__like-spinner" size={14} aria-hidden="true" />
+								: <ThumbsUp size={14} fill={isLiked ? "currentColor" : "none"} aria-hidden="true" />}
+							{isLiked ? "Liked" : "Like"}
+						</button>
 						<button type="button" disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" />Open video</button>
 						{onOpenPane && <button type="button" title="Open transcript in new pane" aria-label="Open transcript in new pane" disabled={busy || summaryBusy}
 							onClick={() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined, mode))}><PanelRightOpen size={16} aria-hidden="true" /></button>}
