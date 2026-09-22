@@ -31,10 +31,8 @@ const WATCH_LATER_URL = 'https://www.youtube.com/playlist?list=WL';
 type ContextMenuView = View & { displayContextMenu?: (event: Event) => void };
 type ElectronWindow = Window & { electron?: { remote?: { Menu?: NativeMenuFactory } } };
 
-function getPageContext(view: View): YouTubePageContext | null {
+function getYouTubeContext(value: unknown): YouTubePageContext | null {
 	try {
-		const viewer = view.containerEl.querySelector('webview') as Partial<ViewerElement> | null;
-		const value: unknown = typeof viewer?.getURL === 'function' ? viewer.getURL() : view.getState().url;
 		if (typeof value !== 'string') return null;
 		const url = new URL(value);
 		if (url.protocol !== 'https:' || !['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(url.hostname)) return null;
@@ -52,9 +50,25 @@ function getPageContext(view: View): YouTubePageContext | null {
 			hasPlaylistContext: url.pathname.replace(/\/$/, '') === '/playlist' || url.searchParams.has('list'),
 		};
 	} catch {
-		// A Web Viewer can be detached or still loading while its menu opens.
 		return null;
 	}
+}
+
+function getPageContext(view: View): YouTubePageContext | null {
+	try {
+		const viewer = view.containerEl.querySelector('webview') as Partial<ViewerElement> | null;
+		const value: unknown = typeof viewer?.getURL === 'function' ? viewer.getURL() : view.getState().url;
+		return getYouTubeContext(value);
+	} catch {
+		return null;
+	}
+}
+
+function getContextMenuVideoId(event: Event): string | null {
+	if (!('params' in event)) return null;
+	const params: unknown = Reflect.get(event, 'params');
+	if (!params || typeof params !== 'object') return null;
+	return getYouTubeContext(Reflect.get(params, 'linkURL'))?.videoId ?? null;
 }
 
 export class WebViewerSummaryIntegration extends Component {
@@ -206,7 +220,12 @@ export class WebViewerSummaryIntegration extends Component {
 	private onPageMenu(event: Event, sourceLeaf: WorkspaceLeaf): void {
 		const view: ContextMenuView = sourceLeaf.view;
 		if (event.target !== view.containerEl.querySelector('webview') || !('params' in event)) return;
-		const actions = this.getMenuActions(sourceLeaf);
+		const pageActions = this.getMenuActions(sourceLeaf);
+		const linkVideoId = getContextMenuVideoId(event);
+		const actions = linkVideoId ? [
+			...this.getVideoActions(linkVideoId, sourceLeaf).filter(action => action.id === 'ai'),
+			...pageActions.filter(action => action.id === 'playlist'),
+		] : pageActions;
 		const factory = (window as ElectronWindow).electron?.remote?.Menu;
 		const displayContextMenu = view.displayContextMenu;
 		if (actions.length === 0 || typeof displayContextMenu !== 'function' || typeof factory?.buildFromTemplate !== 'function') return;
