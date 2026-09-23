@@ -9,7 +9,13 @@ import { SpeechPlaybackOptions } from './SpeechPlaybackOptions';
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
 
-export function SummarySpeechButton({ summary, disabled }: { summary: string | null; disabled: boolean }) {
+interface SummarySpeechButtonProps {
+	summary: string | null;
+	disabled: boolean;
+	iconOnly?: boolean;
+}
+
+export function SummarySpeechButton({ summary, disabled, iconOnly = false }: SummarySpeechButtonProps) {
 	const plugin = usePlugin();
 	const buttonRef = useRef<HTMLButtonElement>(null);
 	const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -170,12 +176,13 @@ export function SummarySpeechButton({ summary, disabled }: { summary: string | n
 
 	const label = state === 'loading' ? 'Cancel speech generation' : state === 'playing' ? 'Pause speech'
 		: state === 'paused' ? 'Resume speech' : 'Read summary aloud';
-	return <div className="geulo-summary-speech" role="group" aria-label="Summary speech">
-		<button ref={buttonRef} type="button" aria-label={label} disabled={disabled || !summary} onClick={() => void toggle()}>
+	return <div className={`geulo-summary-speech${iconOnly ? ' geulo-summary-speech--icon-only' : ''}`} role="group" aria-label="Summary speech">
+		<button ref={buttonRef} type="button" aria-label={label} title={iconOnly ? label : undefined}
+			disabled={disabled || !summary} onClick={() => void toggle()}>
 			{state === 'loading' ? <Loader2 size={16} className="geulo-summary-speech__spinner" aria-hidden="true" />
 				: state === 'playing' ? <Pause size={16} aria-hidden="true" />
 					: state === 'paused' ? <Play size={16} aria-hidden="true" /> : <Volume2 size={16} aria-hidden="true" />}
-			<span aria-live="polite">{state === 'loading' ? 'Preparing…' : state === 'playing' ? 'Pause' : state === 'paused' ? 'Resume' : 'Read aloud'}</span>
+			{!iconOnly && <span aria-live="polite">{state === 'loading' ? 'Preparing…' : state === 'playing' ? 'Pause' : state === 'paused' ? 'Resume' : 'Read aloud'}</span>}
 		</button>
 		{(state === 'playing' || state === 'paused') && <button type="button" aria-label="Stop speech" onClick={() => { stop(); updateState('idle'); }}><Square size={14} aria-hidden="true" /></button>}
 		<SpeechPlaybackOptions speed={speed} volume={volume}

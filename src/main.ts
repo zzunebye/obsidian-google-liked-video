@@ -6,6 +6,7 @@ import { UserPlaylistsPane, VIEW_TYPE_USER_PLAYLISTS } from 'src/views/UserPlayl
 import { PlaylistVideosPane, VIEW_TYPE_PLAYLIST_VIDEOS } from 'src/views/PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from 'src/views/SubscriptionPane';
 import { TranscriptPane, VIEW_TYPE_TRANSCRIPT } from 'src/views/TranscriptPane';
+import { AISummariesPane, VIEW_TYPE_AI_SUMMARIES } from 'src/views/AISummariesPane';
 import type { VideoTranscript } from 'src/services/transcriptService';
 import type { TranscriptReaderMode } from 'src/utils/transcriptUtils';
 import { LikedVideoApi, PlaylistApi } from './api';
@@ -194,6 +195,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			(leaf) => new SubscriptionPane(leaf, this),
 		);
 		this.registerView(VIEW_TYPE_TRANSCRIPT, (leaf) => new TranscriptPane(leaf, this));
+		this.registerView(VIEW_TYPE_AI_SUMMARIES, (leaf) => new AISummariesPane(leaf, this));
 		this.addChild(new WebViewerSummaryIntegration(this, youtubeApiClient));
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
@@ -211,6 +213,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.addRibbonIcon("rss", "Geulo: Open YouTube Subscriptions View", () => {
 			void this.activateSubscriptionsView();
+		});
+
+		this.addRibbonIcon("bot", "Geulo: Open AI Summaries View", () => {
+			void this.activateAISummariesView();
 		});
 
 		this.addCommand({
@@ -234,6 +240,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			name: 'Open YouTube Subscriptions View',
 			callback: () => {
 				void this.activateSubscriptionsView();
+			}
+		});
+
+		this.addCommand({
+			id: 'open-ai-summaries-view',
+			name: 'Open AI Summaries View',
+			callback: () => {
+				void this.activateAISummariesView();
 			}
 		});
 
@@ -379,6 +393,19 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			await leaf?.setViewState({ type: VIEW_TYPE_SUBSCRIPTIONS, active: true });
 		}
 		if (leaf) void workspace.revealLeaf(leaf);
+	}
+
+	async activateAISummariesView(): Promise<void> {
+		const { workspace } = this.app;
+		const existingLeaf = workspace.getLeavesOfType(VIEW_TYPE_AI_SUMMARIES)[0];
+		const leaf = existingLeaf ?? workspace.getRightLeaf(false);
+		if (!existingLeaf) {
+			await leaf?.setViewState({ type: VIEW_TYPE_AI_SUMMARIES, active: true });
+		}
+		if (leaf) {
+			await workspace.revealLeaf(leaf);
+			if (leaf.view instanceof AISummariesPane) leaf.view.focusList();
+		}
 	}
 
 	async loadSettings(): Promise<void> {

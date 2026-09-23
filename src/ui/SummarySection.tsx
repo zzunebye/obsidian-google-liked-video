@@ -60,6 +60,8 @@ interface SummarySectionProps {
 	onShowSummary?: () => void;
 	initialSnapshot?: SummarySnapshot;
 	onSnapshotChange?: (snapshot: SummarySnapshot) => void;
+	autoGeneratePreview?: boolean;
+	showSourceMetadata?: boolean;
 }
 
 export const SummarySection = ({
@@ -80,6 +82,8 @@ export const SummarySection = ({
 	onShowSummary,
 	initialSnapshot,
 	onSnapshotChange,
+	autoGeneratePreview = true,
+	showSourceMetadata = true,
 	presentation = "card",
 }: SummarySectionProps) => {
 	const plugin = usePlugin();
@@ -340,10 +344,10 @@ export const SummarySection = ({
 	};
 
 	useEffect(() => {
-		if (checkingCache || !summary || !isSaved || hasOneLiner !== false || error || !canGenerate
+		if (!autoGeneratePreview || checkingCache || !summary || !isSaved || hasOneLiner !== false || error || !canGenerate
 			|| isBusy || savingNote || requestPendingRef.current || autoPreviewAttemptedRef.current) return;
 		void generateOneLiner();
-	}, [checkingCache, summary, isSaved, hasOneLiner, error, canGenerate, isBusy, savingNote]);
+	}, [autoGeneratePreview, checkingCache, summary, isSaved, hasOneLiner, error, canGenerate, isBusy, savingNote]);
 
 	useEffect(() => {
 		if (regenerateTrigger && regenerateTrigger > 0) {
@@ -436,9 +440,9 @@ export const SummarySection = ({
 		<div className="summary-section" onClick={(e) => e.stopPropagation()} aria-busy={isBusy || checkingCache || savingNote}>
 			{progressPortal ?? progress}
 			{checkingCache && <p role="status">Loading saved summary…</p>}
-			{!checkingCache && ((!summary && !isBusy && !error) || !canGenerate || showLongVideoNotice) && <div className="summary-section__setup">
+			{!checkingCache && ((!summary && !isBusy && !error) || showLongVideoNotice) && <div className="summary-section__setup">
 				{!summary && !isBusy && !error && <strong>No AI summary yet</strong>}
-				{!canGenerate && <p>{plugin.settings.enableAISummary ? "Configure an API key in Settings > AI Features to generate a summary." : "Enable AI summaries in Settings > AI Features to generate a summary."}</p>}
+				{!summary && !canGenerate && <p>{plugin.settings.enableAISummary ? "Configure an API key in Settings > AI Features to generate a summary." : "Enable AI summaries in Settings > AI Features to generate a summary."}</p>}
 				{showLongVideoNotice && <p>This video is over 30 minutes. Video analysis may take longer and cost more.</p>}
 				{!summary && !isBusy && !error && <button type="button" className="mod-cta" disabled={!canGenerate} onClick={() => void generateSummary()}>Generate AI summary</button>}
 			</div> }
@@ -481,12 +485,12 @@ export const SummarySection = ({
 
 			{summary && !isLoading && !isStreaming && (
 				<>
-					<div className="summary-section__source">
+					{showSourceMetadata && <div className="summary-section__source">
 						<span>{isSaved ? "Saved in Geulo" : phase === "saving" ? "Saving in Geulo…" : "Not saved in Geulo"} · </span>
 						{getLanguage() === 'ko'
 							? (summarySource === 'transcript' ? 'Transcript 기반' : '영상 분석 기반')
 							: (summarySource === 'transcript' ? 'Transcript-based' : 'Video-based')}
-					</div>
+					</div>}
 					<div
 						className={
 							isOverflowing && isContentCollapsed
@@ -518,7 +522,7 @@ export const SummarySection = ({
 						</button>
 					)}
 					{isSaved && <div className="summary-section__preview-option">
-						<span>{hasOneLiner ? "One-line preview saved" : error ? "One-line preview not saved" : "A one-line preview is generated automatically with one additional AI request."}</span>
+						<span>{hasOneLiner ? "One-line preview saved" : error || !autoGeneratePreview ? "One-line preview not saved" : "A one-line preview is generated automatically with one additional AI request."}</span>
 						<span>Model: {summaryModel ?? "Unknown"}</span>
 					</div>}
 					<div className="summary-section__actions">

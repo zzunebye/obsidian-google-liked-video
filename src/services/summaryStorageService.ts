@@ -52,6 +52,10 @@ export class SummaryStorageService {
 		return entry.oneLinerSummary || entry.summary.slice(0, 100) + '...';
 	}
 
+	getAllVideoSummaries(): SummaryFileData[] {
+		return Array.from(this.cache.values());
+	}
+
 	async getVideoSummaryData(videoId: string): Promise<SummaryFileData | null> {
 		return this.cache.get(videoId) ?? null;
 	}

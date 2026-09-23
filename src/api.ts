@@ -628,6 +628,17 @@ export class LikedVideoApi {
         return data;
     }
 
+	async fetchVideoById(videoId: string): Promise<YouTubeVideo> {
+		const response = await this.client.request('GET',
+			`videos?part=snippet,contentDetails,statistics&id=${encodeURIComponent(videoId)}`);
+		const data: unknown = response.json;
+		const video: unknown = isRecord(data) && Array.isArray(data.items)
+			? data.items.find((item: unknown) => isYouTubeVideo(item) && item.id === videoId)
+			: undefined;
+		if (!isYouTubeVideo(video)) throw new Error('YouTube did not return this video\u2019s details.');
+		return { ...video, pulled_at: new Date().toISOString() };
+	}
+
 	async getVideoRatings(videoIds: readonly string[], signal?: AbortSignal): Promise<Map<string, boolean>> {
 		const ratings = new Map<string, boolean>();
 		const ids = [...new Set(videoIds)];

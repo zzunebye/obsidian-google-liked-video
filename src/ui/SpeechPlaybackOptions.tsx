@@ -69,7 +69,7 @@ export function SpeechPlaybackOptions({ speed, volume, onSpeedChange, onVolumeCh
 	}, [isOpen]);
 
 	return <>
-		<button ref={triggerRef} type="button" aria-label="Speech playback options" aria-haspopup="dialog"
+		<button ref={triggerRef} type="button" title="Speech playback options" aria-label="Speech playback options" aria-haspopup="dialog"
 			aria-expanded={isOpen} aria-controls={isOpen ? id : undefined} onClick={() => setIsOpen(value => !value)}>
 			<SlidersHorizontal size={16} aria-hidden="true" />
 		</button>
