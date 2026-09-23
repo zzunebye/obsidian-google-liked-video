@@ -1,12 +1,13 @@
 import { Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Bot, ExternalLink } from "lucide-react";
+import { ArrowLeft, Bot, ExternalLink, MessageCircle } from "lucide-react";
 import type { SummaryFileData, SummarySource, YouTubeVideo } from "src/types";
 import { debugLogger } from "src/debug";
 import { saveSummaryToNote } from "src/services/summaryNoteService";
 import { SearchBar } from "src/ui/SearchBar";
 import { SummarySection } from "src/ui/SummarySection";
 import { SummarySpeechButton } from "src/ui/SummarySpeechButton";
+import { VideoCommentsModal } from "src/ui/VideoCommentsModal";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { usePlugin } from "../store/pluginContext";
 
@@ -216,7 +217,24 @@ export const AISummariesView = () => {
 										All summaries
 									</button>
 									<div className="ai-summary-reader__header-actions">
-										<button type="button" className="ai-summary-reader__youtube"
+										<button type="button" className="ai-summary-reader__action"
+											title="Show comments" onClick={event => {
+												const trigger = event.currentTarget;
+												const modal = new VideoCommentsModal(
+													plugin.app,
+													selectedSummary.videoId,
+													getTitle(selectedSummary),
+													plugin.commentService,
+													() => {
+														if (trigger.isConnected) trigger.focus({ preventScroll: true });
+													},
+												);
+												modal.open();
+											}}>
+											<MessageCircle size={14} aria-hidden="true" />
+											<span>Comments</span>
+										</button>
+										<button type="button" className="ai-summary-reader__action"
 											title="Open YouTube" onClick={() => void openVideo(selectedSummary)}>
 											<ExternalLink size={14} aria-hidden="true" />
 											<span>Open YouTube</span>

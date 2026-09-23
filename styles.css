@@ -1425,10 +1425,11 @@ button.video-stat--button:focus-visible {
 .geulo-transcript-reader__navigation-actions {
 	display: flex;
 	align-items: center;
+	justify-content: flex-end;
+	flex-wrap: wrap;
 	gap: 8px;
 	margin-left: auto;
-	flex-shrink: 0;
-	white-space: nowrap;
+	max-width: 100%;
 }
 .geulo-transcript-reader button {
 	display: inline-flex;
@@ -4448,7 +4449,7 @@ button.video-channel-link:focus-visible {
 
 .ai-summary-reader__navigation,
 .ai-summary-reader__metadata,
-.ai-summary-reader__youtube,
+.ai-summary-reader__action,
 .ai-summary-reader__header-actions {
 	display: flex;
 	align-items: center;

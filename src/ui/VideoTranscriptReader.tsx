@@ -1,6 +1,6 @@
 import { Menu, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, LoaderCircle, PanelRightOpen, Search, ThumbsUp } from "lucide-react";
+import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, LoaderCircle, MessageCircle, PanelRightOpen, Search, ThumbsUp } from "lucide-react";
 import { UI_TEXT } from "src/constants/uiText";
 import { debugLogger } from "src/debug";
 import { googleTokenStorageService } from "src/services/googleTokenStorageService";
@@ -17,6 +17,7 @@ import { formatTranscriptTimestamp, getTranscriptRows } from "src/utils/transcri
 import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
 import { SummarySection } from "./SummarySection";
 import { SummarySpeechButton } from "./SummarySpeechButton";
+import { VideoCommentsModal } from "./VideoCommentsModal";
 import { VideoInfoTooltip } from "./VideoInfoTooltip";
 import { useVideoTranscript } from "./useVideoTranscript";
 
@@ -308,6 +309,19 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 								: <ThumbsUp size={14} fill={isLiked ? "currentColor" : "none"} aria-hidden="true" />}
 							{isLiked ? "Liked" : "Like"}
 						</button>
+						<button type="button" title="Show comments" onClick={event => {
+							const trigger = event.currentTarget;
+							const modal = new VideoCommentsModal(
+								plugin.app,
+								video.id,
+								video.snippet.title,
+								plugin.commentService,
+								() => {
+									if (trigger.isConnected) trigger.focus({ preventScroll: true });
+								},
+							);
+							modal.open();
+						}}><MessageCircle size={14} aria-hidden="true" />Comments</button>
 						<button type="button" disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" />Open video</button>
 						{onOpenPane && <button type="button" title="Open transcript in new pane" aria-label="Open transcript in new pane" disabled={busy || summaryBusy}
 							onClick={() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined, mode))}><PanelRightOpen size={16} aria-hidden="true" /></button>}
