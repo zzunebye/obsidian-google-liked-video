@@ -4197,13 +4197,13 @@ button.video-channel-link:focus-visible {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: var(--size-2-1);
+	gap: var(--size-2-2);
 	max-width: calc(100% - var(--size-4-4) * 2);
 	padding: var(--size-2-2);
-	border: 1px solid var(--background-modifier-border);
+	border: 1px solid var(--background-modifier-border-hover);
 	border-radius: var(--radius-l);
-	background: var(--background-primary);
-	box-shadow: var(--shadow-s);
+	background: var(--background-secondary);
+	box-shadow: var(--shadow-l);
 }
 
 .geulo-webviewer-actions[hidden] {
@@ -4211,17 +4211,33 @@ button.video-channel-link:focus-visible {
 }
 
 .geulo-webviewer-actions__brand {
-	padding: 0 var(--size-2-2);
-	color: var(--text-muted);
-	font-size: var(--font-ui-smaller);
+	display: inline-flex;
+	align-items: center;
+	min-height: 36px;
+	padding: 0 var(--size-4-3);
+	border-radius: var(--radius-m);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-small);
 	font-weight: var(--font-semibold);
+	letter-spacing: -0.01em;
+	white-space: nowrap;
 }
 
 .geulo-webviewer-actions .geulo-webviewer-actions__button {
 	width: 36px;
 	height: 36px;
 	padding: var(--size-2-2);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+	box-shadow: inset 0 0 0 1px var(--background-modifier-border);
 	color: var(--text-normal);
+	transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.geulo-webviewer-actions .geulo-webviewer-actions__button:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover);
 }
 
 .geulo-webviewer-actions__button:focus-visible {
@@ -4232,6 +4248,12 @@ button.video-channel-link:focus-visible {
 .geulo-webviewer-actions__button:disabled {
 	opacity: 0.4;
 	cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.geulo-webviewer-actions .geulo-webviewer-actions__button {
+		transition: none;
+	}
 }
 
 .ai-summaries-view {

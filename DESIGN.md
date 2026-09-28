@@ -50,6 +50,13 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 - **Accessibility:** every icon-only action has a title and ARIA label.
 - **Layout:** horizontal cluster with 8px between the leading icon and title; actions never shrink.
 
+### WebViewerActionBar
+
+- **Structure:** a compact floating action group over the Web Viewer, with a solid accent `Geulo` identifier followed by equal-size icon actions. The identifier makes the plugin controls recognizable against changing YouTube content.
+- **Surface:** the group uses Obsidian's secondary background, hover-border token, and large shadow; each action sits on a primary-background cell. The accent is reserved for the identifier, so no action appears selected by default.
+- **States:** action cells have distinct default, hover, focus-visible, and disabled treatments. Existing tooltips and accessible names explain the icon actions.
+- **Layout:** keep the bottom-right inset and wrapping behavior, with 36px action targets so the group remains compact in a narrow Web Viewer pane.
+
 ### PlaylistCard
 
 - **Structure:** thumbnail, title/description, metadata, pin control, and hover overlay.
@@ -118,7 +125,7 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 
 ## 7. Depth & Surface
 
-The existing mixed strategy is preserved: Obsidian theme borders provide structure, while playlist cards and modals use subtle legacy shadows. This feature adds no new surface styling.
+The existing mixed strategy is preserved: Obsidian theme borders provide structure, while playlist cards and modals use subtle legacy shadows. The Web Viewer action group uses an elevated theme surface to stay legible over video thumbnails and page content.
 
 ## 8. Accessibility Constraints & Accepted Debt
 
