@@ -32,6 +32,10 @@ async function save(plugin: GoogleLikedVideoPlugin, video: YouTubeVideo, summary
 	if (region.kind !== 'empty') {
 		const choice = await chooseSummaryNoteAction(plugin.app, file.path, region.kind === 'marked');
 		if (choice === 'cancel') return;
+		if (choice === 'open') {
+			await plugin.app.workspace.openLinkText(file.path, '', true);
+			return;
+		}
 		if (choice === 'new') {
 			const copy = await createSummaryCopy(plugin, video, block);
 			new Notice('Summary saved as a new note');
@@ -49,7 +53,7 @@ async function save(plugin: GoogleLikedVideoPlugin, video: YouTubeVideo, summary
 		await plugin.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
 			frontmatter.ai_summary = true;
 		});
-		new Notice(region.kind === 'marked' ? 'Summary replaced in video note' : 'Summary added to video note');
+		new Notice(region.kind === 'empty' ? 'Summary added to video note' : 'Summary replaced in video note');
 	} catch (error: unknown) {
 		debugLogger.error('[AI Summary] Could not update note metadata', error);
 		new Notice('The summary was saved, but its note metadata could not be updated. Save it again to retry.');

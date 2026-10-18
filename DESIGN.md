@@ -73,6 +73,8 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 
 ### ConfirmationModal
 
+- The AI summary save modal offers Cancel, Open existing note, Save as new note, and Replace existing note. Open never writes. Replacement preserves properties and content outside a recognized summary block; without a reliable boundary, the modal explicitly states that the entire body, including user edits, is replaced and uses the native warning button style. Cancel remains the first action. Native modal button wrapping and focus behavior apply.
+
 - **Structure:** warning message, cancel action, destructive confirm action.
 - **States:** open, cancel, confirm.
 - **Accessibility:** explicit irreversible-action wording; no remember-choice option for permanent deletion.

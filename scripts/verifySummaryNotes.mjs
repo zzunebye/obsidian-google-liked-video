@@ -39,6 +39,10 @@ try {
 				? 'export const getAllDailyNotes = () => []; export const getDailyNote = () => null; export const createDailyNote = async () => null;'
 				: `
 					export const notices = [];
+					export function getFrontMatterInfo(content) {
+						const match = content.match(/^\\uFEFF?---\\r?\\n[\\s\\S]*?\\r?\\n---(?:\\r?\\n|$)/);
+						return { contentStart: match?.[0].length ?? 0 };
+					}
 					export class Notice { constructor(text) { notices.push(text); } }
 					export class TFile { constructor(path, content = '') { this.path = path; this.content = content; this.frontmatter = {}; } }
 					export class MarkdownView { constructor(file, editor) { this.file = file; this.editor = editor; } getMode() { return 'source'; } }
@@ -67,7 +71,9 @@ try {
 	assert.equal(getSummaryNoteRegion('## AI Summary\nLegacy\n## Personal notes\nKeep').kind, 'legacy');
 	for (const invalid of [block + '\n' + block, block.replace('geulo:ai-summary:end', 'missing:end'), block.replace('geulo:ai-summary:start', 'missing:start')]) {
 		assert.equal(getSummaryNoteRegion(invalid).kind, 'legacy');
-		assert.equal(getSummaryNoteEdit(invalid, replacement, getSummaryNoteRegion(invalid)), null);
+		assert.deepEqual(getSummaryNoteEdit(invalid, replacement, getSummaryNoteRegion(invalid)), {
+			from: 0, to: invalid.length, text: replacement + '\n',
+		});
 	}
 	assert.throws(() => createSummaryNoteBlock(''), /cannot be saved/);
 	assert.throws(() => createSummaryNoteBlock('<!-- geulo:ai-summary:end -->'), /cannot be saved/);
@@ -134,7 +140,7 @@ try {
 	const closed = fixture('Before\n' + block + '\nAfter');
 	closed.state.beforeProcess = file => { file.content = 'Concurrent outside edit\n' + file.content; };
 	let saving = saveSummaryToNote(closed.plugin, video, 'Regenerated summary');
-	await choose('Replace existing summary');
+	await choose('Replace existing note');
 	await saving;
 	assert.equal(closed.file.content, 'Concurrent outside edit\nBefore\n' + replacement + '\nAfter');
 	assert.equal(closed.state.processes, 1);
@@ -149,7 +155,7 @@ try {
 	};
 	edited.app.workspace.activeEditor = new MarkdownView(edited.file, editor);
 	saving = saveSummaryToNote(edited.plugin, video, 'Regenerated summary');
-	await choose('Replace existing summary');
+	await choose('Replace existing note');
 	await saving;
 	assert.equal(editorText, 'Unsaved introduction\n' + replacement + '\nUnsaved ending');
 	assert.equal(edited.file.content, 'Disk version');
@@ -158,7 +164,7 @@ try {
 	const conflict = fixture(block);
 	conflict.state.beforeProcess = file => { file.content = file.content.replace('Original summary', 'Manual edit'); };
 	saving = saveSummaryToNote(conflict.plugin, video, 'Regenerated summary');
-	await choose('Replace existing summary');
+	await choose('Replace existing note');
 	await saving;
 	assert.ok(conflict.file.content.includes('Manual edit'));
 	assert.ok(!conflict.file.content.includes('Regenerated summary'));
@@ -181,7 +187,7 @@ try {
 	const legacyBefore = legacy.file.content;
 	saving = saveSummaryToNote(legacy.plugin, video, 'Separate summary');
 	while (!Modal.active) await new Promise(resolve => setImmediate(resolve));
-	assert.ok(!Modal.active.contentEl.textContent.includes('Replace existing summary'));
+	assert.ok(Modal.active.contentEl.textContent.includes('overwrites the entire note body'));
 	await choose('Save as new note');
 	await saving;
 	assert.equal(legacy.file.content, legacyBefore);
@@ -197,9 +203,47 @@ try {
 	assert.equal(legacy.files.size, 3);
 	assert.ok([...legacy.files.keys()].some(path => path.endsWith('AI Summary 2.md')));
 
+	for (const content of [block, legacyBefore]) {
+		const existing = fixture(content);
+		saving = saveSummaryToNote(existing.plugin, video, 'Must not save');
+		await choose('Open existing note');
+		await saving;
+		assert.equal(existing.file.content, content);
+		assert.equal(existing.state.processes, 0);
+		assert.equal(existing.files.size, 1);
+		assert.deepEqual(existing.state.opened, [existing.file.path]);
+		assert.equal(existing.file.frontmatter.ai_summary, undefined);
+	}
+
+	for (const newline of ['\n', '\r\n']) {
+		const properties = ['---', 'video_id: qa-video-01', 'custom: keep', '---', ''].join(newline);
+		const whole = fixture(properties + legacyBefore);
+		saving = saveSummaryToNote(whole.plugin, video, 'Regenerated summary');
+		await choose('Replace existing note');
+		await saving;
+		assert.equal(whole.file.content, properties + replacement + '\n');
+		assert.equal(whole.file.frontmatter.video_id, video.id);
+		assert.equal(whole.file.frontmatter.ai_summary, true);
+		assert.equal(whole.files.size, 1);
+	}
+
+	const legacyConflict = fixture(legacyBefore);
+	legacyConflict.state.beforeProcess = file => { file.content += '\nConcurrent edit'; };
+	saving = saveSummaryToNote(legacyConflict.plugin, video, 'Regenerated summary');
+	await choose('Replace existing note');
+	await saving;
+	assert.equal(legacyConflict.file.content, legacyBefore + '\nConcurrent edit');
+	assert.ok(notices.at(-1).includes('Nothing was replaced'));
+
+	const malformed = fixture(block.replace('geulo:ai-summary:end', 'missing:end'));
+	saving = saveSummaryToNote(malformed.plugin, video, 'Regenerated summary');
+	await choose('Replace existing note');
+	await saving;
+	assert.equal(malformed.file.content, replacement + '\n');
+
 	const rapid = fixture(block);
 	const attempts = [saveSummaryToNote(rapid.plugin, video, 'Rapid'), saveSummaryToNote(rapid.plugin, video, 'Rapid')];
-	await choose('Replace existing summary');
+	await choose('Replace existing note');
 	await Promise.all(attempts);
 	assert.equal(rapid.state.lookups, 1);
 	assert.equal(rapid.state.processes, 1);
@@ -216,7 +260,7 @@ try {
 	await saveSummaryToNote(metadata.plugin, video, 'Kept despite metadata failure');
 	assert.ok(metadata.file.content.includes('Kept despite metadata failure'));
 	assert.ok(notices.at(-1).includes('metadata could not be updated'));
-	console.log('PASS: summary append, atomic/editor replacement, outside-edit preservation, conflict rejection, legacy/malformed protection, modal cancel/close, unique source-only copies, deduplication, failure recovery and partial metadata failure');
+	console.log('PASS: summary append, atomic/editor replacement, open without writes, legacy/malformed body replacement, LF/CRLF property preservation, outside-edit preservation, conflict rejection, modal cancel/close, unique source-only copies, deduplication, failure recovery and partial metadata failure');
 } finally {
 	dom.window.close();
 	delete global.window;

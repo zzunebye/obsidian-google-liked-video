@@ -1,6 +1,6 @@
 import { App, Modal } from 'obsidian';
 
-type SummaryNoteChoice = 'replace' | 'new' | 'cancel';
+type SummaryNoteChoice = 'open' | 'replace' | 'new' | 'cancel';
 
 class SummaryNoteModal extends Modal {
 	private resolved = false;
@@ -8,7 +8,7 @@ class SummaryNoteModal extends Modal {
 	constructor(
 		app: App,
 		private readonly notePath: string,
-		private readonly canReplace: boolean,
+		private readonly hasSummaryBoundary: boolean,
 		private readonly resolveChoice: (choice: SummaryNoteChoice) => void,
 	) {
 		super(app);
@@ -18,19 +18,21 @@ class SummaryNoteModal extends Modal {
 		this.setTitle('Save AI summary');
 		this.contentEl.createEl('p', { text: `A summary already exists in ${this.notePath}.` });
 		this.contentEl.createEl('p', {
-			text: this.canReplace
-				? 'Replace the existing summary, including any edits within it, or save this version as a separate note. Content outside the summary is kept.'
-				: 'The existing summary cannot be safely separated from the rest of this note. Save this version as a new note to keep the original intact.',
+			text: this.hasSummaryBoundary
+				? 'Open the existing note, replace its summary, or save this version as a separate note. Replacing keeps content outside the summary, including note properties.'
+				: 'Open the existing note or save this version as a separate note to keep its content. Replace existing note overwrites the entire note body, including your edits, with this summary. Note properties are kept.',
 		});
 		const actions = this.contentEl.createDiv({ cls: 'modal-button-container' });
 		const cancel = actions.createEl('button', { text: 'Cancel' });
 		cancel.addEventListener('click', () => this.choose('cancel'));
+		const open = actions.createEl('button', { text: 'Open existing note' });
+		open.addEventListener('click', () => this.choose('open'));
 		const separate = actions.createEl('button', { text: 'Save as new note' });
 		separate.addEventListener('click', () => this.choose('new'));
-		if (this.canReplace) {
-			const replace = actions.createEl('button', { text: 'Replace existing summary', cls: 'mod-cta' });
-			replace.addEventListener('click', () => this.choose('replace'));
-		}
+		const replace = actions.createEl('button', {
+			text: 'Replace existing note', cls: this.hasSummaryBoundary ? 'mod-cta' : 'mod-warning',
+		});
+		replace.addEventListener('click', () => this.choose('replace'));
 	}
 
 	onClose(): void {
@@ -46,6 +48,6 @@ class SummaryNoteModal extends Modal {
 	}
 }
 
-export function chooseSummaryNoteAction(app: App, notePath: string, canReplace: boolean): Promise<SummaryNoteChoice> {
-	return new Promise(resolve => new SummaryNoteModal(app, notePath, canReplace, resolve).open());
+export function chooseSummaryNoteAction(app: App, notePath: string, hasSummaryBoundary: boolean): Promise<SummaryNoteChoice> {
+	return new Promise(resolve => new SummaryNoteModal(app, notePath, hasSummaryBoundary, resolve).open());
 }

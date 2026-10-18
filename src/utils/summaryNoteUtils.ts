@@ -1,10 +1,12 @@
+import { getFrontMatterInfo } from 'obsidian';
 import type { NoteContentEdit } from './noteEditingUtils';
 
 const SUMMARY_START = '<!-- geulo:ai-summary:start -->';
 const SUMMARY_END = '<!-- geulo:ai-summary:end -->';
 
 export type SummaryNoteRegion =
-	| { kind: 'empty' | 'legacy' }
+	| { kind: 'empty' }
+	| { kind: 'legacy'; text: string }
 	| { kind: 'marked'; from: number; to: number; text: string };
 
 export function getSummaryNoteRegion(content: string): SummaryNoteRegion {
@@ -21,7 +23,9 @@ export function getSummaryNoteRegion(content: string): SummaryNoteRegion {
 		return { kind: 'marked', from, to, text: content.slice(from, to) };
 	}
 	// Older notes have no reliable end boundary; never infer it from Markdown headings.
-	return { kind: content.includes('geulo:ai-summary:') || content.includes('## AI Summary') ? 'legacy' : 'empty' };
+	return content.includes('geulo:ai-summary:') || content.includes('## AI Summary')
+		? { kind: 'legacy', text: content }
+		: { kind: 'empty' };
 }
 
 export function createSummaryNoteBlock(summary: string, asBlockquote = false): string {
@@ -42,6 +46,9 @@ export function getSummaryNoteEdit(content: string, block: string, expected: Sum
 	}
 	if (expected.kind === 'marked' && current.kind === 'marked' && expected.text === current.text) {
 		return { from: current.from, to: current.to, text: block };
+	}
+	if (expected.kind === 'legacy' && current.kind === 'legacy' && expected.text === content) {
+		return { from: getFrontMatterInfo(content).contentStart, to: content.length, text: `${block}\n` };
 	}
 	return null;
 }
