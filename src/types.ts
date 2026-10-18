@@ -49,7 +49,13 @@ export function isAIProvider(value: string): value is AIProvider {
 export const OPENROUTER_MODEL_PRESETS = [
     'deepseek/deepseek-v4.1-flash',
     'openai/gpt-5.6-luna',
+    'openai/gpt-6-luna',
+    'openai/gpt-6.1-sol',
+    'anthropic/claude-haiku-5.5',
+    'anthropic/claude-sonnet-5.5',
     'google/gemini-3.8-flash',
+    'z-ai/glm-5.3-flash',
+    'qwen/qwen3.8-27b',
 ] as const;
 export type OpenRouterModelPreset = typeof OPENROUTER_MODEL_PRESETS[number];
 
