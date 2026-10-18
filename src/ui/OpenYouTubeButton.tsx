@@ -1,5 +1,5 @@
 import { Notice } from "obsidian";
-import { Search } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
 import { debugLogger } from "src/debug";
 import { usePlugin } from "src/store/pluginContext";
 
@@ -39,7 +39,7 @@ export const OpenYouTubeButton = ({ query }: { query?: string }) => {
 			className={query === undefined ? undefined : "youtube-search-button"}
 			onClick={() => void openYouTube()}
 		>
-			<Search size={16} aria-hidden="true" />
+			{query === undefined ? <ExternalLink size={16} aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
 			{query !== undefined && <span>{label}</span>}
 		</button>
 	);

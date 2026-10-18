@@ -1,5 +1,5 @@
 import { Notice } from "obsidian";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Bot, ExternalLink, MessageCircle } from "lucide-react";
 import type { SummaryFileData, SummarySource, YouTubeVideo } from "src/types";
 import { debugLogger } from "src/debug";
@@ -75,6 +75,22 @@ export const AISummariesView = () => {
 	const [summaryBusy, setSummaryBusy] = useState(false);
 	const [speechSummary, setSpeechSummary] = useState<string | null>(null);
 	const summaryScrollRef = useRef<HTMLDivElement>(null);
+	const workspaceRef = useRef<HTMLDivElement>(null);
+	const listRef = useRef<HTMLDivElement>(null);
+	const detailRef = useRef<HTMLDivElement>(null);
+	const triggerRef = useRef<HTMLButtonElement | null>(null);
+	const previousSelectionRef = useRef<string | null>(null);
+	const [workspaceWidth, setWorkspaceWidth] = useState(0);
+
+	useLayoutEffect(() => {
+		const workspace = workspaceRef.current;
+		const ownerWindow = workspace?.ownerDocument.defaultView;
+		if (!workspace || !ownerWindow) return;
+		const observer = new ownerWindow.ResizeObserver(() => setWorkspaceWidth(workspace.clientWidth));
+		setWorkspaceWidth(workspace.clientWidth);
+		observer.observe(workspace);
+		return () => observer.disconnect();
+	}, []);
 
 	useEffect(() => plugin.summaryStorage.subscribe(() => {
 		setSummaries(plugin.summaryStorage.getAllVideoSummaries());
@@ -98,6 +114,26 @@ export const AISummariesView = () => {
 	const selectedSummary = selectedVideoId
 		? summaries.find(summary => summary.videoId === selectedVideoId) ?? null
 		: null;
+	const activeVideoId = selectedSummary?.videoId ?? null;
+	const listHidden = activeVideoId !== null && workspaceWidth < 760;
+
+	useLayoutEffect(() => {
+		const list = listRef.current;
+		const detail = detailRef.current;
+		if (!list || !detail) return;
+		list.toggleAttribute("inert", false);
+		list.removeAttribute("aria-hidden");
+		if (activeVideoId !== null && (previousSelectionRef.current !== activeVideoId
+			|| (listHidden && list.contains(list.ownerDocument.activeElement)))) {
+			detail.focus({ preventScroll: true });
+		} else if (activeVideoId === null && previousSelectionRef.current !== null) {
+			if (triggerRef.current?.isConnected) triggerRef.current.focus({ preventScroll: true });
+			else list.focus({ preventScroll: true });
+		}
+		list.toggleAttribute("inert", listHidden);
+		if (listHidden) list.setAttribute("aria-hidden", "true");
+		previousSelectionRef.current = activeVideoId;
+	}, [activeVideoId, listHidden]);
 
 	useEffect(() => {
 		if (selectedVideoId && !summaries.some(summary => summary.videoId === selectedVideoId)) {
@@ -175,8 +211,8 @@ export const AISummariesView = () => {
 			<div className="ai-summaries-result-count" aria-live="polite">
 				{visibleSummaries.length} of {summaries.length} summaries
 			</div>
-			<div className={`ai-summaries-workspace${selectedSummary ? " ai-summaries-workspace--open" : ""}`}>
-				<div className="ai-summaries-list" aria-label="Saved AI summaries">
+			<div ref={workspaceRef} className={`ai-summaries-workspace${selectedSummary ? " ai-summaries-workspace--open" : ""}`}>
+				<div ref={listRef} className="ai-summaries-list" tabIndex={-1} aria-label="Saved AI summaries">
 					{visibleSummaries.length === 0 ? (
 						<div className="ai-summaries-empty">
 							<Bot size={32} aria-hidden="true" />
@@ -194,7 +230,10 @@ export const AISummariesView = () => {
 						const source = getSource(summary);
 						return <button key={summary.videoId} type="button" className="ai-summary-list-item"
 							aria-current={selectedVideoId === summary.videoId ? "true" : undefined}
-							onClick={() => setSelectedVideoId(summary.videoId)}>
+							onClick={event => {
+								triggerRef.current = event.currentTarget;
+								setSelectedVideoId(summary.videoId);
+							}}>
 							<strong>{title}</strong>
 							<span className="ai-summary-list-item__metadata">
 								<span className="ai-summary-list-item__source">{source === "transcript" ? "Transcript-based" : "Video-based"}</span>
@@ -206,7 +245,7 @@ export const AISummariesView = () => {
 						</button>;
 					})}
 				</div>
-				<div className="ai-summaries-detail" aria-label="AI summary detail">
+				<div ref={detailRef} className="ai-summaries-detail" role="region" tabIndex={-1} aria-label="AI summary detail">
 					{selectedSummary ? (
 						<div className="ai-summary-reader">
 							<header className="ai-summary-reader__header">

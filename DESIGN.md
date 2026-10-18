@@ -27,7 +27,7 @@ Raw colors already present in legacy media overlays remain accepted debt. New co
 
 ## 3. Typography
 
-- View titles use the existing `Georgia, serif` header treatment at `1.25em` and weight 600.
+- View titles use Obsidian's `--font-interface` at `1.25em` and weight 600. Video cards also use `--font-interface`, respecting the vault's interface-font setting.
 - Controls and metadata inherit Obsidian's application font.
 - Card titles use 16px/600; descriptions use 13px; metadata uses 12px.
 - Destructive confirmation copy uses the existing confirmation modal scale: 16px body and 14px controls.
