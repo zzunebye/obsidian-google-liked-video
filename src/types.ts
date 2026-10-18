@@ -130,6 +130,7 @@ export interface ObsidianGoogleLikedVideoSettings extends SpeechSettings {
     openAIApiKey: string;
     openAIModel: string;
     saveAISummariesAsBlockquotes: boolean;
+    includeAISummaryHeading: boolean;
     summaryPrompt: string;
 }
 

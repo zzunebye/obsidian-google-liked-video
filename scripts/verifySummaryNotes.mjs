@@ -66,6 +66,11 @@ try {
 	assert.match(block, /^<!-- geulo:ai-summary:start -->\n# AI Summary\n/);
 	assert.equal(quotedBlock, '<!-- geulo:ai-summary:start -->\n# AI Summary\n> Quoted summary\n>\n> ## Nested heading\n> - Detail\n<!-- geulo:ai-summary:end -->');
 	assert.equal(getSummaryNoteRegion(quotedBlock).kind, 'marked');
+	const headingless = createSummaryNoteBlock('Summary without heading', false, false);
+	assert.equal(headingless, '<!-- geulo:ai-summary:start -->\nSummary without heading\n<!-- geulo:ai-summary:end -->');
+	assert.equal(getSummaryNoteRegion(headingless).kind, 'marked');
+	assert.equal(getSummaryNoteRegion(headingless.replace(/\n/g, '\r\n')).kind, 'marked');
+	assert.equal(getSummaryNoteRegion(createSummaryNoteBlock('Quoted', true, false)).kind, 'marked');
 	assert.equal(getSummaryNoteRegion('Personal notes').kind, 'empty');
 	assert.equal(getSummaryNoteRegion('<!-- geulo:ai-summary:start -->\n## AI Summary\nEarlier managed summary\n<!-- geulo:ai-summary:end -->').kind, 'marked');
 	assert.equal(getSummaryNoteRegion('## AI Summary\nLegacy\n## Personal notes\nKeep').kind, 'legacy');
@@ -113,7 +118,7 @@ try {
 				transform(file.frontmatter);
 			} },
 		};
-		const plugin = { app, settings: { videoNotePath: 'Videos', organizeByChannel: true, saveAISummariesAsBlockquotes: false },
+		const plugin = { app, settings: { videoNotePath: 'Videos', organizeByChannel: true, saveAISummariesAsBlockquotes: false, includeAISummaryHeading: true },
 			videoNotes: { getOrCreate: async () => { state.lookups++; return { file, created: false }; } } };
 		return { plugin, app, file, files, state };
 	};
@@ -136,6 +141,34 @@ try {
 	quoted.plugin.settings.saveAISummariesAsBlockquotes = true;
 	await saveSummaryToNote(quoted.plugin, video, 'Quoted version\n\n## Details\n- Item');
 	assert.equal(quoted.file.content, 'My notes\nKeep this text.\n\n' + createSummaryNoteBlock('Quoted version\n\n## Details\n- Item', true) + '\n');
+
+	for (const asBlockquote of [false, true]) {
+		const optional = fixture();
+		optional.plugin.settings.includeAISummaryHeading = false;
+		optional.plugin.settings.saveAISummariesAsBlockquotes = asBlockquote;
+		const withoutHeading = createSummaryNoteBlock('Heading toggle test', asBlockquote, false);
+		await saveSummaryToNote(optional.plugin, video, 'Heading toggle test');
+		assert.equal(optional.file.content, 'My notes\nKeep this text.\n\n' + withoutHeading + '\n');
+		assert.equal(optional.file.content.includes('# AI Summary'), false);
+
+		let toggling = saveSummaryToNote(optional.plugin, video, 'Copy without heading');
+		await choose('Save as new note');
+		await toggling;
+		const copy = [...optional.files.values()].find(file => file !== optional.file);
+		assert.ok(copy.content.endsWith(createSummaryNoteBlock('Copy without heading', asBlockquote, false) + '\n'));
+
+		optional.plugin.settings.includeAISummaryHeading = true;
+		toggling = saveSummaryToNote(optional.plugin, video, 'Heading restored');
+		await choose('Replace existing note');
+		await toggling;
+		assert.equal(optional.file.content, 'My notes\nKeep this text.\n\n' + createSummaryNoteBlock('Heading restored', asBlockquote) + '\n');
+
+		optional.plugin.settings.includeAISummaryHeading = false;
+		toggling = saveSummaryToNote(optional.plugin, video, 'Heading removed again');
+		await choose('Replace existing note');
+		await toggling;
+		assert.equal(optional.file.content, 'My notes\nKeep this text.\n\n' + createSummaryNoteBlock('Heading removed again', asBlockquote, false) + '\n');
+	}
 
 	const closed = fixture('Before\n' + block + '\nAfter');
 	closed.state.beforeProcess = file => { file.content = 'Concurrent outside edit\n' + file.content; };

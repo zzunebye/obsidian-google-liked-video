@@ -73,6 +73,8 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 
 ### ConfirmationModal
 
+- AI settings expose an enabled-by-default `Include AI Summary heading` toggle beside the block quote toggle. It controls the generated heading on future note saves, copies, and replacements. Managed section markers remain present without the heading, so later replacement still preserves content outside the summary.
+
 - The AI summary save modal offers Cancel, Open existing note, Save as new note, and Replace existing note. Open never writes. Replacement preserves properties and content outside a recognized summary block; without a reliable boundary, the modal explicitly states that the entire body, including user edits, is replaced and uses the native warning button style. Cancel remains the first action. Native modal button wrapping and focus behavior apply.
 
 - **Structure:** warning message, cancel action, destructive confirm action.

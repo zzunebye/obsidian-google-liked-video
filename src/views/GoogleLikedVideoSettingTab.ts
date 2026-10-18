@@ -158,7 +158,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 ),
                 this.createSectionDefinition(
                     'AI features',
-                    ['Enable AI Summary', 'AI Provider', 'Gemini API Key', 'OpenRouter API Key', 'OpenAI API Key', 'Model ID', 'Summary Prompt'],
+                    ['Enable AI Summary', 'Include AI Summary heading', 'Save summaries as block quotes', 'AI Provider', 'Gemini API Key', 'OpenRouter API Key', 'OpenAI API Key', 'Model ID', 'Summary Prompt'],
                     (containerEl) => this.renderAISection(containerEl),
                 ),
             );
@@ -527,6 +527,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         if (!this.plugin.settings.enableAISummary) {
             return;
         }
+
+        new Setting(containerEl)
+            .setName('Include AI Summary heading')
+            .setDesc('Add an AI Summary heading when saving a summary to a note. Applies to future saves and replacements; existing notes are unchanged until saved again.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.includeAISummaryHeading)
+                .onChange(async (value) => {
+                    await this.saveSetting('includeAISummaryHeading', value);
+                }));
 
         new Setting(containerEl)
             .setName('Save summaries as block quotes')

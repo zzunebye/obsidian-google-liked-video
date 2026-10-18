@@ -70,6 +70,7 @@ const DEFAULT_SETTINGS: ObsidianGoogleLikedVideoSettings = {
 	openAIApiKey: '',
 	openAIModel: OPENAI_MODEL_PRESETS[0],
 	saveAISummariesAsBlockquotes: false,
+	includeAISummaryHeading: true,
 	speechProvider: 'openrouter',
 	speechApiKey: '',
 	speechModel: SPEECH_MODEL_PRESETS[0].id,

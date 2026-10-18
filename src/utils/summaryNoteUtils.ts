@@ -16,7 +16,7 @@ export function getSummaryNoteRegion(content: string): SummaryNoteRegion {
 		&& content.indexOf(SUMMARY_START, from + SUMMARY_START.length) === -1
 		&& content.indexOf(SUMMARY_END, end + SUMMARY_END.length) === -1
 		&& (from === 0 || content[from - 1] === '\n')
-		&& /^\r?\n#{1,2} AI Summary\r?\n/.test(content.slice(from + SUMMARY_START.length))
+		&& /^\r?\n/.test(content.slice(from + SUMMARY_START.length))
 		&& content[end - 1] === '\n'
 		&& /^(?:\r?\n|$)/.test(content.slice(end + SUMMARY_END.length))) {
 		const to = end + SUMMARY_END.length;
@@ -28,7 +28,7 @@ export function getSummaryNoteRegion(content: string): SummaryNoteRegion {
 		: { kind: 'empty' };
 }
 
-export function createSummaryNoteBlock(summary: string, asBlockquote = false): string {
+export function createSummaryNoteBlock(summary: string, asBlockquote = false, includeHeading = true): string {
 	if (!summary.trim() || summary.includes('geulo:ai-summary:')) {
 		throw new Error('This summary cannot be saved as a managed note section. Copy its text instead.');
 	}
@@ -36,7 +36,7 @@ export function createSummaryNoteBlock(summary: string, asBlockquote = false): s
 	const formatted = asBlockquote
 		? content.split(/\r?\n/).map(line => line ? `> ${line}` : '>').join('\n')
 		: content;
-	return `${SUMMARY_START}\n# AI Summary\n${formatted}\n${SUMMARY_END}`;
+	return `${SUMMARY_START}\n${includeHeading ? '# AI Summary\n' : ''}${formatted}\n${SUMMARY_END}`;
 }
 
 export function getSummaryNoteEdit(content: string, block: string, expected: SummaryNoteRegion): NoteContentEdit | null {
