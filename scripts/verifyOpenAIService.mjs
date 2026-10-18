@@ -13,6 +13,7 @@ await build({
 	stdin: {
 		contents: `
 			export { OpenAIService } from './src/services/openAIService.ts';
+			export { OPENAI_MODEL_PRESETS, isOpenAIModelPreset } from './src/types.ts';
 			export { OpenRouterService } from './src/services/openRouterService.ts';
 			export { GeminiService } from './src/services/geminiService.ts';
 			export { createAIService, getActiveApiKey } from './src/services/aiServiceFactory.ts';
@@ -78,6 +79,8 @@ globalThis.fetch = async (url, options) => {
 const require = createRequire(import.meta.url);
 const {
 	OpenAIService,
+	OPENAI_MODEL_PRESETS,
+	isOpenAIModelPreset,
 	OpenRouterService,
 	GeminiService,
 	createAIService,
@@ -174,6 +177,19 @@ assert.deepEqual(completedResult, {
 	source: 'transcript',
 });
 assert.doesNotThrow(() => new Date(completedResult.generatedAt).toISOString());
+
+for (const model of ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna']) {
+	assert.ok(OPENAI_MODEL_PRESETS.includes(model));
+	assert.equal(isOpenAIModelPreset(model), true);
+	const presetService = new OpenAIService('sk-openai-test', model, 'ko');
+	let presetResult;
+	await presetService.generateVideoSummaryStream('video-01', 'Summarize', {
+		onChunk: () => {},
+		onComplete: result => { presetResult = result; },
+	});
+	assert.equal(JSON.parse(requests.at(-1).body).model, model);
+	assert.equal(presetResult.model, model);
+}
 
 requests = [];
 transcriptCalls = [];
