@@ -26,6 +26,8 @@ export type SummarySource = 'transcript' | 'video';
 export const SPEECH_MODEL_PRESETS = [
 	{ id: 'x-ai/grok-voice-tts-1.0', voice: 'eve' },
 	{ id: 'google/gemini-3.1-flash-tts-preview', voice: 'Kore' },
+	{ id: 'google/gemini-3.8-flash-lite-tts', voice: 'Kore' },
+	{ id: 'google/gemini-3.8-flash-tts', voice: 'Kore' },
 	{ id: 'mistralai/voxtral-mini-tts-2603', voice: 'en_paul_neutral' },
 ] as const;
 
