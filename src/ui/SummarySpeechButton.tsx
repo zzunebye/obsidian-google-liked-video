@@ -177,7 +177,7 @@ export function SummarySpeechButton({ summary, disabled, iconOnly = false }: Sum
 	const label = state === 'loading' ? 'Cancel speech generation' : state === 'playing' ? 'Pause speech'
 		: state === 'paused' ? 'Resume speech' : 'Read summary aloud';
 	return <div className={`geulo-summary-speech${iconOnly ? ' geulo-summary-speech--icon-only' : ''}`} role="group" aria-label="Summary speech">
-		<button ref={buttonRef} type="button" aria-label={label} title={iconOnly ? label : undefined}
+		<button ref={buttonRef} type="button" aria-label={label} title={label}
 			disabled={disabled || !summary} onClick={() => void toggle()}>
 			{state === 'loading' ? <Loader2 size={16} className="geulo-summary-speech__spinner" aria-hidden="true" />
 				: state === 'playing' ? <Pause size={16} aria-hidden="true" />

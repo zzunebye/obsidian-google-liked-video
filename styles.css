@@ -1408,6 +1408,13 @@ button.video-stat--button:focus-visible {
 	padding: 16px 20px 12px;
 	flex-shrink: 0;
 }
+.geulo-transcript-reader {
+	container: geulo-reader / inline-size;
+}
+.geulo-transcript-reader button.geulo-transcript-reader__more,
+.geulo-transcript-reader__compact-back {
+	display: none;
+}
 .geulo-transcript-reader__navigation,
 .geulo-transcript-reader__actions,
 .geulo-transcript-reader__follow {
@@ -1561,8 +1568,59 @@ button.video-stat--button:focus-visible {
 	margin: 0 0 16px;
 }
 .geulo-transcript-reader__actions {
-	margin-top: 12px;
+	margin-top: 4px;
+	flex-basis: 100%;
 	font-size: var(--font-ui-small);
+}
+
+@container geulo-reader (max-width: 600px) {
+	.geulo-transcript-reader .geulo-summary-speech > button:first-child > span {
+		display: none;
+	}
+	.geulo-transcript-reader .geulo-summary-speech > button:first-child {
+		width: 32px;
+		padding-inline: 4px;
+	}
+	.geulo-transcript-reader__header {
+		padding: 8px 12px;
+	}
+	.geulo-transcript-reader__navigation-actions,
+	.geulo-transcript-reader__back-label,
+	.geulo-transcript-reader__actions span,
+	.geulo-transcript-reader__follow--idle {
+		display: none;
+	}
+	.geulo-transcript-reader button.geulo-transcript-reader__more,
+	.geulo-transcript-reader__compact-back {
+		display: inline-flex;
+	}
+	.geulo-transcript-reader__title {
+		margin: 8px 0 4px;
+	}
+	.geulo-transcript-reader__title h2 {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.geulo-transcript-reader__metadata {
+		margin-bottom: 8px;
+	}
+	.geulo-transcript-reader__mode-bar > .geulo-transcript-reader__actions {
+		flex-basis: auto;
+		margin: 0 0 0 auto;
+		gap: 4px;
+	}
+	.geulo-transcript-reader__actions button {
+		width: 32px;
+		padding-inline: 4px;
+	}
+	.geulo-transcript-reader .geulo-transcript-reader__tools {
+		padding: 0 12px 8px;
+	}
+	.geulo-transcript-reader .geulo-transcript-reader__follow {
+		margin-top: 4px;
+	}
 }
 .geulo-transcript-reader__mode-bar {
 	display: flex;
@@ -1575,6 +1633,22 @@ button.video-stat--button:focus-visible {
 	display: flex;
 	gap: 4px;
 	margin-left: auto;
+}
+.geulo-transcript-reader__summary-actions,
+.geulo-transcript-reader__summary-note-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.geulo-transcript-reader__summary-actions {
+	margin-left: auto;
+	max-width: 100%;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+.geulo-transcript-reader__summary-note-actions button {
+	width: 32px;
+	padding-inline: 4px;
 }
 .geulo-summary-speech button {
 	display: inline-flex;

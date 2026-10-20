@@ -57,6 +57,7 @@ interface SummarySectionProps {
 	videoDuration?: string; // ISO 8601 duration format (e.g., "PT1H30M")
 	onBusyChange?: (busy: boolean) => void;
 	progressHost?: HTMLElement | null;
+	actionsHost?: HTMLElement | null;
 	onShowSummary?: () => void;
 	initialSnapshot?: SummarySnapshot;
 	onSnapshotChange?: (snapshot: SummarySnapshot) => void;
@@ -79,6 +80,7 @@ export const SummarySection = ({
 	videoDuration,
 	onBusyChange,
 	progressHost,
+	actionsHost,
 	onShowSummary,
 	initialSnapshot,
 	onSnapshotChange,
@@ -439,6 +441,14 @@ export const SummarySection = ({
 	return (
 		<div className="summary-section" onClick={(e) => e.stopPropagation()} aria-busy={isBusy || checkingCache || savingNote}>
 			{progressPortal ?? progress}
+			{actionsHost && createPortal(<>
+				<button type="button" aria-label="Copy summary" title="Copy summary"
+					disabled={!summary || isBusy || checkingCache} onClick={handleCopy}><Copy size={16} aria-hidden="true" /></button>
+				{onAddToNote && <button type="button" aria-label={savingNote ? "Saving to note…" : "Add to Note"}
+					title={savingNote ? "Saving to note…" : "Add summary to video note"} aria-busy={savingNote}
+					disabled={!summary || isBusy || checkingCache || savingNote}
+					onClick={event => void handleAddToNote(event)}><FileText size={16} aria-hidden="true" /></button>}
+			</>, actionsHost)}
 			{checkingCache && <p role="status">Loading saved summary…</p>}
 			{!checkingCache && ((!summary && !isBusy && !error) || showLongVideoNotice) && <div className="summary-section__setup">
 				{!summary && !isBusy && !error && <strong>No AI summary yet</strong>}

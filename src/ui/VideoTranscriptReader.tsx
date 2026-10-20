@@ -1,6 +1,6 @@
 import { Menu, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, LoaderCircle, MessageCircle, PanelRightOpen, Search, ThumbsUp } from "lucide-react";
+import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, LoaderCircle, MessageCircle, MoreHorizontal, PanelRightOpen, Search, ThumbsUp } from "lucide-react";
 import { UI_TEXT } from "src/constants/uiText";
 import { debugLogger } from "src/debug";
 import { googleTokenStorageService } from "src/services/googleTokenStorageService";
@@ -59,6 +59,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 	const [summaryBusy, setSummaryBusy] = useState(false);
 	const [speechSummary, setSpeechSummary] = useState<{ videoId: string; text: string | null } | null>(null);
 	const [summaryProgressHost, setSummaryProgressHost] = useState<HTMLDivElement | null>(null);
+	const [summaryActionsHost, setSummaryActionsHost] = useState<HTMLDivElement | null>(null);
 	const [position, setPosition] = useState<number | null>(null);
 	const [following, setFollowing] = useState(true);
 	const [busy, setBusy] = useState(false);
@@ -284,6 +285,24 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			: likeStatus === "unknown"
 				? "Like status could not be verified. Click to like this video."
 				: "Like video";
+	const openComments = (trigger: HTMLButtonElement): void => {
+		new VideoCommentsModal(plugin.app, video.id, video.snippet.title, plugin.commentService, () => {
+			if (trigger.isConnected) trigger.focus({ preventScroll: true });
+		}).open();
+	};
+	const openVideoMenu = (trigger: HTMLButtonElement): void => {
+		const menu = new Menu();
+		menu.setUseNativeMenu(true);
+		menu.addItem(item => item.setTitle(likeButtonTitle).setIcon("thumbs-up")
+			.setChecked(isLiked).setDisabled(checkingLikeStatus || likePending).onClick(() => void changeLike()));
+		menu.addItem(item => item.setTitle("Comments").setIcon("message-circle").onClick(() => openComments(trigger)));
+		menu.addItem(item => item.setTitle("Open video").setIcon("external-link").setDisabled(busy)
+			.onClick(() => void run(() => playback.open(video.id))));
+		if (onOpenPane) menu.addItem(item => item.setTitle("Open transcript in new pane").setIcon("panel-right-open")
+			.setDisabled(busy || summaryBusy).onClick(() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined, mode))));
+		const rect = trigger.getBoundingClientRect();
+		menu.showAtPosition({ x: rect.left, y: rect.bottom });
+	};
 
 	return (
 		<section ref={rootRef} className={`geulo-transcript-reader geulo-transcript-reader--${mode}`} tabIndex={-1} aria-label={`Transcript for ${video.snippet.title}`}
@@ -296,8 +315,8 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			<header className="geulo-transcript-reader__header">
 				<div className="geulo-transcript-reader__navigation">
 					{onBack ?
-						<button type="button" className="geulo-transcript-reader__back" onClick={onBack}>
-							<ArrowLeft size={16} aria-hidden="true" />{backLabel ?? "Back to videos"}
+						<button type="button" className="geulo-transcript-reader__back" aria-label={backLabel ?? "Back to videos"} title={backLabel ?? "Back to videos"} onClick={onBack}>
+							<ArrowLeft size={16} aria-hidden="true" /><span className="geulo-transcript-reader__back-label">{backLabel ?? "Back to videos"}</span><span className="geulo-transcript-reader__compact-back" aria-hidden="true">Back</span>
 						</button>
 						: <span>Transcript</span>}
 					<div className="geulo-transcript-reader__navigation-actions">
@@ -309,26 +328,16 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 								: <ThumbsUp size={14} fill={isLiked ? "currentColor" : "none"} aria-hidden="true" />}
 							{isLiked ? "Liked" : "Like"}
 						</button>
-						<button type="button" title="Show comments" onClick={event => {
-							const trigger = event.currentTarget;
-							const modal = new VideoCommentsModal(
-								plugin.app,
-								video.id,
-								video.snippet.title,
-								plugin.commentService,
-								() => {
-									if (trigger.isConnected) trigger.focus({ preventScroll: true });
-								},
-							);
-							modal.open();
-						}}><MessageCircle size={14} aria-hidden="true" />Comments</button>
+						<button type="button" title="Show comments" onClick={event => openComments(event.currentTarget)}><MessageCircle size={14} aria-hidden="true" />Comments</button>
 						<button type="button" disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" />Open video</button>
 						{onOpenPane && <button type="button" title="Open transcript in new pane" aria-label="Open transcript in new pane" disabled={busy || summaryBusy}
 							onClick={() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined, mode))}><PanelRightOpen size={16} aria-hidden="true" /></button>}
 					</div>
+					<button type="button" className="geulo-transcript-reader__more" aria-label="Video actions" title="Video actions" aria-haspopup="menu"
+						onClick={event => openVideoMenu(event.currentTarget)}><MoreHorizontal size={16} aria-hidden="true" /></button>
 				</div>
 				<div className="geulo-transcript-reader__title">
-					<h2>{video.snippet.title}</h2>
+					<h2 title={video.snippet.title}>{video.snippet.title}</h2>
 					<VideoInfoTooltip video={video} />
 				</div>
 				<p className="geulo-transcript-reader__metadata">{video.snippet.channelTitle}
@@ -337,20 +346,23 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 				<div className="geulo-transcript-reader__mode-bar">
 					<div className="geulo-transcript-reader__modes" role="group" aria-label="Transcript display mode">
 						{modes.map(value => <button key={value} type="button" aria-pressed={mode === value} disabled={busy}
-							onClick={() => changeMode(value)}>{value === "ai" ? <><Bot size={14} aria-hidden="true" />AI</> : value === "paragraphs" ? "Paragraphs" : "Original timestamps"}</button>)}
+							onClick={() => changeMode(value)}>{value === "ai" ? <><Bot size={14} aria-hidden="true" />AI</> : value === "paragraphs" ? "Paragraphs" : "Timestamps"}</button>)}
 					</div>
-					{isAiMode && <SummarySpeechButton key={video.id} summary={speechSummary?.videoId === video.id ? speechSummary.text : null} disabled={summaryBusy} />}
-				</div>
+					{isAiMode && <div className="geulo-transcript-reader__summary-actions" role="group" aria-label="AI summary actions">
+						<SummarySpeechButton key={video.id} summary={speechSummary?.videoId === video.id ? speechSummary.text : null} disabled={summaryBusy} />
+						<div ref={setSummaryActionsHost} className="geulo-transcript-reader__summary-note-actions" />
+					</div>}
 				{!isAiMode && <div className="geulo-transcript-reader__actions">
-					<button type="button" disabled={busy || state.kind !== "loaded"} onClick={event => {
+					<button type="button" aria-label={copied ? "Copied" : "Copy all…"} title={copied ? "Copied" : "Copy all…"} aria-haspopup="menu" disabled={busy || state.kind !== "loaded"} onClick={event => {
 						const menu = new Menu();
 						menu.addItem(item => item.setTitle("Copy full text").onClick(() => void run(() => copy(false))));
 						menu.addItem(item => item.setTitle("Copy with timestamps").onClick(() => void run(() => copy(true))));
 						const rect = event.currentTarget.getBoundingClientRect();
 						menu.showAtPosition({ x: rect.left, y: rect.bottom });
-					}}><Copy size={14} aria-hidden="true" />{copied ? "Copied" : "Copy all…"}</button>
-					<button type="button" disabled={busy || state.kind !== "loaded"} onClick={() => void run(saveNote)}><FilePlus size={14} aria-hidden="true" />Save as note</button>
+					}}><Copy size={14} aria-hidden="true" /><span>{copied ? "Copied" : "Copy all…"}</span></button>
+					<button type="button" aria-label="Save as note" title="Save as note" disabled={busy || state.kind !== "loaded"} onClick={() => void run(saveNote)}><FilePlus size={14} aria-hidden="true" /><span>Save as note</span></button>
 				</div>}
+				</div>
 				<div ref={setSummaryProgressHost} className="geulo-transcript-reader__summary-progress" />
 			</header>
 			<div ref={summaryScrollRef} className="geulo-transcript-reader__summary" hidden={mode !== "ai"} aria-label="AI summary">
@@ -359,7 +371,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 					onAddToNote={summary => saveSummaryToNote(plugin, video, summary)}
 					isExpanded={mode === "ai"} setIsExpanded={expanded => { if (!expanded) changeMode("paragraphs"); }}
 					onScrollToTop={() => summaryScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
-					onBusyChange={setSummaryBusy} progressHost={summaryProgressHost} onShowSummary={() => changeMode("ai")}
+					onBusyChange={setSummaryBusy} progressHost={summaryProgressHost} actionsHost={summaryActionsHost} onShowSummary={() => changeMode("ai")}
 					onSnapshotChange={snapshot => setSpeechSummary({ videoId: video.id, text: snapshot.summary })} />
 			</div>
 			{mode !== "ai" && state.kind === "loading" && <p className="geulo-transcript-reader__status" role="status">Fetching transcript…</p>}
@@ -367,7 +379,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			{mode !== "ai" && state.kind === "loaded" && <>
 				<div className="geulo-transcript-reader__tools">
 					<label className="geulo-transcript-reader__search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search transcript" placeholder="Search transcript…" value={query} onChange={event => { setQuery(event.target.value); setFollowing(false); scrollRef.current?.scrollTo({ top: 0 }); }} /></label>
-					<div className="geulo-transcript-reader__follow">
+					<div className={`geulo-transcript-reader__follow${!needle && position === null ? " geulo-transcript-reader__follow--idle" : ""}`}>
 						<span role={needle ? "status" : undefined}>{needle ? `${visibleRows.length} matching ${mode === "paragraphs" ? "paragraphs" : "captions"}` : position === null ? "Open this video in WebViewer to follow playback" : `Playback · ${formatTranscriptTimestamp(position)}`}</span>
 						{position !== null && <button type="button" aria-pressed={following} onClick={() => { setQuery(""); setFollowing(value => !value); }}>{following ? "Following" : "Follow playback"}</button>}
 					</div>
