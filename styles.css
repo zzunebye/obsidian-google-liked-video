@@ -1128,6 +1128,7 @@ If your plugin does not need CSS, delete this file.
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+	width: 100%;
 }
 
 .video-card__container .video-title {
@@ -1139,6 +1140,7 @@ If your plugin does not need CSS, delete this file.
 	flex-wrap: wrap;
 	align-items: baseline;
 	gap: 2px 12px;
+	width: 100%;
 	min-width: 0;
 }
 
@@ -1148,14 +1150,14 @@ If your plugin does not need CSS, delete this file.
 	max-width: 100%;
 }
 
+.video-card__container .video-metadata p.video-date {
+	margin-left: auto;
+}
+
 .video-metadata .video-channel {
 	display: flex;
 	align-items: baseline;
 	gap: 4px;
-}
-
-.video-metadata .video-channel .video-metadata-label {
-	flex-shrink: 0;
 }
 
 .video-metadata button.video-channel-link {
@@ -1274,7 +1276,7 @@ button.video-tag-chip {
 
 .video-bottom-row {
 	display: flex;
-	justify-content: flex-start;
+	justify-content: flex-end;
 	align-items: center;
 	flex-wrap: wrap;
 	gap: 4px 8px;

@@ -344,7 +344,6 @@ export const VideoCard = ({
 					<h2 className="video-title">{videoInfo.snippet.title}</h2>
 					<div className="video-metadata">
 					<p className="video-channel">
-						<span className="video-metadata-label">Channel:</span>{" "}
 						<button
 							type="button"
 							className="video-channel-link"
