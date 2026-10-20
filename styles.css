@@ -1538,8 +1538,25 @@ button.video-stat--button:focus-visible {
 	overflow-wrap: anywhere;
 	user-select: text;
 }
-.geulo-video-info__channel {
-	display: block;
+.geulo-transcript-reader .geulo-transcript-reader__metadata button.geulo-channel-button,
+.geulo-video-info__tooltip button.geulo-channel-button {
+	all: unset;
+	display: inline-block;
+	max-width: 100%;
+	font: inherit;
+	cursor: pointer;
+}
+.geulo-video-info__tooltip button.geulo-channel-button {
+	font-weight: var(--font-bold, 700);
+}
+.geulo-transcript-reader .geulo-transcript-reader__metadata button.geulo-channel-button:hover,
+.geulo-video-info__tooltip button.geulo-channel-button:hover {
+	text-decoration: underline;
+}
+.geulo-transcript-reader .geulo-transcript-reader__metadata button.geulo-channel-button:focus-visible,
+.geulo-video-info__tooltip button.geulo-channel-button:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
 }
 .geulo-video-info__details,
 .geulo-video-info__statistics {

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 import type { YouTubeVideo } from "src/types";
 import { formatVideoCount, formatVideoDuration } from "src/utils/videoUtils";
+import { YouTubeChannelButton } from "./YouTubeChannelButton";
 
 export function VideoInfoTooltip({ video }: { video: YouTubeVideo }) {
 	const id = useId();
@@ -32,7 +33,7 @@ export function VideoInfoTooltip({ video }: { video: YouTubeVideo }) {
 		ownerWindow.clearTimeout(closeTimer.current);
 		// Allow the pointer to cross the gap between the icon and its portalled tooltip.
 		closeTimer.current = ownerWindow.setTimeout(() => {
-			if (!buttonRef.current?.matches(":hover, :focus-visible") && !tooltipRef.current?.matches(":hover")) {
+			if (!buttonRef.current?.matches(":hover, :focus-visible") && !tooltipRef.current?.matches(":hover, :focus-within")) {
 				setIsOpen(false);
 			}
 		}, 150);
@@ -94,14 +95,14 @@ export function VideoInfoTooltip({ video }: { video: YouTubeVideo }) {
 
 	return <>
 		<button ref={buttonRef} type="button" className="geulo-video-info__trigger" aria-label="Video information"
-			aria-describedby={isOpen ? id : undefined}
+			aria-haspopup="dialog" aria-expanded={isOpen} aria-controls={isOpen ? id : undefined}
 			onMouseEnter={show} onMouseLeave={scheduleClose} onFocus={show} onBlur={scheduleClose} onClick={show}>
 			<Info size={16} aria-hidden="true" />
 		</button>
 		{isOpen && buttonRef.current && createPortal(
-			<div ref={tooltipRef} id={id} role="tooltip" className="geulo-video-info__tooltip" style={position}
-				onMouseEnter={show} onMouseLeave={scheduleClose}>
-				<strong className="geulo-video-info__channel">{video.snippet.channelTitle}</strong>
+			<div ref={tooltipRef} id={id} role="dialog" aria-label="Video information" className="geulo-video-info__tooltip" style={position}
+				onMouseEnter={show} onMouseLeave={scheduleClose} onFocus={show} onBlur={scheduleClose}>
+				<YouTubeChannelButton video={video} />
 				{(publishedDate || duration) && <dl className="geulo-video-info__details">
 					{publishedDate && <div><dt>Published</dt><dd>{publishedDate}</dd></div>}
 					{duration && <div><dt>Duration</dt><dd>{duration}</dd></div>}
