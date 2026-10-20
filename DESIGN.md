@@ -134,6 +134,8 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 
 ## 7. Depth & Surface
 
+- Shared video cards use a theme border without a drop shadow. Channel and publication metadata share a wrapping row with no paragraph margins; statistics follow directly below, then tags, without stretching the information to the thumbnail height. Statistics and tags align right when the details area is at least 400px wide, and left in narrower panes. Titles, thumbnail sizing, tag controls, and action targets retain their existing scale.
+
 The existing mixed strategy is preserved: Obsidian theme borders provide structure, while playlist cards and modals use subtle legacy shadows. The Web Viewer action group uses an elevated theme surface to stay legible over video thumbnails and page content.
 
 ## 8. Accessibility Constraints & Accepted Debt

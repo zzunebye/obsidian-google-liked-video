@@ -1021,6 +1021,11 @@ If your plugin does not need CSS, delete this file.
 	position: relative;
 	background-color: var(--background-primary-alt);
 	border: 1px solid var(--background-modifier-border);
+	border-color: color-mix(
+		in srgb,
+		var(--background-modifier-border) 60%,
+		var(--background-modifier-border-hover, var(--background-modifier-border))
+	);
 	border-radius: 8px;
 	padding: 8px;
 	display: flex;
@@ -1031,7 +1036,7 @@ If your plugin does not need CSS, delete this file.
 	transition:
 		background-color 0.3s ease,
 		border-color 0.3s ease;
-	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	box-shadow: none;
 	opacity: 1;
 }
 
@@ -1100,7 +1105,7 @@ If your plugin does not need CSS, delete this file.
 	flex-direction: column;
 	gap: 4px;
 	padding: 4px;
-	justify-content: space-between;
+	justify-content: flex-start;
 	overflow: hidden;
 }
 
@@ -1108,6 +1113,42 @@ If your plugin does not need CSS, delete this file.
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.video-card__container .video-title {
+	margin: 0;
+}
+
+.video-metadata {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 12px;
+	min-width: 0;
+}
+
+.video-card__container .video-metadata p {
+	margin: 0;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.video-metadata .video-channel {
+	display: flex;
+	align-items: baseline;
+	gap: 4px;
+}
+
+.video-metadata .video-channel .video-metadata-label {
+	flex-shrink: 0;
+}
+
+.video-metadata button.video-channel-link {
+	min-width: 0;
+	margin-inline: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .video-tags {
@@ -1218,14 +1259,13 @@ button.video-tag-chip {
 
 .video-bottom-row {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: flex-start;
 	align-items: center;
 	flex-wrap: wrap;
 	gap: 4px 8px;
 	min-width: 0;
-	margin-top: 8px;
-	padding-top: 8px;
-	border-top: 1px solid var(--background-modifier-border);
+	margin-top: 0;
+	padding-top: 0;
 }
 
 .video-statistics {
@@ -1293,6 +1333,14 @@ button.video-tag-chip {
 
 .video-sort-metric__value {
 	font-weight: 500;
+}
+
+@container geulo-video-details (min-width: 400px) {
+	.video-bottom-row,
+	.video-statistics,
+	.video-tags__row {
+		justify-content: flex-end;
+	}
 }
 
 @container geulo-video-details (max-width: 210px) {
@@ -1411,7 +1459,6 @@ button.video-stat--button:focus-visible {
 .geulo-transcript-reader {
 	container: geulo-reader / inline-size;
 }
-.geulo-transcript-reader button.geulo-transcript-reader__more,
 .geulo-transcript-reader__compact-back {
 	display: none;
 }
@@ -1601,15 +1648,22 @@ button.video-stat--button:focus-visible {
 	.geulo-transcript-reader__header {
 		padding: 8px 12px;
 	}
-	.geulo-transcript-reader__navigation-actions,
+	.geulo-transcript-reader__navigation-actions span,
 	.geulo-transcript-reader__back-label,
 	.geulo-transcript-reader__actions span,
 	.geulo-transcript-reader__follow--idle {
 		display: none;
 	}
-	.geulo-transcript-reader button.geulo-transcript-reader__more,
 	.geulo-transcript-reader__compact-back {
 		display: inline-flex;
+	}
+	.geulo-transcript-reader__navigation-actions {
+		gap: 4px;
+	}
+	.geulo-transcript-reader__navigation-actions button {
+		width: 32px;
+		padding-inline: 4px;
+		flex-shrink: 0;
 	}
 	.geulo-transcript-reader__title {
 		margin: 8px 0 4px;

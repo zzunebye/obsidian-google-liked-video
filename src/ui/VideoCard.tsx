@@ -342,11 +342,13 @@ export const VideoCard = ({
 			<div className="video-details">
 				<div className="video-details-inner">
 					<h2 className="video-title">{videoInfo.snippet.title}</h2>
+					<div className="video-metadata">
 					<p className="video-channel">
 						<span className="video-metadata-label">Channel:</span>{" "}
 						<button
 							type="button"
 							className="video-channel-link"
+							title={videoInfo.snippet.channelTitle}
 							onClick={handleChannelClick}
 						>
 							{videoInfo.snippet.channelTitle}
@@ -358,12 +360,7 @@ export const VideoCard = ({
 							{moment(videoInfo.snippet.publishedAt).format("ll")}
 						</span>
 					</p>
-					{showVideoTags && videoInfo.snippet.tags?.length > 0 && (
-						<ResponsiveVideoTags
-							tags={videoInfo.snippet.tags}
-							onTagClick={onTagClick}
-						/>
-					)}
+					</div>
 				</div>
 				<div className="video-bottom-row">
 					<div className="video-statistics">
@@ -452,6 +449,12 @@ export const VideoCard = ({
 						</div>
 					</div>
 				</div>
+				{showVideoTags && videoInfo.snippet.tags?.length > 0 && (
+					<ResponsiveVideoTags
+						tags={videoInfo.snippet.tags}
+						onTagClick={onTagClick}
+					/>
+				)}
 			</div>
 		</>
 	);
