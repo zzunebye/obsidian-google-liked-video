@@ -183,67 +183,77 @@ export const AISummariesView = () => {
 				title="AI summaries"
 				badge={`${summaries.length} saved`}
 			/>
-			<div className="ai-summaries-toolbar">
-				<SearchBar
-					searchTerm={searchTerm}
-					onSearchTermChange={setSearchTerm}
-					escapeClearsSearch
-					ariaLabel="Search AI summaries"
-					placeholder="Search titles, channels, and summaries…"
-				/>
-				<label className="ai-summaries-sort">
-					<span>Sort</span>
-					<select value={sort} onChange={event => setSort(event.target.value as SummarySort)}>
-						{SORT_OPTIONS.map(option => (
-							<option key={option.value} value={option.value}>{option.label}</option>
-						))}
-					</select>
-				</label>
-			</div>
-			<div className="ai-summaries-source-filter" role="group" aria-label="Filter summaries by source">
-				{SOURCE_OPTIONS.map(option => (
-					<button key={option.value} type="button" aria-pressed={sourceFilter === option.value}
-						onClick={() => setSourceFilter(option.value)}>
-						{option.label}
-					</button>
-				))}
-			</div>
-			<div className="ai-summaries-result-count" aria-live="polite">
-				{visibleSummaries.length} of {summaries.length} summaries
-			</div>
 			<div ref={workspaceRef} className={`ai-summaries-workspace${selectedSummary ? " ai-summaries-workspace--open" : ""}`}>
 				<div ref={listRef} className="ai-summaries-list" tabIndex={-1} aria-label="Saved AI summaries">
-					{visibleSummaries.length === 0 ? (
-						<div className="ai-summaries-empty">
-							<Bot size={32} aria-hidden="true" />
-							<strong>{hasActiveQuery ? "No matching summaries" : "No saved AI summaries"}</strong>
-							<span>{hasActiveQuery
-								? "No summaries match the current search and filters."
-								: "Summaries you generate in Geulo will appear here."}</span>
-							{hasActiveQuery && <button type="button" onClick={() => {
-								setSearchTerm("");
-								setSourceFilter("all");
-							}}>Clear search and filters</button>}
+					<div className="ai-summaries-collection-controls">
+						<div className="ai-summaries-toolbar">
+							<SearchBar
+								searchTerm={searchTerm}
+								onSearchTermChange={setSearchTerm}
+								escapeClearsSearch
+								ariaLabel="Search AI summaries"
+								placeholder="Search titles, channels, and summaries…"
+							/>
+							<label className="ai-summaries-sort">
+								<span>Sort</span>
+								<select value={sort} onChange={event => setSort(event.target.value as SummarySort)}>
+									{SORT_OPTIONS.map(option => (
+										<option key={option.value} value={option.value}>{option.label}</option>
+									))}
+								</select>
+							</label>
 						</div>
-					) : visibleSummaries.map(summary => {
-						const title = getTitle(summary);
-						const source = getSource(summary);
-						return <button key={summary.videoId} type="button" className="ai-summary-list-item"
-							aria-current={selectedVideoId === summary.videoId ? "true" : undefined}
-							onClick={event => {
-								triggerRef.current = event.currentTarget;
-								setSelectedVideoId(summary.videoId);
-							}}>
-							<strong>{title}</strong>
-							<span className="ai-summary-list-item__metadata">
-								<span className="ai-summary-list-item__source">{source === "transcript" ? "Transcript-based" : "Video-based"}</span>
-								<span>{getChannel(summary)}</span>
-								<span aria-hidden="true">·</span>
-								<time dateTime={summary.generatedAt}>{formatGeneratedAt(summary.generatedAt)}</time>
-							</span>
-							<span className="ai-summary-list-item__preview">{getPreview(summary)}</span>
-						</button>;
-					})}
+						<div className="ai-summaries-source-filter" role="group" aria-label="Filter summaries by source">
+							{SOURCE_OPTIONS.map(option => (
+								<button key={option.value} type="button" aria-pressed={sourceFilter === option.value}
+									onClick={() => setSourceFilter(option.value)}>
+									{option.label}
+								</button>
+							))}
+						</div>
+						<div className="ai-summaries-result-count" aria-live="polite">
+							{visibleSummaries.length} of {summaries.length} summaries
+						</div>
+					</div>
+					<div className="ai-summaries-results">
+						{visibleSummaries.length === 0 ? (
+							<div className="ai-summaries-empty">
+								<Bot size={32} aria-hidden="true" />
+								<strong>{hasActiveQuery ? "No matching summaries" : "No saved AI summaries"}</strong>
+								<span>{hasActiveQuery
+									? "No summaries match the current search and filters."
+									: "Choose Generate AI summary on a video card. Your saved summaries will appear here."}</span>
+								{!hasActiveQuery && <button type="button" onClick={() => {
+									void plugin.activateView().catch((error: unknown) => {
+										debugLogger.error("[AI summaries] Failed to open liked videos", error);
+										new Notice("Unable to open liked videos. Please try again.");
+									});
+								}}>Browse liked videos</button>}
+								{hasActiveQuery && <button type="button" onClick={() => {
+									setSearchTerm("");
+									setSourceFilter("all");
+								}}>Clear search and filters</button>}
+							</div>
+						) : visibleSummaries.map(summary => {
+							const title = getTitle(summary);
+							const source = getSource(summary);
+							return <button key={summary.videoId} type="button" className="ai-summary-list-item"
+								aria-current={selectedVideoId === summary.videoId ? "true" : undefined}
+								onClick={event => {
+									triggerRef.current = event.currentTarget;
+									setSelectedVideoId(summary.videoId);
+								}}>
+								<strong>{title}</strong>
+								<span className="ai-summary-list-item__metadata">
+									<span className="ai-summary-list-item__source">{source === "transcript" ? "Transcript-based" : "Video-based"}</span>
+									<span>{getChannel(summary)}</span>
+									<span aria-hidden="true">·</span>
+									<time dateTime={summary.generatedAt}>{formatGeneratedAt(summary.generatedAt)}</time>
+								</span>
+								<span className="ai-summary-list-item__preview">{getPreview(summary)}</span>
+							</button>;
+						})}
+					</div>
 				</div>
 				<div ref={detailRef} className="ai-summaries-detail" role="region" tabIndex={-1} aria-label="AI summary detail">
 					{selectedSummary ? (

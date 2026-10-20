@@ -406,8 +406,12 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 						No playlists found
 					</div>
 					<div className="no-videos-found__text">
-						Create playlists on YouTube to see them here.
+						Your YouTube playlists and playlists you add by URL will appear here.
 					</div>
+					{!showAddForm && <button type="button" className="no-videos-found__clear-button"
+						disabled={isLoading || isAdding} onClick={() => setShowAddForm(true)}>
+						Add playlist by URL
+					</button>}
 				</div>
 			) : sortedAndFilteredPlaylists.length === 0 ? (
 				<div className="no-videos-found">

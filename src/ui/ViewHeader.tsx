@@ -17,8 +17,8 @@ export const ViewHeader: React.FC<ViewHeaderProps> = ({
 	return (
 		<div className="video-view-header">
 			<div className="video-view-header__title">
-				{icon}
-				{title}
+				<span aria-hidden="true">{icon}</span>
+				<h2 className="video-view-header__heading">{title}</h2>
 				{badge && <span className="video-count-badge">{badge}</span>}
 			</div>
 			<div className="video-view-header__actions">

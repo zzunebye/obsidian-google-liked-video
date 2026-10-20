@@ -31,6 +31,7 @@ export const AddPlaylistForm = ({
 					<div className="add-playlist-form__input-wrapper">
 						<input
 							id="playlist-id-input"
+							autoFocus
 							type="text"
 							className="add-playlist-form__input"
 							placeholder="PLDDTZzm0d6OE3op3... or the full YouTube URL"

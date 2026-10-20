@@ -638,6 +638,21 @@ If your plugin does not need CSS, delete this file.
 	min-width: 0;
 }
 
+.video-view-header__title > span[aria-hidden="true"] {
+	display: flex;
+	flex-shrink: 0;
+}
+
+.video-view-header__heading {
+	margin: 0;
+	min-width: 0;
+	font: inherit;
+	color: inherit;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .auto-fetch-indicator {
 	font-size: 0.7em;
 	padding: 2px 8px;
@@ -4442,10 +4457,12 @@ button.video-channel-link:focus-visible {
 }
 
 .ai-summaries-view > .video-view-header,
-.ai-summaries-toolbar,
-.ai-summaries-source-filter,
-.ai-summaries-result-count {
+.ai-summaries-collection-controls {
 	flex-shrink: 0;
+}
+
+.ai-summaries-collection-controls {
+	padding: var(--size-4-3) var(--size-4-2) 0;
 }
 
 .ai-summaries-toolbar {
@@ -4520,9 +4537,18 @@ button.video-channel-link:focus-visible {
 }
 
 .ai-summaries-list {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	container: geulo-summary-library / inline-size;
+	transition: transform 180ms ease;
+}
+
+.ai-summaries-results {
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow-y: auto;
 	overscroll-behavior: contain;
-	transition: transform 180ms ease;
 }
 
 .ai-summaries-detail {
@@ -4726,7 +4752,7 @@ button.video-channel-link:focus-visible {
 	}
 }
 
-@container geulo-ai-summaries (max-width: 520px) {
+@container geulo-summary-library (max-width: 520px) {
 	.ai-summaries-toolbar {
 		align-items: stretch;
 		flex-direction: column;
@@ -4738,9 +4764,12 @@ button.video-channel-link:focus-visible {
 
 	.ai-summaries-sort select {
 		flex: 1;
+		min-width: 0;
 		max-width: none;
 	}
+}
 
+@container geulo-ai-summaries (max-width: 520px) {
 	.ai-summary-reader__header,
 	.ai-summary-reader__content {
 		padding-inline: var(--size-4-3);

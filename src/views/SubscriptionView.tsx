@@ -849,7 +849,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				/>
 				<div className="subscription-loading">
 					<Loader2 size={24} className="animate-spin" />
-					<span>{progress ? `${progress.completedChannels} / ${progress.totalChannels} channels checked` : "Loading subscriptions…"}</span>
+					<span role="status" aria-atomic="true">Loading subscriptions…</span>
+					{progress && <span>{progress.completedChannels} / {progress.totalChannels} channels checked</span>}
 					<button type="button" onClick={() => abortControllerRef.current?.abort()}>Stop</button>
 				</div>
 			</div>
@@ -864,7 +865,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 					title="Subscriptions"
 					actions={settingsAction}
 				/>
-				<div className="videos-error">
+				<div className="videos-error" role="alert">
 					<AlertCircle size={48} />
 					<div className="videos-error__title">Failed to load subscriptions</div>
 					<div className="videos-error__message">{error}</div>
@@ -900,22 +901,24 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			{isLoading && progress && (
 				<div className="subscription-progress">
 					<span>{progress.completedChannels} / {progress.totalChannels} channels checked</span>
-					<progress value={progress.completedChannels} max={Math.max(progress.totalChannels, 1)} />
+					<progress aria-label="Subscription channels checked" value={progress.completedChannels} max={Math.max(progress.totalChannels, 1)} />
 					<button type="button" onClick={() => abortControllerRef.current?.abort()}>Stop</button>
 				</div>
 			)}
 
 			{pendingSnapshot && (
-				<button type="button" className="subscription-new-videos" onClick={applyPendingSnapshot}>
-					{newVideoCount > 0 ? `Show ${newVideoCount} new videos` : "Apply refreshed videos"}
-				</button>
+				<div role="status" aria-atomic="true">
+					<button type="button" className="subscription-new-videos" onClick={applyPendingSnapshot}>
+						{newVideoCount > 0 ? `Show ${newVideoCount} new videos` : "Apply refreshed videos"}
+					</button>
+				</div>
 			)}
 
 			{snapshot && snapshot.failedChannels.length > 0
 				&& dismissedFailureUpdatedAt !== snapshot.updatedAt && (
 				<div className="subscription-warning">
 					<div className="subscription-warning__header">
-						<span>{snapshot.failedChannels.length} channels could not be updated. Previous videos were kept.</span>
+						<span role="status" aria-atomic="true">{snapshot.failedChannels.length} channels could not be updated. Previous videos were kept.</span>
 						<div className="subscription-warning__actions">
 							{hasRetryableFailures && (
 								<button type="button" onClick={() => void retryFailedChannels()} disabled={isLoading}>Retry</button>
@@ -965,7 +968,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				</div>
 			)}
 
-			{error && snapshot && <div className="subscription-warning">{error}</div>}
+			{error && snapshot && <div className="subscription-warning" role="alert">{error}</div>}
 
 			<div className="subscription-search search-bar-container">
 				<div className="search-bar-wrapper">

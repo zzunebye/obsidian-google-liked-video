@@ -57,6 +57,9 @@ try {
 	const list = document.querySelector(".ai-summaries-list");
 	const detail = document.querySelector(".ai-summaries-detail");
 	const trigger = document.querySelector(".ai-summary-list-item");
+	const controls = document.querySelector(".ai-summaries-collection-controls");
+	const sort = controls.querySelector("select");
+	assert.equal(list.contains(controls), true, "collection controls share the list focus boundary");
 	// When opening the summary, then focus leaves the hidden list.
 	trigger.focus();
 	await act(async () => trigger.click());
@@ -73,7 +76,7 @@ try {
 	await act(async () => trigger.click());
 	assert.equal(list.hasAttribute("inert"), false);
 	// Given focus in the wide list, when narrowed, then focus moves into detail.
-	trigger.focus();
+	sort.focus();
 	await act(async () => { width = 500; resize(); });
 	assert.equal(document.activeElement, detail);
 	assert.equal(list.hasAttribute("inert"), true);
