@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import type { Range } from "@tanstack/react-virtual";
@@ -38,6 +38,7 @@ const INFINITE_BATCH_SIZE = 50;
 export const LikedVideoCollection = forwardRef<LikedVideoCollectionHandle, Props>(function LikedVideoCollection(
 	{ videos, mode, currentPage, onPageChange, resetKey, noteExistenceMap, renderVideo, label = "Liked videos", getVideoKey = getDefaultVideoKey }, ref,
 ) {
+	const listLabelId = useId();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const endRef = useRef<HTMLParagraphElement>(null);
 	const [batch, setBatch] = useState({ key: resetKey, count: INFINITE_BATCH_SIZE });
@@ -284,7 +285,8 @@ export const LikedVideoCollection = forwardRef<LikedVideoCollectionHandle, Props
 
 	return (
 		<>
-		<div ref={containerRef} role="list" aria-label={`${label}, ${videos.length} results`}
+		<span id={listLabelId} hidden>{`${label}, ${videos.length} results`}</span>
+		<div ref={containerRef} role="list" aria-labelledby={listLabelId}
 			onKeyDown={handleKeyDown} aria-keyshortcuts="ArrowUp ArrowDown"
 			className={`video-view__video-grid ${infinite ? "liked-video-virtual-grid" : ""}`}
 			style={infinite ? { height: virtualizer.getTotalSize() } : undefined}>

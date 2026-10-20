@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { usePlugin } from "src/store/pluginContext";
 import type { YouTubeVideo } from "src/types";
@@ -19,6 +19,7 @@ const TranscriptContext = createContext<TranscriptContextValue | null>(null);
 export const useTranscriptWorkspace = () => useContext(TranscriptContext);
 
 export function TranscriptWorkspace({ children, label }: { children: ReactNode; label: string }) {
+	const listLabelId = useId();
 	const plugin = usePlugin();
 	const [selected, setSelected] = useState<TranscriptSelection | null>(null);
 	const [phase, setPhase] = useState<"opening" | "open" | "closing">("opening");
@@ -81,7 +82,8 @@ export function TranscriptWorkspace({ children, label }: { children: ReactNode; 
 		},
 	}}>
 		<div ref={rootRef} className={`geulo-transcript-workspace${selected ? ` geulo-transcript-workspace--${phase}` : ""}`}>
-			<div ref={listRef} className="view-content geulo-transcript-workspace__list" tabIndex={-1} aria-hidden={listHidden || undefined} aria-label={label}>{children}</div>
+			<span id={listLabelId} hidden>{label}</span>
+			<div ref={listRef} className="view-content geulo-transcript-workspace__list" tabIndex={-1} aria-hidden={listHidden || undefined} aria-labelledby={listLabelId}>{children}</div>
 			{selected && <div ref={detailRef} className="geulo-transcript-workspace__detail">
 				<VideoTranscriptReader key={selected.video.id} video={selected.video} backLabel={`Back to ${label}`} onBack={() => setPhase("closing")}
 					displayMode={selected.displayMode} onDisplayModeChange={displayMode => setSelected(current => current ? { ...current, displayMode } : current)}
