@@ -63,6 +63,7 @@ Spacing follows the existing 4px rhythm: 4, 8, 12, 16, 20, 24, and 32px.
 - **States:** default, hover, focus-visible, active, and pinned.
 - **Accessibility:** keyboard activation remains Enter/Space. Owned cards expose deletion through the native context-menu key and Shift+F10.
 - **Layout:** existing responsive card grid.
+- **Narrow panes:** grid columns shrink below 300px to fit available width. At grid widths up to 360px, thumbnails shrink to 80px, titles wrap to two lines, dates wrap, and content reserves space for the pin button.
 
 ### Destructive Action
 
