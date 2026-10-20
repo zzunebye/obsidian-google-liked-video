@@ -1,6 +1,6 @@
 import { Menu, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, LoaderCircle, MessageCircle, MoreHorizontal, PanelRightOpen, Search, ThumbsUp } from "lucide-react";
+import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, LoaderCircle, MessageCircle, PanelRightOpen, Search, ThumbsUp } from "lucide-react";
 import { UI_TEXT } from "src/constants/uiText";
 import { debugLogger } from "src/debug";
 import { googleTokenStorageService } from "src/services/googleTokenStorageService";
@@ -291,19 +291,6 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			if (trigger.isConnected) trigger.focus({ preventScroll: true });
 		}).open();
 	};
-	const openVideoMenu = (trigger: HTMLButtonElement): void => {
-		const menu = new Menu();
-		menu.setUseNativeMenu(true);
-		menu.addItem(item => item.setTitle(likeButtonTitle).setIcon("thumbs-up")
-			.setChecked(isLiked).setDisabled(checkingLikeStatus || likePending).onClick(() => void changeLike()));
-		menu.addItem(item => item.setTitle("Comments").setIcon("message-circle").onClick(() => openComments(trigger)));
-		menu.addItem(item => item.setTitle("Open video").setIcon("external-link").setDisabled(busy)
-			.onClick(() => void run(() => playback.open(video.id))));
-		if (onOpenPane) menu.addItem(item => item.setTitle("Open transcript in new pane").setIcon("panel-right-open")
-			.setDisabled(busy || summaryBusy).onClick(() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined, mode))));
-		const rect = trigger.getBoundingClientRect();
-		menu.showAtPosition({ x: rect.left, y: rect.bottom });
-	};
 
 	return (
 		<section ref={rootRef} className={`geulo-transcript-reader geulo-transcript-reader--${mode}`} tabIndex={-1} aria-label={`Transcript for ${video.snippet.title}`}
@@ -327,15 +314,13 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 							{checkingLikeStatus || likePending
 								? <LoaderCircle className="geulo-transcript-reader__like-spinner" size={14} aria-hidden="true" />
 								: <ThumbsUp size={14} fill={isLiked ? "currentColor" : "none"} aria-hidden="true" />}
-							{isLiked ? "Liked" : "Like"}
+							<span>{isLiked ? "Liked" : "Like"}</span>
 						</button>
-						<button type="button" title="Show comments" onClick={event => openComments(event.currentTarget)}><MessageCircle size={14} aria-hidden="true" />Comments</button>
-						<button type="button" disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" />Open video</button>
+						<button type="button" title="Show comments" aria-label="Show comments" onClick={event => openComments(event.currentTarget)}><MessageCircle size={14} aria-hidden="true" /><span>Comments</span></button>
+						<button type="button" title="Open video" aria-label="Open video" disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" /><span>Open video</span></button>
 						{onOpenPane && <button type="button" title="Open transcript in new pane" aria-label="Open transcript in new pane" disabled={busy || summaryBusy}
 							onClick={() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined, mode))}><PanelRightOpen size={16} aria-hidden="true" /></button>}
 					</div>
-					<button type="button" className="geulo-transcript-reader__more" aria-label="Video actions" title="Video actions" aria-haspopup="menu"
-						onClick={event => openVideoMenu(event.currentTarget)}><MoreHorizontal size={16} aria-hidden="true" /></button>
 				</div>
 				<div className="geulo-transcript-reader__title">
 					<h2 title={video.snippet.title}>{video.snippet.title}</h2>
