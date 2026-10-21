@@ -30,6 +30,7 @@ import { AddToPlaylistModal } from "./AddToPlaylistModal";
 import { useTranscriptWorkspace } from "./TranscriptWorkspace";
 import { formatVideoCount, formatVideoDuration } from "src/utils/videoUtils";
 import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
+import { t } from "../i18n";
 
 interface VideoCardProps {
 	source: "liked" | "playlist" | "subscription";
@@ -107,16 +108,19 @@ export const VideoCard = ({
 			: metricValue > 0 && metricValue < 0.0001 ? "<0.01%" : `${(metricValue * 100).toFixed(2)}%`;
 	const metricTooltip = isAverageViews
 		? metricValue == null
-			? "Average views/day unavailable: no views or a missing/invalid upload date."
-			: `Average views/day since upload: ${metricValue.toLocaleString(undefined, { maximumFractionDigits: 6 })}. Based on saved views; minimum age is 1 day.`
+			? t("videoCard.averageViewsUnavailable")
+			: t("videoCard.averageViewsTooltip").replace("{value}", metricValue.toLocaleString(undefined, { maximumFractionDigits: 6 }))
 		: metricValue == null
-			? "Like/View Ratio unavailable: no views or missing like count."
-			: `${Number(videoInfo.statistics.likeCount).toLocaleString()} likes ÷ ${Number(videoInfo.statistics.viewCount).toLocaleString()} views × 100 = ${(metricValue * 100).toLocaleString(undefined, { maximumFractionDigits: 6 })}%.`;
+			? t("videoCard.likeViewRatioUnavailable")
+			: t("videoCard.likeViewRatioTooltip")
+				.replace("{likes}", Number(videoInfo.statistics.likeCount).toLocaleString())
+				.replace("{views}", Number(videoInfo.statistics.viewCount).toLocaleString())
+				.replace("{ratio}", (metricValue * 100).toLocaleString(undefined, { maximumFractionDigits: 6 }));
 	const openTranscript = (trigger: HTMLElement, mode: TranscriptReaderMode = "paragraphs"): void => {
 		if (transcriptWorkspace) transcriptWorkspace.openTranscript(videoInfo, trigger, mode);
 		else void plugin.openTranscriptPane(videoInfo, undefined, mode).catch(error => {
 			debugLogger.error("[Transcript] Could not open pane", error);
-			new Notice("Could not open the transcript pane.");
+			new Notice(t("transcript.openPaneFailed"));
 		});
 	};
 
@@ -159,10 +163,10 @@ export const VideoCard = ({
 		try {
 			const { file, created } = await plugin.videoNotes.getOrCreate(videoInfo, url);
 			await plugin.app.workspace.openLinkText(file.path, "", true);
-			new Notice(created ? `Created note: ${file.basename}` : `Opening existing note: ${file.path}`);
+			new Notice(`${created ? t("videoCard.noteCreated") : t("videoCard.openingNote")}: ${created ? file.basename : file.path}`);
 		} catch (error) {
 			debugLogger.error("Error handling video note:", error);
-			new Notice("Failed to create/open video note. Check console for details.");
+			new Notice(t("videoCard.noteFailed"));
 		}
 	};
 
@@ -174,7 +178,7 @@ export const VideoCard = ({
 			?? plugin.app.workspace.activeEditor?.file;
 		const menu = new Menu();
 		menu.addItem((item) => {
-			item.setTitle("Open video");
+			item.setTitle(t("videoCard.openVideo"));
 			item.setIcon("create-new");
 			item.onClick(() => {
 				onLinkClick(url);
@@ -182,7 +186,7 @@ export const VideoCard = ({
 		});
 		if (source === "subscription") {
 			menu.addItem((item) => {
-				item.setTitle("Open channel page in YouTube");
+				item.setTitle(t("videoCard.openChannel"));
 				item.setIcon("user");
 				item.onClick(() => {
 					window.open(`https://www.youtube.com/channel/${encodeURIComponent(videoInfo.snippet.channelId)}`, "_blank");
@@ -191,7 +195,7 @@ export const VideoCard = ({
 		}
 
 		menu.addItem((item) => {
-			item.setTitle("Read transcript");
+			item.setTitle(t("videoCard.readTranscript"));
 			item.setIcon("captions");
 			item.onClick(() => openTranscript(trigger));
 		});
@@ -199,7 +203,7 @@ export const VideoCard = ({
 		if (isAIEnabled) {
 			menu.addItem((item) => {
 				item.setTitle(
-					hasSummary ? "View AI summary" : "Generate AI summary",
+					hasSummary ? t("videoCard.viewSummary") : t("summary.generate"),
 				);
 				item.setIcon("bot");
 				item.onClick(() => openTranscript(trigger, "ai"));
@@ -207,7 +211,7 @@ export const VideoCard = ({
 		}
 
 		menu.addItem((item) => {
-			item.setTitle("View video details");
+			item.setTitle(t("videoCard.videoDetails"));
 			item.onClick(() => {
 				const modal = new VideoInfoModal(
 					plugin.app,
@@ -221,18 +225,18 @@ export const VideoCard = ({
 		menu.addSeparator();
 
 		menu.addItem((item) => {
-			item.setTitle(noteExists ? "Open video note" : "Create video note");
+			item.setTitle(noteExists ? t("videoCard.openNote") : t("videoCard.createNote"));
 			item.setIcon(noteExists ? "file-check" : "file-plus");
 			item.onClick(async () => handleCreateVideoNote(e));
 		});
 
 		menu.addItem((item) => {
-			item.setTitle("Add link to current note");
+			item.setTitle(t("videoCard.addToCurrentNote"));
 			item.setDisabled(activeFile?.extension !== "md");
 			item.onClick(async () => {
 				if (!activeFile || activeFile.extension !== "md") {
 					new Notice(
-						"No active note found. Please open a note first.",
+						t("videoCard.noActiveNote"),
 					);
 					return;
 				}
@@ -243,17 +247,17 @@ export const VideoCard = ({
 					await appendNoteContent(plugin.app, activeFile, {
 						text: "\n" + videoData,
 					});
-					new Notice(`Added video to ${activeFile.basename}`);
+					new Notice(`${t("videoCard.addedToNote")}: ${activeFile.basename}`);
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					debugLogger.error("Failed to add video to the active note:", message);
-					new Notice("Failed to add video to the active note");
+					new Notice(t("videoCard.addToNoteFailed"));
 				}
 			});
 		});
 
 		menu.addItem((item) => {
-			item.setTitle("Add link to daily note");
+			item.setTitle(t("videoCard.addToDailyNote"));
 			item.onClick(async () => {
 				try {
 					const today = moment().startOf("day");
@@ -272,7 +276,7 @@ export const VideoCard = ({
 				} catch (error) {
 					console.error("Error adding to daily note:", error);
 					new Notice(
-						"Failed to add video to daily note. Check console for details.",
+						t("videoCard.addToDailyNoteFailed"),
 					);
 				}
 			});
@@ -281,7 +285,7 @@ export const VideoCard = ({
 		if (source === "liked") {
 			menu.addSeparator();
 			menu.addItem((item) => {
-				item.setTitle("Add to playlist…");
+				item.setTitle(t("videoCard.addToPlaylist"));
 				item.setIcon("list-plus");
 				item.onClick(() => {
 					new AddToPlaylistModal(plugin.app, plugin.playlistApi, videoInfo.id, videoInfo.snippet.title).open();
@@ -293,7 +297,7 @@ export const VideoCard = ({
 
 		if (source === "liked" || isLiked) {
 			menu.addItem((item) => {
-				item.setTitle("Unlike");
+				item.setTitle(t("liked.unlike"));
 				item.setIcon("heart-off");
 				item.setDisabled(likeActionPending);
 				item.onClick(() => {
@@ -302,7 +306,7 @@ export const VideoCard = ({
 			});
 		} else {
 			menu.addItem((item) => {
-				item.setTitle("Like");
+			item.setTitle(t("liked.like"));
 				item.setIcon("heart");
 				item.setDisabled(likeActionPending);
 				item.onClick(() => onLike?.());
@@ -311,7 +315,7 @@ export const VideoCard = ({
 
 		if (source === "subscription" && onUnsubscribeChannel) {
 			menu.addItem((item) => {
-				item.setTitle("Unsubscribe channel");
+				item.setTitle(t("subscription.unsubscribeChannel"));
 				item.setIcon("user-minus");
 				item.setDisabled(unsubscribeActionPending);
 				item.onClick(onUnsubscribeChannel);
@@ -329,7 +333,7 @@ export const VideoCard = ({
 					loading="lazy"
 					decoding="async"
 					src={videoInfo.snippet.thumbnails.medium.url}
-					alt="Video Thumbnail"
+					alt={`${t("videoCard.thumbnail")} ${videoInfo.snippet.title}`}
 					width={320}
 					height={180}
 				/>
@@ -354,7 +358,7 @@ export const VideoCard = ({
 						</button>
 					</p>
 					<p className="video-date">
-						<span className="video-metadata-label">Published:</span>{" "}
+						<span className="video-metadata-label">{t("videoInfo.published")}:</span>{" "}
 						<span className="video-metadata-value">
 							{moment(videoInfo.snippet.publishedAt).format("ll")}
 						</span>
@@ -374,7 +378,7 @@ export const VideoCard = ({
 								<span className="video-sort-metric" title={metricTooltip}>
 									<span className="video-sort-metric__separator" aria-hidden="true">·</span>
 									<span className="video-sort-metric__value">{metricText}</span>
-									<span className="video-sort-metric__unit">{isAverageViews ? "/day" : " Like/View"}</span>
+											<span className="video-sort-metric__unit">{isAverageViews ? t("videoCard.perDay") : t("videoCard.likeView")}</span>
 								</span>
 							)}
 						</div>
@@ -419,8 +423,8 @@ export const VideoCard = ({
 							<button
 								type="button"
 								className="video-stat video-stat--clickable video-stat--button video-stat--comment"
-								aria-label={`Show comments for ${videoInfo.snippet.title}`}
-								title="Show comments"
+				aria-label={`${t("comments.commentsFor")} ${videoInfo.snippet.title}`}
+				title={t("comments.title")}
 								onClick={(e) => {
 									e.preventDefault();
 									e.stopPropagation();
@@ -463,7 +467,7 @@ export const VideoCard = ({
 			<button
 				type="button"
 				className="video-card-btn"
-				aria-label="Read transcript"
+				aria-label={t("videoCard.readTranscript")}
 				onClick={(event) => {
 					event.preventDefault();
 					event.stopPropagation();
@@ -474,9 +478,7 @@ export const VideoCard = ({
 			</button>
 			<button
 				className={`video-card-btn ${noteExists ? "video-card-btn--has-note" : ""}`}
-				aria-label={
-					noteExists ? "Open Video Note" : "Create Video Note"
-				}
+				aria-label={noteExists ? t("videoCard.openNote") : t("videoCard.createNote")}
 				onClick={(e) => {
 					void handleCreateVideoNote(e);
 				}}
@@ -485,7 +487,7 @@ export const VideoCard = ({
 			</button>
 			<button
 				className="video-card-btn"
-				aria-label="More options"
+				aria-label={t("videoCard.moreOptions")}
 				onClick={handleContextMenu}
 			>
 				<MoreHorizontal size={16} />
@@ -505,7 +507,7 @@ export const VideoCard = ({
 				className={`video-card__container video-card__container--ai ${isSummaryExpanded ? "video-card__container--expanded" : ""}${transcriptWorkspace?.selectedVideoId === videoInfo.id ? " video-card__container--transcript-selected" : ""}`}
 				onClick={handleCardClick}
 				tabIndex={0}
-				aria-label={`Open ${videoInfo.snippet.title}`}
+								aria-label={`${t("videoCard.openTitle")}: ${videoInfo.snippet.title}`}
 				onKeyDown={(event) => {
 					if ((event.key === "Enter" || event.key === " ") && event.target === event.currentTarget) {
 						event.preventDefault();
@@ -526,7 +528,7 @@ export const VideoCard = ({
 					<div className="video-card-options">
 						<button
 							className={`video-card-btn video-card-btn--ai ${hasSummary ? "video-card-btn--accent" : ""}`}
-							aria-label={hasSummary ? "Open AI summary" : "Generate AI summary"}
+							aria-label={hasSummary ? t("videoCard.viewSummary") : t("summary.generate")}
 							onClick={event => { event.preventDefault(); event.stopPropagation(); openTranscript(event.currentTarget, "ai"); }}
 						>
 							<Bot size={16} aria-hidden="true" />
@@ -568,7 +570,7 @@ export const VideoCard = ({
 			className={`video-card__container${transcriptWorkspace?.selectedVideoId === videoInfo.id ? " video-card__container--transcript-selected" : ""}`}
 			onClick={() => onLinkClick(url)}
 			tabIndex={0}
-			aria-label={`Open ${videoInfo.snippet.title}`}
+			aria-label={`${t("videoCard.openVideo")}: ${videoInfo.snippet.title}`}
 			onKeyDown={(event) => {
 				if ((event.key === "Enter" || event.key === " ") && event.target === event.currentTarget) {
 					event.preventDefault();

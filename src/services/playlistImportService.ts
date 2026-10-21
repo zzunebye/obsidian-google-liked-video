@@ -2,6 +2,7 @@ import { Component } from 'obsidian';
 import type { PlaylistApi } from 'src/api';
 import { localStorageService } from 'src/storage';
 import type { PlaylistInfo } from 'src/types';
+import { t } from '../i18n';
 
 interface PlaylistImportResult {
 	playlist: PlaylistInfo;
@@ -32,8 +33,8 @@ export class PlaylistImportService extends Component {
 	async importPlaylist(input: string): Promise<PlaylistImportResult> {
 		this.ensureActive();
 		const id = this.api.extractPlaylistId(input);
-		if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error('Enter a valid YouTube playlist URL or ID.');
-		if (id === 'WL') throw new Error('YouTube does not allow importing Watch Later through its API.');
+		if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error(t('playlists.invalidPlaylistUrl'));
+		if (id === 'WL') throw new Error(t('playlists.watchLaterImportUnavailable'));
 		const pending = this.pending.get(id);
 		if (pending) return pending;
 		const task = this.importById(id);
@@ -52,7 +53,7 @@ export class PlaylistImportService extends Component {
 		if (existing) return { playlist: existing, imported: false };
 		const playlist = await this.api.fetchPlaylistById(id);
 		this.ensureActive();
-		if (playlist.id !== id) throw new Error('YouTube returned a different playlist. Please try again.');
+		if (playlist.id !== id) throw new Error(t('playlists.playlistMismatch'));
 		const addedElsewhere = this.getKnownPlaylist(id);
 		if (addedElsewhere) return { playlist: addedElsewhere, imported: false };
 		return { playlist, imported: localStorageService.addSavedPlaylist(playlist) };

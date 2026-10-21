@@ -3,6 +3,7 @@ import type { LikedVideoApi } from "src/api";
 import { debugLogger } from "src/debug";
 import { localStorageService } from "src/storage";
 import type { YouTubeVideo } from "src/types";
+import { t } from "../i18n";
 
 type LikedVideoMutationApi = Pick<LikedVideoApi, "likeVideo" | "unlikeVideo">;
 type InsertIndex = number | (() => number);
@@ -13,7 +14,7 @@ async function updateNoteRating(onRatingChanged: RatingChanged | undefined, vide
 		await onRatingChanged?.(videoId, liked);
 	} catch (error) {
 		debugLogger.error('[Video note] Could not save like status after a successful YouTube change', error);
-		new Notice('Geulo: YouTube was updated, but the note’s liked property could not be saved. Reopen the note to retry.');
+		new Notice(t("liked.noteRatingSaveFailed"));
 	}
 }
 

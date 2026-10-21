@@ -7,6 +7,7 @@ import { DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS } from "src/types";
 import { debugLogger } from "src/debug";
 import { SubscriptionStorageService } from "./subscriptionStorageService";
 import { YouTubeApiClient, YouTubeRequestError } from "./youtubeApiClient";
+import { t } from "../i18n";
 
 const CHANNEL_BATCH_SIZE = 50;
 const VIDEO_BATCH_SIZE = 50;
@@ -125,24 +126,24 @@ function hasReason(error: YouTubeRequestError, ...reasons: string[]): boolean {
 }
 
 function getRequestFailure(error: YouTubeRequestError): SubscriptionFailureDetail {
-	if (error.kind === "auth") return { message: "Google authentication expired.", retryable: true };
+	if (error.kind === "auth") return { message: t("subscriptionErrors.authExpired"), retryable: true };
 	if (error.kind === "network" || error.kind === "timeout") {
-		return { message: error.message, retryable: true };
+		return { message: t(error.kind === "timeout" ? "subscriptionErrors.timeout" : "subscriptionErrors.network"), retryable: true };
 	}
 	if (error.status === 404 || hasReason(error, "playlistNotFound")) {
-		return { message: "The channel's uploads playlist is unavailable.", retryable: false };
+		return { message: t("subscriptionErrors.uploadsUnavailable"), retryable: false };
 	}
 	if (error.status === 403) {
 		const quotaExceeded = hasReason(error, "quotaExceeded", "dailyLimitExceeded");
 		return {
-			message: quotaExceeded ? "YouTube API quota is currently exhausted." : "YouTube denied access to the uploads playlist.",
+			message: t(quotaExceeded ? "subscriptionErrors.quotaExceeded" : "subscriptionErrors.uploadsDenied"),
 			retryable: quotaExceeded,
 		};
 	}
 	if (error.status === 429 || (error.status !== undefined && error.status >= 500)) {
-		return { message: "YouTube is temporarily unavailable.", retryable: true };
+		return { message: t("subscriptionErrors.temporarilyUnavailable"), retryable: true };
 	}
-	return { message: error.message, retryable: false };
+	return { message: t("subscriptionErrors.requestFailed"), retryable: false };
 }
 
 function getFailureDetail(error: unknown): SubscriptionFailureDetail {
@@ -150,32 +151,32 @@ function getFailureDetail(error: unknown): SubscriptionFailureDetail {
 		return { message: error.message, retryable: error.retryable };
 	}
 	return {
-		message: error instanceof Error ? error.message : "Unknown error while loading this channel.",
+		message: t("subscriptionErrors.channelLoadFailed"),
 		retryable: true,
 	};
 }
 
 function getDeleteFailure(error: YouTubeRequestError): SubscriptionFailureDetail {
-	if (error.kind === "auth") return { message: "Google authentication expired.", retryable: true };
+	if (error.kind === "auth") return { message: t("subscriptionErrors.authExpired"), retryable: true };
 	if (error.kind === "network" || error.kind === "timeout") {
-		return { message: error.message, retryable: true };
+		return { message: t(error.kind === "timeout" ? "subscriptionErrors.timeout" : "subscriptionErrors.network"), retryable: true };
 	}
 	if (error.status === 404 || hasReason(error, "subscriptionNotFound")) {
-		return { message: "The YouTube subscription could not be found.", retryable: false };
+		return { message: t("subscriptionErrors.subscriptionNotFound"), retryable: false };
 	}
 	if (error.status === 403) {
 		const quotaExceeded = hasReason(error, "quotaExceeded", "dailyLimitExceeded");
 		return {
 			message: quotaExceeded
-				? "YouTube API quota is currently exhausted."
-				: "YouTube did not allow this subscription to be removed.",
+				? t("subscriptionErrors.quotaExceeded")
+				: t("subscriptionErrors.unsubscribeDenied"),
 			retryable: quotaExceeded,
 		};
 	}
 	if (error.status === 429 || (error.status !== undefined && error.status >= 500)) {
-		return { message: "YouTube is temporarily unavailable.", retryable: true };
+		return { message: t("subscriptionErrors.temporarilyUnavailable"), retryable: true };
 	}
-	return { message: error.message, retryable: false };
+	return { message: t("subscriptionErrors.requestFailed"), retryable: false };
 }
 
 export class SubscriptionService {

@@ -4,6 +4,7 @@ import { MessageCircle, ThumbsUp } from "lucide-react";
 import type { CommentService, VideoComment, VideoCommentsResult } from "../services/commentService";
 import { COMMENT_LIMIT, CommentServiceError } from "../services/commentService";
 import { ReactModal } from "./ReactModal";
+import { t } from "../i18n";
 
 type CommentsState =
 	| { readonly kind: "loading" }
@@ -57,12 +58,12 @@ function CommentItem({ comment, isOwnComment }: CommentItemProps) {
 					<span>{moment(comment.publishedAt).fromNow()}</span>
 				</div>
 				{(comment.likedByViewer || isOwnComment) && (
-					<div className="video-comment__badges" aria-label="Your activity on this comment">
+					<div className="video-comment__badges" aria-label={t("comments.activityOnComment")}>
 						{comment.likedByViewer && (
-							<span className="video-comment__badge"><ThumbsUp size={12} />Liked by you</span>
+							<span className="video-comment__badge"><ThumbsUp size={12} />{t("comments.likedByYou")}</span>
 						)}
 						{isOwnComment && (
-							<span className="video-comment__badge"><MessageCircle size={12} />Your comment</span>
+							<span className="video-comment__badge"><MessageCircle size={12} />{t("comments.yourComment")}</span>
 						)}
 					</div>
 				)}
@@ -81,13 +82,13 @@ function CommentItem({ comment, isOwnComment }: CommentItemProps) {
 						aria-expanded={isExpanded}
 						onClick={() => setIsExpanded((expanded) => !expanded)}
 					>
-						{isExpanded ? "Show less" : "View more"}
+						{isExpanded ? t("summary.showLess") : t("comments.viewMore")}
 					</button>
 				)}
 				<div className="video-comment__meta">
 					<span><ThumbsUp size={13} />{comment.likeCount.toLocaleString()}</span>
 					{comment.replyCount > 0 && (
-						<span><MessageCircle size={13} />{comment.replyCount.toLocaleString()} {comment.replyCount === 1 ? "reply" : "replies"}</span>
+						<span><MessageCircle size={13} />{comment.replyCount.toLocaleString()} {t(comment.replyCount === 1 ? "comments.reply" : "comments.replies")}</span>
 					)}
 				</div>
 			</div>
@@ -113,7 +114,7 @@ function VideoCommentsContent({ videoId, videoTitle, service }: VideoCommentsCon
 				if (error instanceof DOMException && error.name === "AbortError") return;
 				const message = error instanceof CommentServiceError
 					? error.message
-					: "Could not load comments.";
+					: t("comments.loadFailed");
 				setState({ kind: "error", message });
 			},
 		);
@@ -136,32 +137,32 @@ function VideoCommentsContent({ videoId, videoTitle, service }: VideoCommentsCon
 			ref={contentRef}
 			className="video-comments-modal"
 			tabIndex={-1}
-			aria-label={`Comments for ${videoTitle}`}
+			aria-label={`${t("comments.commentsFor")} ${videoTitle}`}
 		>
 			<p className="video-comments-modal__video-title" title={videoTitle}>{videoTitle}</p>
-			<p className="video-comments-modal__scope">Most relevant · Up to {COMMENT_LIMIT} top-level comments</p>
+			<p className="video-comments-modal__scope">{t("comments.mostRelevant")} · {t("comments.upTo")} {COMMENT_LIMIT} {t("comments.topLevel")}</p>
 			{state.kind === "loading" && (
-				<div className="video-comments-modal__status" role="status">Loading comments…</div>
+				<div className="video-comments-modal__status" role="status">{t("comments.loading")}</div>
 			)}
 			{state.kind === "error" && (
 				<div className="video-comments-modal__status" role="alert">
 					<p>{state.message}</p>
-					<button type="button" onClick={() => setRequestVersion((version) => version + 1)}>Try again</button>
+					<button type="button" onClick={() => setRequestVersion((version) => version + 1)}>{t("common.tryAgain")}</button>
 				</div>
 			)}
 			{state.kind === "loaded" && groupedComments && (
 				<div className="video-comments-modal__content">
 					{state.result.identityUnavailable && (
-						<p className="video-comments-modal__notice">Your comments could not be identified. Liked comments are still highlighted.</p>
+						<p className="video-comments-modal__notice">{t("comments.identityUnavailable")}</p>
 					)}
 					{state.result.comments.length === 0 && (
-						<div className="video-comments-modal__status">No comments to show.</div>
+						<div className="video-comments-modal__status">{t("comments.none")}</div>
 					)}
 					{groupedComments.activity.length > 0 && (
 						<section className="video-comments-section">
 							<div className="video-comments-section__heading">
-								<h3>Your activity</h3>
-								<span>Among the comments loaded</span>
+								<h3>{t("comments.yourActivity")}</h3>
+								<span>{t("comments.loadedComments")}</span>
 							</div>
 							{groupedComments.activity.map((comment) => (
 								<CommentItem key={comment.id} comment={comment} isOwnComment={comment.authorChannelId === state.result.myChannelId} />
@@ -170,7 +171,7 @@ function VideoCommentsContent({ videoId, videoTitle, service }: VideoCommentsCon
 					)}
 					{groupedComments.others.length > 0 && (
 						<section className="video-comments-section">
-							<div className="video-comments-section__heading"><h3>Most relevant</h3></div>
+						<div className="video-comments-section__heading"><h3>{t("comments.mostRelevant")}</h3></div>
 							{groupedComments.others.map((comment) => (
 								<CommentItem key={comment.id} comment={comment} isOwnComment={false} />
 							))}
@@ -193,7 +194,7 @@ export class VideoCommentsModal extends ReactModal {
 		super(
 			app,
 			<VideoCommentsContent videoId={videoId} videoTitle={videoTitle} service={service} />,
-			{ title: "Comments", width: "640px", height: "min(760px, 80vh)", onClose },
+			{ title: t("comments.title"), width: "640px", height: "min(760px, 80vh)", onClose },
 		);
 		this.modalEl.addClass("geulo-video-comments-dialog");
 	}

@@ -7,6 +7,7 @@ import { chooseSummaryNoteAction } from 'src/ui/SummaryNoteModal';
 import { editNoteContent, readNoteContent } from 'src/utils/noteEditingUtils';
 import { getExpectedNotePath, getVideoUrl, sanitizeFileName } from 'src/utils/noteUtils';
 import { createSummaryNoteBlock, getSummaryNoteEdit, getSummaryNoteRegion } from 'src/utils/summaryNoteUtils';
+import { t } from '../i18n';
 
 const pendingSaves = new WeakMap<GoogleLikedVideoPlugin, Map<string, Promise<void>>>();
 
@@ -39,7 +40,7 @@ async function save(plugin: GoogleLikedVideoPlugin, video: YouTubeVideo, summary
 		}
 		if (choice === 'new') {
 			const copy = await createSummaryCopy(plugin, video, block);
-			new Notice('Summary saved as a new note');
+			new Notice(t("summary.savedAsNewNote"));
 			await plugin.app.workspace.getLeaf('tab').openFile(copy);
 			return;
 		}
@@ -47,17 +48,17 @@ async function save(plugin: GoogleLikedVideoPlugin, video: YouTubeVideo, summary
 
 	const edited = await editNoteContent(plugin.app, file, content => getSummaryNoteEdit(content, block, region));
 	if (!edited) {
-		new Notice('The summary in this note changed while you were saving. Nothing was replaced. Click Add to Note to try again.');
+		new Notice(t("summary.noteChangedRetry"));
 		return;
 	}
 	try {
 		await plugin.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
 			frontmatter.ai_summary = true;
 		});
-		new Notice(region.kind === 'empty' ? 'Summary added to video note' : 'Summary replaced in video note');
+		new Notice(t(region.kind === 'empty' ? "summary.addedToNote" : "summary.replacedInNote"));
 	} catch (error: unknown) {
 		debugLogger.error('[AI Summary] Could not update note metadata', error);
-		new Notice('The summary was saved, but its note metadata could not be updated. Save it again to retry.');
+		new Notice(t("summary.metadataSaveFailed"));
 	}
 	await plugin.app.workspace.openLinkText(file.path, '', true);
 }

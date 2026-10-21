@@ -17,20 +17,33 @@ import { usePlugin } from "../store/pluginContext";
 import { debugLogger } from "../debug";
 import { parseDurationToSeconds } from "../utils/videoUtils";
 import type { SummarySource } from "../types";
+import { t } from "../i18n";
 
 const LONG_VIDEO_THRESHOLD_SECONDS = 30 * 60; // 30 minutes
 type SummaryPhase = "idle" | "preparing" | SummaryProgressPhase | "generating" | "saving" | "preview";
 
 const SUMMARY_PROGRESS_LABELS: Record<Exclude<SummaryPhase, "idle">, string> = {
-	preparing: "Preparing AI summary…",
-	"fetching-transcript": "Fetching transcript…",
-	"opening-youtube": "Opening YouTube to retrieve captions…",
-	"reading-captions": "Reading YouTube captions…",
-	"waiting-for-ai": "Waiting for AI response…",
-	generating: "Generating AI summary…",
-	saving: "Saving summary…",
-	preview: "Generating one-line preview…",
+	preparing: t("summary.preparing"),
+	"fetching-transcript": t("summary.fetchingTranscript"),
+	"opening-youtube": t("summary.openingYouTube"),
+	"reading-captions": t("summary.readingCaptions"),
+	"waiting-for-ai": t("summary.waitingForAI"),
+	generating: t("summary.generating"),
+	saving: t("summary.saving"),
+	preview: t("summary.generatingPreview"),
 };
+
+function getLocalizedAIError(error: AIServiceError): string {
+	switch (error.type) {
+		case "no_api_key": return t("summary.errorNoApiKey");
+		case "invalid_key": return t("summary.errorInvalidApiKey");
+		case "request_rejected": return t("summary.errorRequestRejected");
+		case "rate_limit": return t("summary.errorRateLimit");
+		case "transcript_error": return error.message;
+		case "network_error": return t("summary.errorNetwork");
+		default: return t("summary.errorUnknown");
+	}
+}
 
 export interface SummarySnapshot {
 	readonly summary: string | null;
@@ -220,7 +233,7 @@ export const SummarySection = ({
 			setError(null);
 		} catch (error: unknown) {
 			debugLogger.error(`[AI Summary] Could not load summary for ${videoId}`, error);
-			setError(new AIServiceError("unknown", "Could not load the saved summary. Please try again."));
+			setError(new AIServiceError("unknown", t("summary.errorLoadSaved")));
 		} finally { setCheckingCache(false); }
 	};
 
@@ -271,7 +284,7 @@ export const SummarySection = ({
 				result = await aiService.generateVideoSummary(videoId, plugin.settings.summaryPrompt);
 			}
 			if (controller.signal.aborted) return;
-			if (!result) throw new AIServiceError("unknown", "No summary was returned. Please try again.");
+			if (!result) throw new AIServiceError("unknown", t("summary.errorEmptyResponse"));
 			setSummary(result.summary, result.source, result.model);
 			setSaved(false);
 			setPhase("saving");
@@ -284,7 +297,7 @@ export const SummarySection = ({
 			setHasOneLiner(false);
 			autoPreviewAttemptedRef.current = false;
 			onSummaryGenerated?.();
-			new Notice(`AI summary saved in Geulo for "${videoTitle}". Use Add to Note to save it to a note.`, 5000);
+			new Notice(`${t("summary.savedInGeuloFor")} "${videoTitle}". ${t("summary.useAddToNote")}`, 5000);
 		} catch (error: unknown) {
 			if (controller.signal.aborted) return;
 			if (streamingContentRef.current) {
@@ -292,7 +305,7 @@ export const SummarySection = ({
 				setSaved(false);
 			}
 			debugLogger.error(`[AI Summary] Generation failed for ${videoId}`, error);
-			setError(error instanceof AIServiceError ? error : new AIServiceError("unknown", error instanceof Error ? error.message : "Could not generate or save the summary."));
+			setError(error instanceof AIServiceError ? error : new AIServiceError("unknown", t("summary.errorGenerate")));
 		} finally {
 			if (abortControllerRef.current === controller) {
 				abortControllerRef.current = null;
@@ -334,7 +347,7 @@ export const SummarySection = ({
 		} catch (error: unknown) {
 			if (!controller.signal.aborted) {
 				debugLogger.warn(`[AI Summary] One-line preview failed for ${videoId}`, error);
-				setError(new AIServiceError("unknown", "Could not generate or save the one-line preview. Your summary is still saved."));
+				setError(new AIServiceError("unknown", t("summary.errorPreview")));
 			}
 		} finally {
 			if (abortControllerRef.current === controller) {
@@ -365,9 +378,9 @@ export const SummarySection = ({
 					`[AI Summary] Failed to copy summary for video: ${videoId}`,
 					error,
 				);
-				new Notice("Could not copy the summary. Please try again.");
+				new Notice(t("summary.copyFailed"));
 			});
-			new Notice("Summary copied to clipboard");
+			new Notice(t("summary.copied"));
 			debugLogger.debug(
 				`[AI Summary] Summary copied to clipboard for video: ${videoId}`,
 			);
@@ -391,7 +404,7 @@ export const SummarySection = ({
 			await onAddToNote(summary);
 		} catch (err) {
 			debugLogger.error("[AI Summary] Failed to save summary to note", err);
-			new Notice("Failed to add summary to note");
+			new Notice(t("summary.addToNoteFailed"));
 		} finally {
 			savingNoteRef.current = false;
 			setSavingNote(false);
@@ -414,7 +427,7 @@ export const SummarySection = ({
 				setStreamingContent("");
 				streamingContentRef.current = "";
 			}
-			setError(new AIServiceError("unknown", lastActionRef.current === "preview" ? "One-line preview cancelled. Your summary is still saved." : "Summary cancelled. Any partial text is not saved."));
+		setError(new AIServiceError("unknown", lastActionRef.current === "preview" ? t("summary.previewCancelled") : t("summary.generationCancelled")));
 	};
 
 	const handleToggleCollapse = (e: React.MouseEvent) => {
@@ -432,8 +445,8 @@ export const SummarySection = ({
 	const progress = isBusy ? <div className="summary-section__streaming-indicator">
 		<div className="summary-section__streaming-dot" aria-hidden="true" />
 		<span role="status">{progressLabel}</span>
-		{!isExpanded && onShowSummary && <button type="button" className="summary-section__action-btn" onClick={onShowSummary}>View</button>}
-		{phase !== "saving" && <button type="button" className="summary-section__cancel-btn" onClick={handleCancel} title="Cancel generation"><Square size={10} aria-hidden="true" /><span>Stop</span></button>}
+		{!isExpanded && onShowSummary && <button type="button" className="summary-section__action-btn" onClick={onShowSummary}>{t("summary.view")}</button>}
+		{phase !== "saving" && <button type="button" className="summary-section__cancel-btn" onClick={handleCancel} title={t("summary.cancelGeneration")}><Square size={10} aria-hidden="true" /><span>{t("summary.stop")}</span></button>}
 	</div> : null;
 	const progressPortal = progressHost ? createPortal(progress, progressHost) : null;
 	if (!isExpanded) return progressPortal;
@@ -442,23 +455,23 @@ export const SummarySection = ({
 		<div className="summary-section" onClick={(e) => e.stopPropagation()} aria-busy={isBusy || checkingCache || savingNote}>
 			{progressPortal ?? progress}
 			{actionsHost && createPortal(<>
-				<button type="button" aria-label="Copy summary" title="Copy summary"
+				<button type="button" aria-label={t("summary.copy")} title={t("summary.copy")}
 					disabled={!summary || isBusy || checkingCache} onClick={handleCopy}><Copy size={16} aria-hidden="true" /></button>
-				{onAddToNote && <button type="button" aria-label={savingNote ? "Saving to note…" : "Add to Note"}
-					title={savingNote ? "Saving to note…" : "Add summary to video note"} aria-busy={savingNote}
+				{onAddToNote && <button type="button" aria-label={savingNote ? t("summary.savingToNote") : t("summary.addToNote")}
+					title={savingNote ? t("summary.savingToNote") : t("summary.addToVideoNote")} aria-busy={savingNote}
 					disabled={!summary || isBusy || checkingCache || savingNote}
 					onClick={event => void handleAddToNote(event)}><FileText size={16} aria-hidden="true" /></button>}
 			</>, actionsHost)}
-			{checkingCache && <p role="status">Loading saved summary…</p>}
+			{checkingCache && <p role="status">{t("summary.loadingSaved")}</p>}
 			{!checkingCache && ((!summary && !isBusy && !error) || showLongVideoNotice) && <div className="summary-section__setup">
-				{!summary && !isBusy && !error && <strong>No AI summary yet</strong>}
-				{!summary && !canGenerate && <p>{plugin.settings.enableAISummary ? "Configure an API key in Settings > AI Features to generate a summary." : "Enable AI summaries in Settings > AI Features to generate a summary."}</p>}
-				{showLongVideoNotice && <p>This video is over 30 minutes. Video analysis may take longer and cost more.</p>}
-				{!summary && !isBusy && !error && <button type="button" className="mod-cta" disabled={!canGenerate} onClick={() => void generateSummary()}>Generate AI summary</button>}
+				{!summary && !isBusy && !error && <strong>{t("summary.noneYet")}</strong>}
+				{!summary && !canGenerate && <p>{plugin.settings.enableAISummary ? t("summary.configureApiKey") : t("summary.enableInSettings")}</p>}
+				{showLongVideoNotice && <p>{t("summary.longVideoWarning")}</p>}
+				{!summary && !isBusy && !error && <button type="button" className="mod-cta" disabled={!canGenerate} onClick={() => void generateSummary()}>{t("summary.generate")}</button>}
 			</div> }
 			{(isLoading || (isStreaming && !streamingContent)) && (
 				<div className="summary-section__skeleton" aria-hidden="true">
-					{presentation === "reader" && <p>{progressLabel} This may take a moment.</p>}
+					{presentation === "reader" && <p>{progressLabel} {t("summary.mayTakeMoment")}</p>}
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--long" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--medium" />
 					<div className="summary-section__shimmer-line summary-section__shimmer-line--short" />
@@ -469,14 +482,14 @@ export const SummarySection = ({
 			{error && !isBusy && (
 				<div className="summary-section__error" role="alert">
 					<AlertCircle size={14} />
-					<span>{error.message}</span>
+					<span>{getLocalizedAIError(error)}</span>
 					{(error.type !== "no_api_key" || presentation === "reader") && (
 						<button
 							className="summary-section__retry-btn"
 							disabled={lastActionRef.current !== "load" && !canGenerate}
 							onClick={() => { void (lastActionRef.current === "load" ? loadSavedSummary() : lastActionRef.current === "preview" ? generateOneLiner() : generateSummary(true)); }}
 						>
-							Retry
+							{t("common.tryAgain")}
 						</button>
 					)}
 				</div>
@@ -496,10 +509,10 @@ export const SummarySection = ({
 			{summary && !isLoading && !isStreaming && (
 				<>
 					{showSourceMetadata && <div className="summary-section__source">
-						<span>{isSaved ? "Saved in Geulo" : phase === "saving" ? "Saving in Geulo…" : "Not saved in Geulo"} · </span>
+						<span>{isSaved ? t("summary.savedInGeulo") : phase === "saving" ? t("summary.savingInGeulo") : t("summary.notSavedInGeulo")} · </span>
 						{getLanguage() === 'ko'
-							? (summarySource === 'transcript' ? 'Transcript 기반' : '영상 분석 기반')
-							: (summarySource === 'transcript' ? 'Transcript-based' : 'Video-based')}
+							? (summarySource === 'transcript' ? t("summary.transcriptBased") : t("summary.videoBased"))
+							: (summarySource === 'transcript' ? t("summary.transcriptBased") : t("summary.videoBased"))}
 					</div>}
 					<div
 						className={
@@ -520,20 +533,20 @@ export const SummarySection = ({
 						>
 							{isContentCollapsed ? (
 								<>
-									<span>Show more</span>
+									<span>{t("summary.showMore")}</span>
 									<ChevronDown size={14} />
 								</>
 							) : (
 								<>
-									<span>Show less</span>
+									<span>{t("summary.showLess")}</span>
 									<ChevronUp size={14} />
 								</>
 							)}
 						</button>
 					)}
 					{isSaved && <div className="summary-section__preview-option">
-						<span>{hasOneLiner ? "One-line preview saved" : error || !autoGeneratePreview ? "One-line preview not saved" : "A one-line preview is generated automatically with one additional AI request."}</span>
-						<span>Model: {summaryModel ?? "Unknown"}</span>
+						<span>{hasOneLiner ? t("summary.previewSaved") : error || !autoGeneratePreview ? t("summary.previewNotSaved") : t("summary.previewAutomatic")}</span>
+						<span>{t("summary.model")}: {summaryModel ?? t("filter.unknown")}</span>
 					</div>}
 					<div className="summary-section__actions">
 						<div className="summary-section__left-actions">
@@ -543,15 +556,15 @@ export const SummarySection = ({
 								onClick={(event) => {
 									void handleAddToNote(event);
 								}}
-								title="Add summary to video note"
+								title={t("summary.addToVideoNote")}
 							>
 								<FileText size={14} />
-								<span>{savingNote ? "Saving to note…" : "Add to Note"}</span>
+								<span>{savingNote ? t("summary.savingToNote") : t("summary.addToNote")}</span>
 							</button>}
 							<button
 								className="summary-section__action-btn"
 								onClick={handleCopy}
-								title="Copy summary"
+								title={t("summary.copy")}
 							>
 								<Copy size={14} />
 							</button>
@@ -560,16 +573,16 @@ export const SummarySection = ({
 							className="summary-section__action-btn"
 							onClick={handleRegenerate}
 							disabled={!canGenerate || isBusy || savingNote}
-							aria-label="Regenerate summary"
-							title="Regenerate summary"
+							aria-label={t("summary.regenerate")}
+							title={t("summary.regenerate")}
 						>
 							<RefreshCw size={14} />
 						</button>
 						<button
 							className="summary-section__action-btn"
 							onClick={presentation === "reader" ? onScrollToTop : () => setIsExpanded(false)}
-							title={presentation === "reader" ? "Scroll to top" : "Close summary section"}
-							aria-label={presentation === "reader" ? "Scroll to top" : "Close summary section"}
+							title={presentation === "reader" ? t("summary.scrollToTop") : t("summary.closeSection")}
+							aria-label={presentation === "reader" ? t("summary.scrollToTop") : t("summary.closeSection")}
 						>
 							<ChevronUp size={14} />
 						</button>

@@ -1,4 +1,5 @@
 import { App, Modal } from 'obsidian';
+import { t } from '../i18n';
 
 type SummaryNoteChoice = 'open' | 'replace' | 'new' | 'cancel';
 
@@ -15,22 +16,22 @@ class SummaryNoteModal extends Modal {
 	}
 
 	onOpen(): void {
-		this.setTitle('Save AI summary');
-		this.contentEl.createEl('p', { text: `A summary already exists in ${this.notePath}.` });
+		this.setTitle(t("summaryNote.title"));
+		this.contentEl.createEl('p', { text: t("summaryNote.exists").replace("{path}", this.notePath) });
 		this.contentEl.createEl('p', {
 			text: this.hasSummaryBoundary
-				? 'Open the existing note, replace its summary, or save this version as a separate note. Replacing keeps content outside the summary, including note properties.'
-				: 'Open the existing note or save this version as a separate note to keep its content. Replace existing note overwrites the entire note body, including your edits, with this summary. Note properties are kept.',
+				? t("summaryNote.managedHelp")
+				: t("summaryNote.unmanagedHelp"),
 		});
 		const actions = this.contentEl.createDiv({ cls: 'modal-button-container' });
-		const cancel = actions.createEl('button', { text: 'Cancel' });
+		const cancel = actions.createEl('button', { text: t("settings.cancel") });
 		cancel.addEventListener('click', () => this.choose('cancel'));
-		const open = actions.createEl('button', { text: 'Open existing note' });
+		const open = actions.createEl('button', { text: t("summaryNote.openExisting") });
 		open.addEventListener('click', () => this.choose('open'));
-		const separate = actions.createEl('button', { text: 'Save as new note' });
+		const separate = actions.createEl('button', { text: t("summaryNote.saveNew") });
 		separate.addEventListener('click', () => this.choose('new'));
 		const replace = actions.createEl('button', {
-			text: 'Replace existing note', cls: this.hasSummaryBoundary ? 'mod-cta' : 'mod-warning',
+			text: t("summaryNote.replaceExisting"), cls: this.hasSummaryBoundary ? 'mod-cta' : 'mod-warning',
 		});
 		replace.addEventListener('click', () => this.choose('replace'));
 	}

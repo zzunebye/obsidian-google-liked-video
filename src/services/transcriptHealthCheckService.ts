@@ -1,5 +1,6 @@
 import { TranscriptServiceError } from './transcriptService';
 import type { VideoTranscript } from './transcriptService';
+import { t } from '../i18n';
 
 export interface TranscriptHealthCheckInput {
 	videoId: string | null;
@@ -29,7 +30,7 @@ export async function checkTranscriptHealth(
 	dependencies: TranscriptHealthCheckDependencies,
 ): Promise<TranscriptHealthCheckReport> {
 	if (!input.videoId) {
-		return report('inconclusive', 'No saved video is available to test. Fetch liked videos, then try again.');
+		return report('inconclusive', t('transcriptHealth.noSavedVideo'));
 	}
 
 	try {
@@ -37,27 +38,27 @@ export async function checkTranscriptHealth(
 		const videoLabel = input.videoTitle?.trim() || input.videoId;
 		return report(
 			'healthy',
-			`Fetched ${transcript.segments.length.toLocaleString()} transcript segments from “${videoLabel}”.`,
+			t('transcriptHealth.fetchedSegments').replace('{count}', transcript.segments.length.toLocaleString()).replace('{title}', videoLabel),
 		);
 	} catch (error: unknown) {
 		if (error instanceof TranscriptServiceError) {
 			if (error.code === 'unavailable') {
 				return report(
 					'inconclusive',
-					'The most recently saved video has no usable captions. This does not indicate a service problem.',
+					t('transcriptHealth.noUsableCaptions'),
 				);
 			}
 			if (error.code === 'blocked') {
-				return report('unhealthy', 'YouTube is blocking transcript requests right now. Try again later.');
+				return report('unhealthy', t('transcriptHealth.blocked'));
 			}
 			if (error.code === 'timeout') {
-				return report('unhealthy', 'Transcript fetching timed out. Check your connection and try again.');
+				return report('unhealthy', t('transcriptHealth.timeout'));
 			}
 			if (error.code === 'network') {
-				return report('unhealthy', 'Geulo could not reach YouTube transcript endpoints. Check your connection and try again.');
+				return report('unhealthy', t('transcriptHealth.connectionFailed'));
 			}
-			return report('unhealthy', 'YouTube returned an unexpected transcript response. Try again later.');
+			return report('unhealthy', t('transcriptHealth.unexpectedResponse'));
 		}
-		return report('unhealthy', 'The transcript access check failed. Try again.');
+		return report('unhealthy', t('transcriptHealth.checkFailed'));
 	}
 }

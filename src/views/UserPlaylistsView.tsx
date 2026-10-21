@@ -1,4 +1,5 @@
 import { Menu } from "obsidian";
+import { t } from "../i18n";
 import { useState, useMemo, useEffect, useRef } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import {
@@ -11,7 +12,6 @@ import {
 	ArrowDownWideNarrow,
 	ArrowUpNarrowWide,
 } from "lucide-react";
-import { UI_TEXT } from "src/constants/uiText";
 import { SearchBar } from "src/ui/SearchBar";
 import { localStorageService } from "src/storage";
 import { PlaylistCard } from "src/ui/PlaylistCard";
@@ -34,16 +34,16 @@ interface UserPlaylistsViewProps {
 }
 
 const SORT_OPTIONS = [
-	{ value: "title", label: "Title" },
-	{ value: "itemCount", label: "Video Count" },
-	{ value: "publishedAt", label: "Time Created" },
+	{ value: "title", label: t("playlists.sortTitle") },
+	{ value: "itemCount", label: t("playlists.sortVideoCount") },
+	{ value: "publishedAt", label: t("playlists.sortCreated") },
 ] as const;
 type PlaylistSortOption = typeof SORT_OPTIONS[number]["value"];
 
 const SOURCE_FILTERS = [
-	{ value: "all", label: "All" },
-	{ value: "owned", label: "Your playlists" },
-	{ value: "imported", label: "Imported" },
+	{ value: "all", label: t("playlists.all") },
+	{ value: "owned", label: t("playlists.owned") },
+	{ value: "imported", label: t("playlists.imported") },
 ] as const;
 
 export interface UserPlaylistsViewState {
@@ -160,11 +160,11 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 		localStorageService.setPlaylistsSortOrder(newSortOrder);
 	};
 
-	const selectedSortLabel = SORT_OPTIONS.find((option) => option.value === sortOption)?.label ?? "Title";
-	const sortDirectionLabel = sortOrder === "ASC" ? "ascending" : "descending";
+	const selectedSortLabel = SORT_OPTIONS.find((option) => option.value === sortOption)?.label ?? t("playlists.sortTitle");
+	const sortDirectionLabel = sortOrder === "ASC" ? t("liked.ascending") : t("liked.descending");
 	const openSortMenu = (event: MouseEvent<HTMLButtonElement>): void => {
 		const menu = new Menu().setUseNativeMenu(false);
-		menu.addItem((item) => item.setTitle("Sort by").setIsLabel(true));
+		menu.addItem((item) => item.setTitle(t("liked.sortBy")).setIsLabel(true));
 		SORT_OPTIONS.forEach((option) => {
 			menu.addItem((item) => item
 				.setTitle(option.label)
@@ -172,9 +172,9 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				.onClick(() => handleSortOptionChange(option.value)));
 		});
 		menu.addSeparator();
-		menu.addItem((item) => item.setTitle("Ascending").setChecked(sortOrder === "ASC")
+		menu.addItem((item) => item.setTitle(t("liked.ascending")).setChecked(sortOrder === "ASC")
 			.onClick(() => handleSortOrderChange("ASC")));
-		menu.addItem((item) => item.setTitle("Descending").setChecked(sortOrder === "DESC")
+		menu.addItem((item) => item.setTitle(t("liked.descending")).setChecked(sortOrder === "DESC")
 			.onClick(() => handleSortOrderChange("DESC")));
 		const rect = event.currentTarget.getBoundingClientRect();
 		menu.showAtPosition({ x: rect.left, y: rect.bottom }, event.currentTarget.ownerDocument);
@@ -192,7 +192,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 	const handleAddPlaylist = async () => {
 		if (isAddingRef.current) return;
 		if (!playlistIdInput.trim()) {
-			setAddError("Please enter a playlist ID or URL");
+			setAddError(t("playlists.enterIdUrl"));
 			return;
 		}
 
@@ -211,12 +211,12 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				setShowAddForm(false);
 				setAddError(null);
 			} else {
-				setAddError("Playlist already exists in Geulo");
+			setAddError(t("playlists.exists"));
 			}
 		} catch (error) {
 			// Check if component is still mounted before updating state
 			if (!isMountedRef.current) return;
-			setAddError(error instanceof Error ? error.message : "Failed to add playlist");
+			setAddError(error instanceof Error ? error.message : t("playlists.addFailed"));
 		} finally {
 			isAddingRef.current = false;
 			// Check if component is still mounted before updating state
@@ -249,10 +249,10 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 			<div className="user-playlists-view">
 				<ViewHeader
 					icon={<ListVideo className="video-view-header__icon" />}
-					title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
+					title={t("playlists.title")}
 				/>
 
-				<div className="playlists-loading-skeleton" role="status" aria-label="Loading playlists">
+				<div className="playlists-loading-skeleton" role="status" aria-label={t("playlists.loading")}>
 					{Array.from({ length: 5 }).map((_, i) => (
 						<div key={i} className="skeleton-playlist-card">
 							<div className="skeleton-playlist-card__thumbnail" />
@@ -274,7 +274,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 			<div className="user-playlists-view">
 				<ViewHeader
 					icon={<ListVideo className="video-view-header__icon" />}
-					title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
+					title={t("playlists.title")}
 				/>
 
 				<div className="playlists-error" role="alert">
@@ -282,7 +282,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 						<AlertCircle size={48} />
 					</div>
 					<div className="playlists-error__title">
-						Failed to load playlists
+						{t("playlists.failedLoad")}
 					</div>
 					<div className="playlists-error__message">{error}</div>
 					<button
@@ -290,7 +290,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 						onClick={onRefresh}
 					>
 						<RefreshCw size={16} />
-						Try Again
+						{t("common.tryAgain")}
 					</button>
 				</div>
 			</div>
@@ -301,7 +301,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 		<div className="user-playlists-view" onKeyDown={handleViewKeyDown}>
 			<ViewHeader
 				icon={<ListVideo className="video-view-header__icon" />}
-				title={UI_TEXT.HEADER_TITLE_USER_PLAYLISTS}
+				title={t("playlists.title")}
 				actions={
 					<>
 						<button
@@ -309,8 +309,8 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 							className="refresh-button"
 							onClick={onRefresh}
 							disabled={isLoading || isAdding}
-							title="Refresh playlists"
-							aria-label="Refresh playlists"
+							title={t("playlists.refresh")}
+							aria-label={t("playlists.refresh")}
 						>
 							<RefreshCw
 								size={16}
@@ -322,8 +322,8 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 							className="add-playlist-button"
 							onClick={() => setShowAddForm(true)}
 							disabled={isLoading || showAddForm}
-							title="Add playlist by ID or URL"
-							aria-label="Add playlist by ID or URL"
+							title={t("playlists.addByIdUrl")}
+							aria-label={t("playlists.addByIdUrl")}
 						>
 							<Plus size={16} />
 						</button>
@@ -331,11 +331,11 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				}
 			/>
 
-			{isLoading && <div className="liked-video-sync-status" role="status">Refreshing playlists...</div>}
+			{isLoading && <div className="liked-video-sync-status" role="status">{t("playlists.refreshing")}</div>}
 			{error && (
 				<div className="subscription-warning" role="alert">
 					<span>{error}</span>
-					<button type="button" onClick={onRefresh} disabled={isLoading || isAdding}>Try again</button>
+					<button type="button" onClick={onRefresh} disabled={isLoading || isAdding}>{t("playlists.tryAgain")}</button>
 				</div>
 			)}
 
@@ -360,13 +360,13 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 							searchTerm={searchTerm}
 							onSearchTermChange={setSearchTerm}
 							escapeClearsSearch
-							ariaLabel="Search playlists"
-							placeholder="Search by title or description..."
+							ariaLabel={t("playlists.search")}
+							placeholder={t("playlists.searchPlaceholder")}
 						/>
 					</div>
 					<button type="button" className="sort-menu-button"
-						title={`Sort by: ${selectedSortLabel}, ${sortDirectionLabel}`}
-						aria-label={`Sort playlists. Current: ${selectedSortLabel}, ${sortDirectionLabel}`}
+						title={`${t("sort.sortBy")}: ${selectedSortLabel}, ${sortDirectionLabel}`}
+						aria-label={`${t("sort.sortPlaylistsCurrent")}: ${selectedSortLabel}, ${sortDirectionLabel}`}
 						aria-haspopup="menu" onClick={openSortMenu}>
 						{sortOrder === "DESC" ? (
 							<ArrowDownWideNarrow size={16} aria-hidden="true" />
@@ -377,7 +377,7 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 				</div>
 			)}
 
-			<div className="playlist-source-filters" role="group" aria-label="Playlist source">
+			<div className="playlist-source-filters" role="group" aria-label={t("playlists.source")}>
 				{SOURCE_FILTERS.map((option) => (
 					<button key={option.value} type="button"
 						aria-pressed={sourceFilter === option.value}
@@ -389,9 +389,9 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 
 			{playlists.length > 0 && (
 				<div className="liked-video-result-count" aria-live="polite" aria-atomic="true">
-					<span>{sortedAndFilteredPlaylists.length} of {playlists.length} playlists</span>
+					<span>{sortedAndFilteredPlaylists.length} / {playlists.length} {t("playlists.count")}</span>
 					<span aria-hidden="true">·</span>
-					<span className="liked-video-result-sort" aria-label={`Sorted by ${selectedSortLabel}, ${sortDirectionLabel}`}>
+					<span className="liked-video-result-sort" aria-label={t("filter.sortedBy")}>
 						{selectedSortLabel} <span aria-hidden="true">{sortOrder === "DESC" ? "↓" : "↑"}</span>
 					</span>
 				</div>
@@ -403,14 +403,14 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 						<Video size={32} aria-hidden="true" />
 					</div>
 					<div className="no-videos-found__title">
-						No playlists found
+						{t("playlists.none")}
 					</div>
 					<div className="no-videos-found__text">
-						Your YouTube playlists and playlists you add by URL will appear here.
+						{t("playlists.emptyHint")}
 					</div>
 					{!showAddForm && <button type="button" className="no-videos-found__clear-button"
 						disabled={isLoading || isAdding} onClick={() => setShowAddForm(true)}>
-						Add playlist by URL
+						{t("playlists.addByUrl")}
 					</button>}
 				</div>
 			) : sortedAndFilteredPlaylists.length === 0 ? (
@@ -419,17 +419,17 @@ export const UserPlaylistsView: React.FC<UserPlaylistsViewProps> = ({
 						<Search size={32} aria-hidden="true" />
 					</div>
 					<div className="no-videos-found__title">
-						No matching playlists
+						{t("playlists.noMatch")}
 					</div>
 					<div className="no-videos-found__text">
-						No playlists match your search and filters.
+						{t("playlists.noSearchMatch")}
 					</div>
 					<button
 						type="button"
 						className="no-videos-found__clear-button"
 						onClick={() => onStateChange({ searchTerm: "", sourceFilter: "all" })}
 					>
-						Clear search and filters
+						{t("liked.clearSearchAndFilters")}
 					</button>
 				</div>
 			) : (

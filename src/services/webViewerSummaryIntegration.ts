@@ -11,6 +11,7 @@ import { WebViewerActionBar } from './webViewerActionBar';
 import type { WebViewerAction } from './webViewerActionBar';
 import { WebViewerTranscriptRecovery } from './webViewerTranscriptRecovery';
 import { YouTubeApiClient, YouTubeRequestError } from './youtubeApiClient';
+import { t } from '../i18n';
 
 interface ViewerElement extends HTMLElement {
 	getURL(): string;
@@ -268,17 +269,17 @@ export class WebViewerSummaryIntegration extends Component {
 				await this.openPlaylist(known, sourceLeaf);
 				return;
 			}
-			loading = new Notice('Geulo: Importing playlist…', 0);
+			loading = new Notice(t("app.importingPlaylist"), 0);
 			const result = await this.plugin.playlistImports.importPlaylist(id);
 			if (!this.active) return;
-			if (result.imported) new Notice(`Geulo: Imported "${result.playlist.title}". Find it in My Playlists.`);
+			if (result.imported) new Notice(`${t("app.playlistImported")}: ${result.playlist.title}`);
 			else await this.openPlaylist(result.playlist, sourceLeaf);
 		} catch (error: unknown) {
 			if (!this.active) return;
 			debugLogger.error('[Web Viewer] Could not import or open playlist', id, error);
 			new Notice(error instanceof YouTubeRequestError && error.kind === 'auth'
-				? 'Geulo: Reconnect YouTube in plugin settings to import this playlist.'
-				: `Geulo: Could not import or open playlist. ${error instanceof Error ? error.message : 'Please try again.'}`);
+				? t("app.reconnectToImportPlaylist")
+				: `${t("app.importPlaylistFailed")}: ${error instanceof Error ? error.message : t("common.tryAgain")}`);
 		} finally {
 			loading?.hide();
 			this.opening.delete(key);
@@ -293,7 +294,7 @@ export class WebViewerSummaryIntegration extends Component {
 			});
 		} catch (error: unknown) {
 			debugLogger.error('[Web Viewer] Could not open Watch Later', error);
-			new Notice('Geulo: Could not open Watch Later. Please try again.');
+			new Notice(t("app.openWatchLaterFailed"));
 		}
 	}
 
@@ -314,7 +315,7 @@ export class WebViewerSummaryIntegration extends Component {
 		if (!this.active || this.opening.has(key)) return;
 		if (displayMode === 'ai' && !this.plugin.summaryStorage.hasVideoSummary(videoId)
 			&& (!this.plugin.settings.enableAISummary || !getActiveApiKey(this.plugin.settings))) {
-			new Notice('Geulo: Enable AI summaries and configure your AI provider in plugin settings.');
+			new Notice(t("app.enableAIForSummary"));
 			return;
 		}
 		this.opening.add(key);
@@ -323,7 +324,7 @@ export class WebViewerSummaryIntegration extends Component {
 		try {
 			const workspace = this.plugin.app.workspace;
 			if (this.plugin.settings.openWebViewerReaderInRightSidebar) {
-				loading = new Notice(displayMode === 'ai' ? 'Geulo: Opening AI summary…' : 'Geulo: Opening transcript…', 0);
+				loading = new Notice(displayMode === 'ai' ? t("app.openingSummary") : t("app.openingTranscript"), 0);
 				const video = await this.getVideo(videoId);
 				if (!this.active) return;
 				await workspace.ensureSideLeaf(VIEW_TYPE_TRANSCRIPT, 'right', {
@@ -343,7 +344,7 @@ export class WebViewerSummaryIntegration extends Component {
 				await workspace.revealLeaf(existing);
 				return;
 			}
-			loading = new Notice(displayMode === 'ai' ? 'Geulo: Opening AI summary…' : 'Geulo: Opening transcript…', 0);
+			loading = new Notice(displayMode === 'ai' ? t("app.openingSummary") : t("app.openingTranscript"), 0);
 			const video = await this.getVideo(videoId);
 			if (!this.active) return;
 			// Anchor the result beside the originating viewer even if focus changed
@@ -355,8 +356,8 @@ export class WebViewerSummaryIntegration extends Component {
 			if (!this.active) return;
 			debugLogger.error('[Web Viewer] Could not open reader', videoId, error);
 			new Notice(error instanceof YouTubeRequestError && error.kind === 'auth'
-				? 'Geulo: Reconnect YouTube in plugin settings to load this video’s details.'
-				: 'Geulo: Could not load this video. Check its availability and try again.');
+				? t("app.reconnectToLoadVideo")
+				: t("app.loadVideoFailed"));
 		} finally {
 			loading?.hide();
 			this.opening.delete(key);
@@ -373,12 +374,12 @@ export class WebViewerSummaryIntegration extends Component {
 		try {
 			let file = this.plugin.videoNoteIndex.get(videoId);
 			if (!file) {
-				loading = new Notice('Geulo: Opening video note…', 0);
+				loading = new Notice(t("app.openingVideoNote"), 0);
 				const video = await this.getVideo(videoId);
 				if (!this.active) return;
 				const result = await this.plugin.videoNotes.getOrCreate(video);
 				file = result.file;
-				if (result.created) new Notice(`Created note: ${file.basename}`);
+				if (result.created) new Notice(`${t("videoCard.noteCreated")}: ${file.basename}`);
 			} else {
 				await this.plugin.videoNotes.refreshLiked(videoId, file);
 			}
@@ -393,8 +394,8 @@ export class WebViewerSummaryIntegration extends Component {
 			if (!this.active) return;
 			debugLogger.error('[Web Viewer] Could not open video note', videoId, error);
 			new Notice(error instanceof YouTubeRequestError && error.kind === 'auth'
-				? 'Geulo: Reconnect YouTube in plugin settings to load this video’s details.'
-				: 'Geulo: Could not create or open this video note. Check its file path and try again.');
+				? t("app.reconnectToLoadVideo")
+				: t("app.openVideoNoteFailed"));
 		} finally {
 			loading?.hide();
 			this.opening.delete(key);

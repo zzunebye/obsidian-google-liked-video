@@ -4,6 +4,7 @@ import { createRoot, Root } from "react-dom/client";
 import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { AISummariesView } from "./AISummariesView";
+import { t } from "../i18n";
 
 export const VIEW_TYPE_AI_SUMMARIES = "geulo-ai-summaries";
 
@@ -19,7 +20,7 @@ export class AISummariesPane extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "AI summaries";
+		return t("summaries.title");
 	}
 
 	getIcon(): string {

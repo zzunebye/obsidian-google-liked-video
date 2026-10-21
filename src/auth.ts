@@ -4,6 +4,7 @@ import { createServer } from 'http';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { ObsidianGoogleLikedVideoSettings } from './types';
+import { t } from './i18n';
 
 interface ServerSession {
 	close(callback: () => void): void;
@@ -61,7 +62,7 @@ async function openGoogleAuthInExternalBrowser(url: string): Promise<boolean> {
 		await shell.openExternal(url);
 		return true;
 	} catch {
-		new Notice("Couldn't open the Google sign-in page in your default browser.");
+		new Notice(t("auth.openBrowserFailed"));
 		return false;
 	}
 }
@@ -88,10 +89,10 @@ function closeServerSession(): Promise<void> {
 }
 
 async function finishGoogleLoginFailure(response: { statusCode: number; setHeader(name: string, value: string): void; end(content: string): void }): Promise<void> {
-	new Notice("Auth failed");
+	new Notice(t("auth.failed"));
 	response.statusCode = 400;
 	response.setHeader('Connection', 'close');
-	response.end("Authentication failed. Please return to Obsidian.");
+	response.end(t("auth.failedReturnToObsidian"));
 	await closeServerSession();
 }
 
@@ -100,7 +101,7 @@ export async function handleGoogleLogin(
     onSuccess: () => void,
 ): Promise<void> {
     if (!Platform.isDesktop) {
-        new Notice("Can't use this OAuth method on this device");
+		new Notice(t("auth.unsupportedDevice"));
         return;
     }
 
@@ -168,10 +169,10 @@ export async function handleGoogleLogin(
 					localStorageService.setAccessTokenExpirationTime(+new Date() + token.expires_in * 1000);
 
 					res.setHeader('Connection', 'close');
-					res.end("Authentication successful! Please return to Obsidian.");
+					res.end(t("auth.successReturnToObsidian"));
 					await closeServerSession();
 
-					new Notice("Tokens acquired.");
+					new Notice(t("auth.tokensAcquired"));
 					onSuccess();
 				} catch {
 					await finishGoogleLoginFailure(res);
@@ -193,7 +194,7 @@ export async function handleGoogleLogout(
     onError: () => void,
 ): Promise<void> {
     if (!Platform.isDesktop) {
-        new Notice("Can't use this OAuth method on this device");
+		new Notice(t("auth.unsupportedDevice"));
         return;
     }
 
@@ -217,10 +218,10 @@ export async function revokeGoogleToken(token: string): Promise<boolean> {
     });
 
     if (response.status < 400) {
-        new Notice("Token revoked successfully.");
+		new Notice(t("auth.tokenRevoked"));
         return true;
     } else {
-        new Notice("Failed to revoke token.");
+		new Notice(t("auth.revokeFailed"));
         return false;
     }
 }

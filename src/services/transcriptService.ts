@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import type { RequestUrlParam } from "obsidian";
+import { t } from "../i18n";
 
 const YOUTUBE_ORIGIN = "https://www.youtube.com";
 const TRANSCRIPT_TIMEOUT_MS = 30000;
@@ -44,7 +45,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
 }
 
 function invalidResponse(): TranscriptServiceError {
-	return new TranscriptServiceError("invalid-response", "YouTube returned an unexpected transcript response. Please try again later.");
+	return new TranscriptServiceError("invalid-response", t("transcript.unexpectedResponse"));
 }
 
 function parseJson(text: string): unknown {
@@ -81,15 +82,15 @@ function readTracks(player: unknown): CaptionTrack[] {
 	if (!data) throw invalidResponse();
 	const status = record(data.playabilityStatus)?.status;
 	if (status === "LOGIN_REQUIRED") {
-		throw new TranscriptServiceError("blocked", "YouTube requires sign-in or has blocked this transcript request. Try again later.");
+		throw new TranscriptServiceError("blocked", t("transcript.signInOrBlocked"));
 	}
 	if (status && status !== "OK") {
-		throw new TranscriptServiceError("unavailable", "This video is unavailable for transcript fetching.");
+		throw new TranscriptServiceError("unavailable", t("transcript.videoUnavailable"));
 	}
 	const renderer = record(record(data.captions)?.playerCaptionsTracklistRenderer);
 	const tracks = renderer?.captionTracks;
 	if (!Array.isArray(tracks) || tracks.length === 0) {
-		throw new TranscriptServiceError("unavailable", "No captions are available for this video.");
+		throw new TranscriptServiceError("unavailable", t("transcript.noCaptions"));
 	}
 	return tracks.map((value) => {
 		const track = record(value);
@@ -132,7 +133,7 @@ function decodeHtmlEntities(text: string): string {
 
 function parseTranscript(text: string): TranscriptSegment[] {
 	if (!text.trim()) {
-		throw new TranscriptServiceError("blocked", "YouTube returned no caption text. Transcript requests may be temporarily blocked. Try again later.");
+		throw new TranscriptServiceError("blocked", t("transcript.noCaptionText"));
 	}
 	let segments: TranscriptSegment[];
 	if (text.trimStart().startsWith("{")) {
@@ -222,7 +223,7 @@ export class TranscriptService {
 
 	async fetchTranscript(videoId: string, signal?: AbortSignal, preferredLanguage = "en"): Promise<VideoTranscript> {
 		if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-			throw new TranscriptServiceError("unavailable", "This video does not have a valid YouTube video ID.");
+			throw new TranscriptServiceError("unavailable", t("transcript.invalidVideoId"));
 		}
 		let stopReason: Error | undefined = signal?.aborted ? new DOMException("Request aborted", "AbortError") : undefined;
 		if (stopReason) throw stopReason;
@@ -231,7 +232,7 @@ export class TranscriptService {
 		const getStopReason = (): Error | undefined => stopReason;
 		const stopped = new Promise<never>((_, reject) => {
 			timeoutId = window.setTimeout(() => {
-				stopReason = new TranscriptServiceError("timeout", "Transcript fetching timed out. Please try again.");
+				stopReason = new TranscriptServiceError("timeout", t("transcript.fetchTimeout"));
 				reject(stopReason);
 			}, TRANSCRIPT_TIMEOUT_MS);
 			abortListener = () => {
@@ -252,15 +253,15 @@ export class TranscriptService {
 			} catch {
 				const stoppedDuringRequest = getStopReason();
 				if (stoppedDuringRequest) throw stoppedDuringRequest;
-				throw new TranscriptServiceError("network", "Could not connect to YouTube. Check your connection and try again.");
+				throw new TranscriptServiceError("network", t("transcript.connectionFailed"));
 			}
 			const stoppedAfterRequest = getStopReason();
 			if (stoppedAfterRequest) throw stoppedAfterRequest;
 			if (response.status === 429 || response.status === 403 || response.status === 401) {
-				throw new TranscriptServiceError("blocked", "YouTube is temporarily blocking transcript requests. Please try again later.");
+				throw new TranscriptServiceError("blocked", t("transcript.temporarilyBlocked"));
 			}
 			if (response.status < 200 || response.status >= 300) {
-				throw new TranscriptServiceError("network", `YouTube could not return the transcript (HTTP ${response.status}). Please try again later.`);
+				throw new TranscriptServiceError("network", t("transcript.httpFailed").replace("{status}", String(response.status)));
 			}
 			if (response.text.length > MAX_RESPONSE_LENGTH) throw invalidResponse();
 			return response.text;

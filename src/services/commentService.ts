@@ -1,5 +1,6 @@
 import { YouTubeApiClient, YouTubeRequestError } from "./youtubeApiClient";
 import { YouTubeAccountIdentityService } from "./youtubeAccountIdentityService";
+import { t } from "../i18n";
 
 export const COMMENT_LIMIT = 30;
 
@@ -130,7 +131,7 @@ export class CommentService {
 		});
 		const body = await this.get(`commentThreads?${params.toString()}`, signal);
 		if (!isRecord(body) || !Array.isArray(body.items)) {
-			throw new CommentServiceError("invalid-response", "YouTube returned an invalid comments response.");
+			throw new CommentServiceError("invalid-response", t("comments.invalidResponse"));
 		}
 		return body.items.flatMap((item) => {
 			const comment = parseCommentThread(item);
@@ -145,17 +146,17 @@ export class CommentService {
 			if (error instanceof DOMException && error.name === "AbortError") throw error;
 			if (error instanceof YouTubeRequestError) {
 				if (error.reasons.includes("commentsDisabled")) {
-					throw new CommentServiceError("comments-disabled", "Comments are disabled for this video.");
+					throw new CommentServiceError("comments-disabled", t("comments.disabled"));
 				}
 				if (error.status === 404) {
-					throw new CommentServiceError("not-found", "This video is no longer available.");
+					throw new CommentServiceError("not-found", t("comments.videoUnavailable"));
 				}
 				if (error.status === 403) {
-					throw new CommentServiceError("forbidden", "YouTube could not return comments. Check your connection or API quota.");
+					throw new CommentServiceError("forbidden", t("comments.accessFailed"));
 				}
 				throw new CommentServiceError("network", error.message);
 			}
-			throw new CommentServiceError("network", "Could not connect to YouTube.");
+			throw new CommentServiceError("network", t("comments.connectionFailed"));
 		}
 	}
 }

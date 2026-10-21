@@ -1,4 +1,5 @@
 import { App, Modal } from 'obsidian';
+import { t } from '../i18n';
 
 export type CacheOwnershipChoice = 'associate' | 'replace' | 'cancel';
 
@@ -24,40 +25,42 @@ class CacheOwnershipModal extends Modal {
 
 	onOpen(): void {
 		const { contentEl, options } = this;
-		this.setTitle(options.storedOwnerChannelId === null
-			? `Connect existing ${options.cacheLabel}?`
-			: `Replace ${options.cacheLabel} for another account?`);
+		const cacheLabel = options.cacheLabel === 'liked videos' ? t("settings.likedVideos") : t("settings.subscriptions");
+		const formatCacheText = (key: "cacheOwnership.connectTitle" | "cacheOwnership.replaceTitle" | "cacheOwnership.unlinked" | "cacheOwnership.linked" | "cacheOwnership.useWithAccount" | "cacheOwnership.useExisting" | "cacheOwnership.replaceSafety" | "cacheOwnership.stopped") =>
+			t(key).replace("{cache}", cacheLabel);
+		this.setTitle(formatCacheText(options.storedOwnerChannelId === null
+			? "cacheOwnership.connectTitle" : "cacheOwnership.replaceTitle"));
 		const currentChannel = options.currentChannelTitle
 			? `${options.currentChannelTitle} (${options.currentChannelId})`
 			: options.currentChannelId;
 		contentEl.createEl('p', {
 			text: options.storedOwnerChannelId === null
-				? `This vault has existing ${options.cacheLabel} that are not linked to a YouTube channel.`
-				: `This vault's ${options.cacheLabel} belong to ${options.storedOwnerChannelId}. The connected channel is ${currentChannel}.`,
+				? formatCacheText("cacheOwnership.unlinked")
+				: formatCacheText("cacheOwnership.linked").replace("{owner}", options.storedOwnerChannelId).replace("{current}", currentChannel),
 		});
 		contentEl.createEl('p', {
 			text: options.allowAssociate && options.allowReplace
-				? `Use existing data with ${currentChannel}, or replace it only after current account data is fetched successfully.`
+				? formatCacheText("cacheOwnership.useWithAccount").replace("{current}", currentChannel)
 				: options.allowAssociate
-					? `Use existing data with ${currentChannel} to continue.`
+					? formatCacheText("cacheOwnership.useExisting").replace("{current}", currentChannel)
 					: options.allowReplace
-						? 'Replacement happens only after data for the connected account is fetched successfully.'
-						: 'To prevent account data from mixing, this operation has been stopped.',
+						? formatCacheText("cacheOwnership.replaceSafety")
+						: formatCacheText("cacheOwnership.stopped"),
 		});
 		contentEl.createEl('p', {
-			text: 'AI summaries and Obsidian notes remain shared in this vault.',
+			text: t("cacheOwnership.sharedData"),
 		});
 
 		const actions = contentEl.createDiv({ cls: 'modal-button-container' });
-		const cancel = actions.createEl('button', { text: 'Cancel' });
+		const cancel = actions.createEl('button', { text: t("settings.cancel") });
 		cancel.addEventListener('click', () => this.choose('cancel'));
 		if (options.allowAssociate) {
-			const associate = actions.createEl('button', { text: 'Use existing data' });
+			const associate = actions.createEl('button', { text: t("cacheOwnership.useExistingButton") });
 			associate.addEventListener('click', () => this.choose('associate'));
 		}
 		if (options.allowReplace) {
 			const replace = actions.createEl('button', {
-				text: 'Replace with connected account',
+				text: t("cacheOwnership.replaceButton"),
 				cls: 'mod-warning',
 			});
 			replace.addEventListener('click', () => this.choose('replace'));

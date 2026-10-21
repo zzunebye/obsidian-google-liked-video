@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 import type { YouTubeVideo } from "src/types";
 import { formatVideoCount, formatVideoDuration } from "src/utils/videoUtils";
 import { YouTubeChannelButton } from "./YouTubeChannelButton";
+import { t } from "../i18n";
 
 export function VideoInfoTooltip({ video }: { video: YouTubeVideo }) {
 	const id = useId();
@@ -20,9 +21,9 @@ export function VideoInfoTooltip({ video }: { video: YouTubeVideo }) {
 	const description = video.snippet.description?.trim().replace(/\s+/g, " ") ?? "";
 	const descriptionPreview = description.length > 280 ? `${description.slice(0, 277).trimEnd()}…` : description;
 	const statistics = [
-		{ label: "Views", value: video.statistics?.viewCount },
-		{ label: "Likes", value: video.statistics?.likeCount },
-		{ label: "Comments", value: video.statistics?.commentCount },
+		{ label: t("videoInfo.views"), value: video.statistics?.viewCount },
+		{ label: t("videoInfo.likes"), value: video.statistics?.likeCount },
+		{ label: t("comments.title"), value: video.statistics?.commentCount },
 	].filter(({ value }) => value !== undefined && value !== null);
 
 	const show = (): void => {
@@ -94,18 +95,18 @@ export function VideoInfoTooltip({ video }: { video: YouTubeVideo }) {
 	}, [isOpen, ownerWindow]);
 
 	return <>
-		<button ref={buttonRef} type="button" className="geulo-video-info__trigger" aria-label="Video information"
+		<button ref={buttonRef} type="button" className="geulo-video-info__trigger" aria-label={t("videoInfo.title")}
 			aria-haspopup="dialog" aria-expanded={isOpen} aria-controls={isOpen ? id : undefined}
 			onMouseEnter={show} onMouseLeave={scheduleClose} onFocus={show} onBlur={scheduleClose} onClick={show}>
 			<Info size={16} aria-hidden="true" />
 		</button>
 		{isOpen && buttonRef.current && createPortal(
-			<div ref={tooltipRef} id={id} role="dialog" aria-label="Video information" className="geulo-video-info__tooltip" style={position}
+			<div ref={tooltipRef} id={id} role="dialog" aria-label={t("videoInfo.title")} className="geulo-video-info__tooltip" style={position}
 				onMouseEnter={show} onMouseLeave={scheduleClose} onFocus={show} onBlur={scheduleClose}>
 				<YouTubeChannelButton video={video} />
 				{(publishedDate || duration) && <dl className="geulo-video-info__details">
-					{publishedDate && <div><dt>Published</dt><dd>{publishedDate}</dd></div>}
-					{duration && <div><dt>Duration</dt><dd>{duration}</dd></div>}
+					{publishedDate && <div><dt>{t("videoInfo.published")}</dt><dd>{publishedDate}</dd></div>}
+					{duration && <div><dt>{t("filter.duration")}</dt><dd>{duration}</dd></div>}
 				</dl>}
 				{statistics.length > 0 && <dl className="geulo-video-info__statistics">
 					{statistics.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{formatVideoCount(value)}</dd></div>)}

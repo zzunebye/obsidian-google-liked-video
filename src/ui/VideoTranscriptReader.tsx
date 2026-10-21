@@ -1,7 +1,6 @@
 import { Menu, Notice } from "obsidian";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Bot, Copy, ExternalLink, FilePlus, LoaderCircle, MessageCircle, PanelRightOpen, Search, ThumbsUp } from "lucide-react";
-import { UI_TEXT } from "src/constants/uiText";
 import { debugLogger } from "src/debug";
 import { googleTokenStorageService } from "src/services/googleTokenStorageService";
 import { likeVideoAndPersist, unlikeVideoAndPersist } from "src/services/likedVideoMutationService";
@@ -21,6 +20,7 @@ import { VideoCommentsModal } from "./VideoCommentsModal";
 import { VideoInfoTooltip } from "./VideoInfoTooltip";
 import { YouTubeChannelButton } from "./YouTubeChannelButton";
 import { useVideoTranscript } from "./useVideoTranscript";
+import { t } from "../i18n";
 
 interface Props {
 	video: YouTubeVideo;
@@ -173,7 +173,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 		try { await action(); }
 		catch (error: unknown) {
 			debugLogger.error("[Transcript] Action failed", video.id, error);
-			new Notice("Could not complete the transcript action. Please try again.");
+			new Notice(t("transcript.actionFailed"));
 		} finally { busyRef.current = false; setBusy(false); }
 	};
 
@@ -181,7 +181,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 		await navigator.clipboard.writeText(rows.map(row =>
 			`${timestamps ? `${formatTranscriptTimestamp(row.start)}  ` : ""}${row.text}`).join("\n\n"));
 		setCopied(true);
-		new Notice("Full transcript copied to clipboard");
+		new Notice(t("transcript.copied"));
 	};
 
 	const saveNote = async (): Promise<void> => {
@@ -198,15 +198,15 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			const content = `# Transcript\n\n[Watch video: ${escapedTitle}](${url})\n\n${video.snippet.channelTitle} · ${state.transcript.languageName}\n\n`
 				+ rows.map(row => `[${formatTranscriptTimestamp(row.start)}](${url}&t=${Math.floor(row.start)}s) ${row.text}`).join("\n\n") + "\n";
 			file = await plugin.app.vault.create(path, content);
-			new Notice("Transcript saved as a note");
-		} else new Notice("Opening the existing transcript note");
+			new Notice(t("transcript.savedAsNote"));
+		} else new Notice(t("transcript.openingExistingNote"));
 		await plugin.app.workspace.getLeaf("tab").openFile(file);
 	};
 
 	const changeLike = async (): Promise<void> => {
 		if (likePendingRef.current) return;
 		if (!googleTokenStorageService.getAccessToken() && !googleTokenStorageService.getRefreshToken()) {
-			new Notice("Geulo: Connect your Google account before changing video likes.");
+			new Notice(t("transcript.connectBeforeLike"));
 			return;
 		}
 
@@ -217,7 +217,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			if (!wasLiked) {
 				await likeVideoAndPersist(plugin.likedVideoApi, video, 0, plugin.videoNotes.captureLikedUpdate());
 				setLikeStatus("liked");
-				new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
+				new Notice(`${t("liked.liked")}: ${video.snippet.title}`);
 				return;
 			}
 
@@ -228,8 +228,8 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			setLikeStatus("unliked");
 
 			const fragment = new DocumentFragment();
-			fragment.createSpan({ text: `Unliked "${video.snippet.title}" ` });
-			const undoButton = fragment.createEl("button", { text: "Undo", cls: "geulo-undo-btn" });
+			fragment.createSpan({ text: `${t("liked.unliked")}: "${video.snippet.title}" ` });
+			const undoButton = fragment.createEl("button", { text: t("liked.undo"), cls: "geulo-undo-btn" });
 			const notice = new Notice(fragment, 5000);
 			undoButton.addEventListener("click", () => {
 				if (likePendingRef.current) return;
@@ -249,7 +249,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 						notice.hide();
 					} catch (error) {
 						debugLogger.error("[Transcript] Could not undo unlike", video.id, error);
-						new Notice(error instanceof CacheOwnershipError ? error.message : UI_TEXT.NOTICE_LIKE_FAILED);
+						new Notice(error instanceof CacheOwnershipError ? error.message : t("liked.likeFailed"));
 						undoButton.disabled = false;
 					} finally {
 						likePendingRef.current = false;
@@ -261,7 +261,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			debugLogger.error(`[Transcript] Could not ${wasLiked ? "unlike" : "like"} video`, video.id, error);
 			new Notice(error instanceof CacheOwnershipError
 				? error.message
-				: wasLiked ? UI_TEXT.NOTICE_UNLIKE_FAILED : UI_TEXT.NOTICE_LIKE_FAILED);
+				: wasLiked ? t("liked.unlikeFailed") : t("liked.likeFailed"));
 		} finally {
 			likePendingRef.current = false;
 			setLikePending(false);
@@ -280,12 +280,12 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 	const isLiked = likeStatus === "liked";
 	const checkingLikeStatus = likeStatus === "checking";
 	const likeButtonTitle = checkingLikeStatus
-		? "Checking YouTube like status…"
+		? t("transcript.checkingLike")
 		: isLiked
-			? "Unlike video"
+			? t("liked.unlike")
 			: likeStatus === "unknown"
-				? "Like status could not be verified. Click to like this video."
-				: "Like video";
+				? t("transcript.likeUnverified")
+				: t("liked.like");
 	const openComments = (trigger: HTMLButtonElement): void => {
 		new VideoCommentsModal(plugin.app, video.id, video.snippet.title, plugin.commentService, () => {
 			if (trigger.isConnected) trigger.focus({ preventScroll: true });
@@ -293,7 +293,7 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 	};
 
 	return (
-		<section ref={rootRef} className={`geulo-transcript-reader geulo-transcript-reader--${mode}`} tabIndex={-1} aria-label={`Transcript for ${video.snippet.title}`}
+		<section ref={rootRef} className={`geulo-transcript-reader geulo-transcript-reader--${mode}`} tabIndex={-1} aria-label={`${t("transcript.forVideo")} ${video.snippet.title}`}
 			onKeyDown={event => {
 				if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing || !onBack) return;
 				event.preventDefault();
@@ -303,10 +303,10 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 			<header className="geulo-transcript-reader__header">
 				<div className="geulo-transcript-reader__navigation">
 					{onBack ?
-						<button type="button" className="geulo-transcript-reader__back" aria-label={backLabel ?? "Back to videos"} title={backLabel ?? "Back to videos"} onClick={onBack}>
-							<ArrowLeft size={16} aria-hidden="true" /><span className="geulo-transcript-reader__back-label">{backLabel ?? "Back to videos"}</span><span className="geulo-transcript-reader__compact-back" aria-hidden="true">Back</span>
+						<button type="button" className="geulo-transcript-reader__back" aria-label={backLabel ?? t("transcript.backToVideos")} title={backLabel ?? t("transcript.backToVideos")} onClick={onBack}>
+							<ArrowLeft size={16} aria-hidden="true" /><span className="geulo-transcript-reader__back-label">{backLabel ?? t("transcript.backToVideos")}</span><span className="geulo-transcript-reader__compact-back" aria-hidden="true">{t("transcript.back")}</span>
 						</button>
-						: <span>Transcript</span>}
+						: <span>{t("transcript.title")}</span>}
 					<div className="geulo-transcript-reader__navigation-actions">
 						<button type="button" className="geulo-transcript-reader__like" aria-pressed={isLiked}
 							aria-busy={checkingLikeStatus || likePending} aria-label={likeButtonTitle} title={likeButtonTitle}
@@ -314,11 +314,11 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 							{checkingLikeStatus || likePending
 								? <LoaderCircle className="geulo-transcript-reader__like-spinner" size={14} aria-hidden="true" />
 								: <ThumbsUp size={14} fill={isLiked ? "currentColor" : "none"} aria-hidden="true" />}
-							<span>{isLiked ? "Liked" : "Like"}</span>
+							<span>{isLiked ? t("liked.liked") : t("liked.like")}</span>
 						</button>
-						<button type="button" title="Show comments" aria-label="Show comments" onClick={event => openComments(event.currentTarget)}><MessageCircle size={14} aria-hidden="true" /><span>Comments</span></button>
-						<button type="button" title="Open video" aria-label="Open video" disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" /><span>Open video</span></button>
-						{onOpenPane && <button type="button" title="Open transcript in new pane" aria-label="Open transcript in new pane" disabled={busy || summaryBusy}
+						<button type="button" title={t("comments.title")} aria-label={t("comments.title")} onClick={event => openComments(event.currentTarget)}><MessageCircle size={14} aria-hidden="true" /><span>{t("comments.title")}</span></button>
+						<button type="button" title={t("videoCard.openVideo")} aria-label={t("videoCard.openVideo")} disabled={busy} onClick={() => void run(() => playback.open(video.id))}><ExternalLink size={14} aria-hidden="true" /><span>{t("videoCard.openVideo")}</span></button>
+						{onOpenPane && <button type="button" title={t("transcript.openInNewPane")} aria-label={t("transcript.openInNewPane")} disabled={busy || summaryBusy}
 							onClick={() => void run(() => onOpenPane(state.kind === "loaded" ? state.transcript : undefined, mode))}><PanelRightOpen size={16} aria-hidden="true" /></button>}
 					</div>
 				</div>
@@ -327,31 +327,31 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 					<VideoInfoTooltip video={video} />
 				</div>
 				<p className="geulo-transcript-reader__metadata"><YouTubeChannelButton video={video} />
-					{!isAiMode && state.kind === "loaded" && <> · {state.transcript.languageName.replace(/\s*\(auto-generated\)/i, "")} · {state.transcript.isAutoGenerated ? "Auto-generated" : "Captions"}</>}</p>
+					{!isAiMode && state.kind === "loaded" && <> · {state.transcript.languageName.replace(/\s*\(auto-generated\)/i, "")} · {state.transcript.isAutoGenerated ? t("transcript.autoGenerated") : t("transcript.captions")}</>}</p>
 
 				<div className="geulo-transcript-reader__mode-bar">
-					<div className="geulo-transcript-reader__modes" role="group" aria-label="Transcript display mode">
+					<div className="geulo-transcript-reader__modes" role="group" aria-label={t("transcript.displayMode")}>
 						{modes.map(value => <button key={value} type="button" aria-pressed={mode === value} disabled={busy}
-							onClick={() => changeMode(value)}>{value === "ai" ? <><Bot size={14} aria-hidden="true" />AI</> : value === "paragraphs" ? "Paragraphs" : "Timestamps"}</button>)}
+							onClick={() => changeMode(value)}>{value === "ai" ? <><Bot size={14} aria-hidden="true" />AI</> : value === "paragraphs" ? t("transcript.paragraphs") : t("transcript.timestamps")}</button>)}
 					</div>
-					{isAiMode && <div className="geulo-transcript-reader__summary-actions" role="group" aria-label="AI summary actions">
+					{isAiMode && <div className="geulo-transcript-reader__summary-actions" role="group" aria-label={t("transcript.summaryActions")}>
 						<SummarySpeechButton key={video.id} summary={speechSummary?.videoId === video.id ? speechSummary.text : null} disabled={summaryBusy} />
 						<div ref={setSummaryActionsHost} className="geulo-transcript-reader__summary-note-actions" />
 					</div>}
 				{!isAiMode && <div className="geulo-transcript-reader__actions">
-					<button type="button" aria-label={copied ? "Copied" : "Copy all…"} title={copied ? "Copied" : "Copy all…"} aria-haspopup="menu" disabled={busy || state.kind !== "loaded"} onClick={event => {
+					<button type="button" aria-label={copied ? t("transcript.copiedLabel") : t("transcript.copyAll")} title={copied ? t("transcript.copiedLabel") : t("transcript.copyAll")} aria-haspopup="menu" disabled={busy || state.kind !== "loaded"} onClick={event => {
 						const menu = new Menu();
-						menu.addItem(item => item.setTitle("Copy full text").onClick(() => void run(() => copy(false))));
-						menu.addItem(item => item.setTitle("Copy with timestamps").onClick(() => void run(() => copy(true))));
+						menu.addItem(item => item.setTitle(t("transcript.copyFullText")).onClick(() => void run(() => copy(false))));
+						menu.addItem(item => item.setTitle(t("transcript.copyWithTimestamps")).onClick(() => void run(() => copy(true))));
 						const rect = event.currentTarget.getBoundingClientRect();
 						menu.showAtPosition({ x: rect.left, y: rect.bottom });
-					}}><Copy size={14} aria-hidden="true" /><span>{copied ? "Copied" : "Copy all…"}</span></button>
-					<button type="button" aria-label="Save as note" title="Save as note" disabled={busy || state.kind !== "loaded"} onClick={() => void run(saveNote)}><FilePlus size={14} aria-hidden="true" /><span>Save as note</span></button>
+					}}><Copy size={14} aria-hidden="true" /><span>{copied ? t("transcript.copiedLabel") : t("transcript.copyAll")}</span></button>
+					<button type="button" aria-label={t("transcript.saveAsNote")} title={t("transcript.saveAsNote")} disabled={busy || state.kind !== "loaded"} onClick={() => void run(saveNote)}><FilePlus size={14} aria-hidden="true" /><span>{t("transcript.saveAsNote")}</span></button>
 				</div>}
 				</div>
 				<div ref={setSummaryProgressHost} className="geulo-transcript-reader__summary-progress" />
 			</header>
-			<div ref={summaryScrollRef} className="geulo-transcript-reader__summary" hidden={mode !== "ai"} aria-label="AI summary">
+			<div ref={summaryScrollRef} className="geulo-transcript-reader__summary" hidden={mode !== "ai"} aria-label={t("summary.title")}>
 				<SummarySection key={video.id} videoId={video.id} videoTitle={video.snippet.title} channelTitle={video.snippet.channelTitle}
 					channelId={video.snippet.channelId} videoDuration={video.contentDetails?.duration} presentation="reader"
 					onAddToNote={summary => saveSummaryToNote(plugin, video, summary)}
@@ -360,22 +360,22 @@ export function VideoTranscriptReader({ video, initialTranscript, displayMode, o
 					onBusyChange={setSummaryBusy} progressHost={summaryProgressHost} actionsHost={summaryActionsHost} onShowSummary={() => changeMode("ai")}
 					onSnapshotChange={snapshot => setSpeechSummary({ videoId: video.id, text: snapshot.summary })} />
 			</div>
-			{mode !== "ai" && state.kind === "loading" && <p className="geulo-transcript-reader__status" role="status">Fetching transcript…</p>}
-			{mode !== "ai" && state.kind === "error" && <div className="geulo-transcript-reader__status" role="alert"><p>{state.message}</p><button type="button" onClick={retry}>Try again</button></div>}
+			{mode !== "ai" && state.kind === "loading" && <p className="geulo-transcript-reader__status" role="status">{t("summary.fetchingTranscript")}</p>}
+			{mode !== "ai" && state.kind === "error" && <div className="geulo-transcript-reader__status" role="alert"><p>{state.message}</p><button type="button" onClick={retry}>{t("common.tryAgain")}</button></div>}
 			{mode !== "ai" && state.kind === "loaded" && <>
 				<div className="geulo-transcript-reader__tools">
-					<label className="geulo-transcript-reader__search"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search transcript" placeholder="Search transcript…" value={query} onChange={event => { setQuery(event.target.value); setFollowing(false); scrollRef.current?.scrollTo({ top: 0 }); }} /></label>
+					<label className="geulo-transcript-reader__search"><Search size={16} aria-hidden="true" /><input type="search" aria-label={t("transcript.search")} placeholder={t("transcript.searchPlaceholder")} value={query} onChange={event => { setQuery(event.target.value); setFollowing(false); scrollRef.current?.scrollTo({ top: 0 }); }} /></label>
 					<div className={`geulo-transcript-reader__follow${!needle && position === null ? " geulo-transcript-reader__follow--idle" : ""}`}>
-						<span role={needle ? "status" : undefined}>{needle ? `${visibleRows.length} matching ${mode === "paragraphs" ? "paragraphs" : "captions"}` : position === null ? "Open this video in WebViewer to follow playback" : `Playback · ${formatTranscriptTimestamp(position)}`}</span>
-						{position !== null && <button type="button" aria-pressed={following} onClick={() => { setQuery(""); setFollowing(value => !value); }}>{following ? "Following" : "Follow playback"}</button>}
+						<span role={needle ? "status" : undefined}>{needle ? t(mode === "paragraphs" ? "transcript.matchingParagraphs" : "transcript.matchingCaptions", { count: visibleRows.length }) : position === null ? t("transcript.openWebViewerToFollow") : `${t("transcript.playback")} · ${formatTranscriptTimestamp(position)}`}</span>
+						{position !== null && <button type="button" aria-pressed={following} onClick={() => { setQuery(""); setFollowing(value => !value); }}>{following ? t("transcript.following") : t("transcript.followPlayback")}</button>}
 					</div>
 				</div>
-				<div ref={scrollRef} className="geulo-transcript-reader__paragraphs" tabIndex={0} aria-label={mode === "paragraphs" ? "Transcript paragraphs" : "Original caption segments"}
+				<div ref={scrollRef} className="geulo-transcript-reader__paragraphs" tabIndex={0} aria-label={mode === "paragraphs" ? t("transcript.paragraphs") : t("transcript.originalCaptions")}
 					onWheel={() => setFollowing(false)} onTouchMove={() => setFollowing(false)} onPointerDown={() => setFollowing(false)}
 					onKeyDown={event => { if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) setFollowing(false); }}>
-					{visibleRows.length === 0 && <p role="status">{needle ? "No matching transcript text." : "No transcript text is available."}</p>}
+					{visibleRows.length === 0 && <p role="status">{needle ? t("transcript.noMatch") : t("transcript.noneAvailable")}</p>}
 					{visibleRows.map((row, index) => <p key={`${row.start}-${index}`} className="geulo-transcript-reader__paragraph" aria-current={row === activeRow ? "true" : undefined}>
-						<a href={`https://www.youtube.com/watch?v=${video.id}&t=${Math.floor(row.start)}s`} aria-label={`Play video at ${formatTranscriptTimestamp(row.start)}`}
+						<a href={`https://www.youtube.com/watch?v=${video.id}&t=${Math.floor(row.start)}s`} aria-label={`${t("transcript.playAt")} ${formatTranscriptTimestamp(row.start)}`}
 							onClick={event => { event.preventDefault(); void run(() => playback.open(video.id, row.start)); }}>
 							{formatTranscriptTimestamp(row.start)}</a>
 						<span><Highlight text={row.text} query={needle} /></span>

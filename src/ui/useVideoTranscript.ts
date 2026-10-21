@@ -4,6 +4,7 @@ import { debugLogger } from "src/debug";
 import { transcriptService, TranscriptServiceError } from "src/services/transcriptService";
 import type { VideoTranscript } from "src/services/transcriptService";
 import { usePlugin } from "src/store/pluginContext";
+import { t } from "src/i18n";
 
 export type TranscriptState =
 	| { kind: "loading" }
@@ -28,7 +29,7 @@ export function useVideoTranscript(videoId: string, initialTranscript?: VideoTra
 			(error: unknown) => {
 				if (controller.signal.aborted) return;
 				debugLogger.error("[Transcript] Fetch failed", videoId, error);
-				setState({ kind: "error", message: error instanceof TranscriptServiceError ? error.message : "Could not fetch the transcript. Please try again." });
+				setState({ kind: "error", message: error instanceof TranscriptServiceError ? error.message : t("transcript.fetchFailed") });
 			},
 		);
 		return () => controller.abort();

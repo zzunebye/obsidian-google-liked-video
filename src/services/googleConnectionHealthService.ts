@@ -1,5 +1,7 @@
 import type { YouTubeAccountIdentity } from './youtubeAccountIdentityService';
 import { YouTubeRequestError } from './youtubeApiClient';
+import { t } from '../i18n';
+import type { TranslationKey } from '../i18n/types';
 
 export type GoogleConnectionHealthStepId = 'credentials' | 'authorization' | 'youtube-api';
 export type GoogleConnectionHealthStepStatus = 'passed' | 'failed' | 'skipped';
@@ -28,10 +30,10 @@ export interface GoogleConnectionHealthDependencies {
 	checkYouTubeAccount: () => Promise<YouTubeAccountIdentity>;
 }
 
-const STEP_LABELS: Record<GoogleConnectionHealthStepId, string> = {
-	credentials: 'OAuth credentials',
-	authorization: 'Google authorization',
-	'youtube-api': 'YouTube Data API',
+const STEP_LABELS: Record<GoogleConnectionHealthStepId, TranslationKey> = {
+	credentials: t('googleHealth.credentials'),
+	authorization: t('googleHealth.authorization'),
+	'youtube-api': t('googleHealth.youtubeApi'),
 };
 
 function step(
@@ -39,7 +41,7 @@ function step(
 	status: GoogleConnectionHealthStepStatus,
 	detail: string,
 ): GoogleConnectionHealthStep {
-	return { id, label: STEP_LABELS[id], status, detail };
+	return { id, label: t(STEP_LABELS[id]), status, detail };
 }
 
 function report(steps: readonly GoogleConnectionHealthStep[]): GoogleConnectionHealthReport {
@@ -51,44 +53,44 @@ function report(steps: readonly GoogleConnectionHealthStep[]): GoogleConnectionH
 }
 
 function skipped(id: GoogleConnectionHealthStepId): GoogleConnectionHealthStep {
-	return step(id, 'skipped', 'Complete the previous check first.');
+	return step(id, 'skipped', t('googleHealth.completePreviousFirst'));
 }
 
 function getAuthorizationFailure(error: unknown): string {
 	if (error instanceof Error && error.message.toLowerCase().includes('timed out')) {
-		return 'Google authorization timed out. Check your connection and try again.';
+		return t('googleHealth.authorizationTimeout');
 	}
-	return 'Google could not renew this authorization. Reconnect your account, then try again.';
+	return t('googleHealth.authorizationRenewFailed');
 }
 
 function getYouTubeFailure(error: unknown): string {
 	if (error instanceof YouTubeRequestError) {
 		if (error.kind === 'auth') {
-			return 'YouTube rejected the Google authorization. Reconnect your account, then try again.';
+			return t('googleHealth.youtubeAuthRejected');
 		}
 		if (error.kind === 'timeout') {
-			return 'The YouTube Data API timed out. Check your connection and try again.';
+			return t('googleHealth.youtubeTimeout');
 		}
 		if (error.kind === 'network') {
-			return 'Geulo could not reach the YouTube Data API. Check your connection and try again.';
+			return t('googleHealth.youtubeConnectionFailed');
 		}
 		if (error.reasons.some(reason => reason === 'quotaExceeded' || reason === 'dailyLimitExceeded')) {
-			return 'YouTube API quota is exhausted. Try again after the quota resets.';
+			return t('googleHealth.quotaExceeded');
 		}
 		if (error.reasons.some(reason => reason === 'accessNotConfigured' || reason === 'serviceDisabled')) {
-			return 'Enable YouTube Data API v3 for this Google Cloud project, then try again.';
+			return t('googleHealth.enableApi');
 		}
 		if (error.status === 403) {
-			return 'YouTube denied this request. Check API enablement and account permissions.';
+			return t('googleHealth.requestDenied');
 		}
 		if (error.status !== undefined && error.status >= 500) {
-			return 'The YouTube Data API is temporarily unavailable. Try again later.';
+			return t('googleHealth.apiUnavailable');
 		}
 	}
 
 	return error instanceof Error
 		? error.message
-		: 'The YouTube Data API check failed. Try again.';
+		: t('googleHealth.checkFailed');
 }
 
 export async function checkGoogleConnectionHealth(
@@ -99,29 +101,29 @@ export async function checkGoogleConnectionHealth(
 	const hasClientSecret = input.clientSecret.trim().length > 0;
 	if (!clientId || !hasClientSecret) {
 		const missing = !clientId && !hasClientSecret
-			? 'Client ID and client secret are missing.'
-			: !clientId ? 'Client ID is missing.' : 'Client secret is missing.';
+			? t('googleHealth.credentialsBothMissing')
+			: !clientId ? t('googleHealth.clientIdMissing') : t('googleHealth.clientSecretMissing');
 		return report([
-			step('credentials', 'failed', `${missing} Import or enter Google OAuth credentials.`),
+			step('credentials', 'failed', `${missing} ${t('googleHealth.importCredentials')}`),
 			skipped('authorization'),
 			skipped('youtube-api'),
 		]);
 	}
 
 	const steps: GoogleConnectionHealthStep[] = [
-		step('credentials', 'passed', 'Client ID and client secret are saved.'),
+		step('credentials', 'passed', t('googleHealth.credentialsSaved')),
 	];
 	if (!input.refreshToken) {
 		return report([
 			...steps,
-			step('authorization', 'failed', 'No Google authorization was found. Connect your account first.'),
+			step('authorization', 'failed', t('googleHealth.noAuthorization')),
 			skipped('youtube-api'),
 		]);
 	}
 
 	try {
 		await dependencies.refreshAuthorization(clientId);
-		steps.push(step('authorization', 'passed', 'Google authorization renewed successfully.'));
+		steps.push(step('authorization', 'passed', t('googleHealth.authorizationRenewed')));
 	} catch (error: unknown) {
 		return report([
 			...steps,
@@ -133,7 +135,7 @@ export async function checkGoogleConnectionHealth(
 	try {
 		const identity = await dependencies.checkYouTubeAccount();
 		const accountLabel = identity.channelTitle?.trim() || identity.channelId;
-		steps.push(step('youtube-api', 'passed', `YouTube responded for ${accountLabel}.`));
+		steps.push(step('youtube-api', 'passed', t('googleHealth.youtubeResponded').replace('{account}', accountLabel)));
 	} catch (error: unknown) {
 		steps.push(step('youtube-api', 'failed', getYouTubeFailure(error)));
 	}

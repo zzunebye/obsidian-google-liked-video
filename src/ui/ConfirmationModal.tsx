@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { App } from 'obsidian';
 import { ReactModal, openReactModal } from './ReactModal';
+import { t } from '../i18n';
 
 interface ConfirmationModalProps {
     message: string;
@@ -22,7 +23,7 @@ const ConfirmationContent: React.FC<ConfirmationModalProps> = ({
     cancelText = 'Cancel',
     type = 'info',
     showRememberChoice = false,
-    rememberChoiceText = "Don't ask me again"
+    rememberChoiceText = t("common.dontAskAgain")
 }: ConfirmationModalProps) => {
     const [rememberChoice, setRememberChoice] = useState(false);
 

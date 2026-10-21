@@ -4,6 +4,7 @@ import { usePlugin } from "src/store/pluginContext";
 import type { YouTubeVideo } from "src/types";
 import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
 import { VideoTranscriptReader } from "./VideoTranscriptReader";
+import { t } from "../i18n";
 
 interface TranscriptSelection {
 	video: YouTubeVideo;
@@ -85,7 +86,7 @@ export function TranscriptWorkspace({ children, label }: { children: ReactNode; 
 			<span id={listLabelId} hidden>{label}</span>
 			<div ref={listRef} className="view-content geulo-transcript-workspace__list" tabIndex={-1} aria-hidden={listHidden || undefined} aria-labelledby={listLabelId}>{children}</div>
 			{selected && <div ref={detailRef} className="geulo-transcript-workspace__detail">
-				<VideoTranscriptReader key={selected.video.id} video={selected.video} backLabel={`Back to ${label}`} onBack={() => setPhase("closing")}
+				<VideoTranscriptReader key={selected.video.id} video={selected.video} backLabel={`${t("transcript.backToPrefix")} ${label}`} onBack={() => setPhase("closing")}
 					displayMode={selected.displayMode} onDisplayModeChange={displayMode => setSelected(current => current ? { ...current, displayMode } : current)}
 					onOpenPane={async (transcript, mode) => {
 						await plugin.openTranscriptPane(selected.video, transcript, mode);

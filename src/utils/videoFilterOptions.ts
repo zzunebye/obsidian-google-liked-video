@@ -1,14 +1,15 @@
 import type { DurationFilter, PresenceFilter, YouTubeVideo } from "src/types";
 import { getVideoLanguageLabel, normalizeVideoLanguage } from "./videoUtils";
+import { t } from "../i18n";
 
 export const AI_SUMMARY_FILTER_OPTIONS: ReadonlyArray<{
 	value: PresenceFilter;
 	label: string;
 	activeLabel: string;
 }> = [
-	{ value: "all", label: "All", activeLabel: "All summaries" },
-	{ value: "with", label: "Has summary", activeLabel: "Has" },
-	{ value: "without", label: "No summary", activeLabel: "Missing" },
+	{ value: "all", label: t("filter.all"), activeLabel: t("filter.allSummaries") },
+	{ value: "with", label: t("filter.hasSummary"), activeLabel: t("filter.has") },
+	{ value: "without", label: t("filter.noSummary"), activeLabel: t("filter.missing") },
 ];
 
 export const DURATION_FILTER_OPTIONS: ReadonlyArray<{
@@ -16,11 +17,11 @@ export const DURATION_FILTER_OPTIONS: ReadonlyArray<{
 	label: string;
 	activeLabel: string;
 }> = [
-	{ value: "all", label: "Any", activeLabel: "Any duration" },
-	{ value: "under5", label: "Under 5 min", activeLabel: "Under 5 min" },
-	{ value: "5to20", label: "5–20 min", activeLabel: "5–20 min" },
-	{ value: "20to60", label: "20–60 min", activeLabel: "20–60 min" },
-	{ value: "60plus", label: "60+ min", activeLabel: "60+ min" },
+	{ value: "all", label: t("filter.any"), activeLabel: t("filter.anyDuration") },
+	{ value: "under5", label: t("filter.under5Min"), activeLabel: t("filter.under5Min") },
+	{ value: "5to20", label: t("filter.5to20Min"), activeLabel: t("filter.5to20Min") },
+	{ value: "20to60", label: t("filter.20to60Min"), activeLabel: t("filter.20to60Min") },
+	{ value: "60plus", label: t("filter.60plusMin"), activeLabel: t("filter.60plusMin") },
 ];
 
 export function getLanguageFilterOptions(

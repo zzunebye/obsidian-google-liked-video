@@ -6,6 +6,7 @@ import { generateSpeech, SpeechServiceError, splitSpeechText, validateSpeechSett
 import { SpeechStorageService } from 'src/services/speechStorageService';
 import { usePlugin } from 'src/store/pluginContext';
 import { SpeechPlaybackOptions } from './SpeechPlaybackOptions';
+import { t } from '../i18n';
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
 
@@ -68,7 +69,7 @@ export function SummarySpeechButton({ summary, disabled, iconOnly = false }: Sum
 
 	const reportError = (error: unknown, controller: AbortController): void => {
 		if (controller.signal.aborted) return;
-		const message = error instanceof SpeechServiceError ? error.message : 'Could not play speech. Please try again.';
+		const message = error instanceof SpeechServiceError ? error.message : t("speech.playbackFailed");
 		debugLogger.error('[Speech] Playback failed', message);
 		stop();
 		updateState('idle');
@@ -95,7 +96,7 @@ export function SummarySpeechButton({ summary, disabled, iconOnly = false }: Sum
 					if (controller.signal.aborted) return;
 					try { await storage.write(key, blob); }
 					catch {
-						if (!controller.signal.aborted) new Notice('Speech is ready, but could not be saved for later playback. Check vault storage permissions.');
+						if (!controller.signal.aborted) new Notice(t("speech.cacheSaveFailed"));
 					}
 				}
 				if (controller.signal.aborted) return;
@@ -112,7 +113,7 @@ export function SummarySpeechButton({ summary, disabled, iconOnly = false }: Sum
 				urlsRef.current[index] = '';
 				const key = cacheKeysRef.current[index];
 				if (key) void storage.remove(key).catch(() => debugLogger.error('[Speech] Could not remove invalid cached audio'));
-				reportError(new SpeechServiceError('audio', 'Could not decode speech audio. Check the speech model and try again.'), controller);
+				reportError(new SpeechServiceError('audio', t("speech.decodeFailed")), controller);
 			};
 			await audio.play();
 			if (!controller.signal.aborted) updateState('playing');
@@ -124,7 +125,7 @@ export function SummarySpeechButton({ summary, disabled, iconOnly = false }: Sum
 		if (regenerate) {
 			try { validateSpeechSettings(settings); }
 			catch (error: unknown) {
-				new Notice(error instanceof Error ? error.message : 'Check your speech settings.');
+				new Notice(error instanceof Error ? error.message : t("speech.settingsCheckFailed"));
 				return;
 			}
 			clearAudio();
@@ -174,20 +175,20 @@ export function SummarySpeechButton({ summary, disabled, iconOnly = false }: Sum
 		} catch (error: unknown) { reportError(error, controller); }
 	};
 
-	const label = state === 'loading' ? 'Cancel speech generation' : state === 'playing' ? 'Pause speech'
-		: state === 'paused' ? 'Resume speech' : 'Read summary aloud';
-	return <div className={`geulo-summary-speech${iconOnly ? ' geulo-summary-speech--icon-only' : ''}`} role="group" aria-label="Summary speech">
+	const label = state === 'loading' ? t("speech.cancelGeneration") : state === 'playing' ? t("speech.pauseSpeech")
+		: state === 'paused' ? t("speech.resumeSpeech") : t("speech.readSummaryAloud");
+	return <div className={`geulo-summary-speech${iconOnly ? ' geulo-summary-speech--icon-only' : ''}`} role="group" aria-label={t("speech.summarySpeech")}>
 		<button ref={buttonRef} type="button" aria-label={label} title={label}
 			disabled={disabled || !summary} onClick={() => void toggle()}>
 			{state === 'loading' ? <Loader2 size={16} className="geulo-summary-speech__spinner" aria-hidden="true" />
 				: state === 'playing' ? <Pause size={16} aria-hidden="true" />
 					: state === 'paused' ? <Play size={16} aria-hidden="true" /> : <Volume2 size={16} aria-hidden="true" />}
-			{!iconOnly && <span aria-live="polite">{state === 'loading' ? 'Preparing…' : state === 'playing' ? 'Pause' : state === 'paused' ? 'Resume' : 'Read aloud'}</span>}
+			{!iconOnly && <span aria-live="polite">{state === 'loading' ? t("speech.preparing") : state === 'playing' ? t("speech.pause") : state === 'paused' ? t("speech.resume") : t("speech.readAloud")}</span>}
 		</button>
-		{(state === 'playing' || state === 'paused') && <button type="button" aria-label="Stop speech" onClick={() => { stop(); updateState('idle'); }}><Square size={14} aria-hidden="true" /></button>}
+		{(state === 'playing' || state === 'paused') && <button type="button" aria-label={t("speech.stop")} onClick={() => { stop(); updateState('idle'); }}><Square size={14} aria-hidden="true" /></button>}
 		<SpeechPlaybackOptions speed={speed} volume={volume}
 			onOpenSettings={() => {
-				if (!plugin.settingTabRef?.openSpeechSettings()) new Notice('Open Settings > Geulo > Speech to configure speech.');
+				if (!plugin.settingTabRef?.openSpeechSettings()) new Notice(t("speech.openSettingsHelp"));
 			}}
 			canRegenerate={!!summary && !disabled && state !== 'loading'} onRegenerate={() => void toggle(true)} onSpeedChange={value => {
 			optionsRef.current.speed = value;

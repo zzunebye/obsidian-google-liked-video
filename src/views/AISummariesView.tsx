@@ -10,21 +10,22 @@ import { SummarySpeechButton } from "src/ui/SummarySpeechButton";
 import { VideoCommentsModal } from "src/ui/VideoCommentsModal";
 import { ViewHeader } from "src/ui/ViewHeader";
 import { usePlugin } from "../store/pluginContext";
+import { t } from "../i18n";
 
 type SummarySort = "newest" | "oldest" | "title" | "channel";
 type SummarySourceFilter = "all" | SummarySource;
 
 const SORT_OPTIONS: ReadonlyArray<{ value: SummarySort; label: string }> = [
-	{ value: "newest", label: "Newest generated" },
-	{ value: "oldest", label: "Oldest generated" },
-	{ value: "title", label: "Title A–Z" },
-	{ value: "channel", label: "Channel A–Z" },
+	{ value: "newest", label: t("summaries.newest") },
+	{ value: "oldest", label: t("summaries.oldest") },
+	{ value: "title", label: t("summaries.titleAZ") },
+	{ value: "channel", label: t("summaries.channelAZ") },
 ];
 
 const SOURCE_OPTIONS: ReadonlyArray<{ value: SummarySourceFilter; label: string }> = [
-	{ value: "all", label: "All" },
-	{ value: "transcript", label: "Transcript-based" },
-	{ value: "video", label: "Video-based" },
+	{ value: "all", label: t("filter.all") },
+	{ value: "transcript", label: t("summary.transcriptBased") },
+	{ value: "video", label: t("summary.videoBased") },
 ];
 
 function getSource(summary: SummaryFileData): SummarySource {
@@ -32,11 +33,11 @@ function getSource(summary: SummaryFileData): SummarySource {
 }
 
 function getTitle(summary: SummaryFileData): string {
-	return summary.title.trim() || `YouTube video · ${summary.videoId}`;
+	return summary.title.trim() || `${t("summaries.youtubeVideo")} · ${summary.videoId}`;
 }
 
 function getChannel(summary: SummaryFileData): string {
-	return summary.channelTitle.trim() || "Unknown channel";
+	return summary.channelTitle.trim() || t("summaries.unknownChannel");
 }
 
 function getPreview(summary: SummaryFileData): string {
@@ -52,7 +53,7 @@ function getPreview(summary: SummaryFileData): string {
 
 function formatGeneratedAt(generatedAt: string): string {
 	const date = new Date(generatedAt);
-	if (Number.isNaN(date.getTime())) return "Unknown date";
+	if (Number.isNaN(date.getTime())) return t("summaries.unknownDate");
 	return new Intl.DateTimeFormat(undefined, {
 		dateStyle: "medium",
 		timeStyle: "short",
@@ -170,7 +171,7 @@ export const AISummariesView = () => {
 			});
 		} catch (error: unknown) {
 			debugLogger.error("[AI summaries] Failed to open YouTube video", error);
-			new Notice("Unable to open this video on YouTube. Please try again.");
+			new Notice(t("summaries.openVideoFailed"));
 		}
 	};
 
@@ -180,22 +181,22 @@ export const AISummariesView = () => {
 		<div className="ai-summaries-view">
 			<ViewHeader
 				icon={<Bot className="video-view-header__icon" />}
-				title="AI summaries"
-				badge={`${summaries.length} saved`}
+				title={t("summaries.title")}
+				badge={t("summaries.savedCount", { count: summaries.length })}
 			/>
 			<div ref={workspaceRef} className={`ai-summaries-workspace${selectedSummary ? " ai-summaries-workspace--open" : ""}`}>
-				<div ref={listRef} className="ai-summaries-list" tabIndex={-1} aria-label="Saved AI summaries">
+				<div ref={listRef} className="ai-summaries-list" tabIndex={-1} aria-label={t("summaries.savedList")}>
 					<div className="ai-summaries-collection-controls">
 						<div className="ai-summaries-toolbar">
 							<SearchBar
 								searchTerm={searchTerm}
 								onSearchTermChange={setSearchTerm}
 								escapeClearsSearch
-								ariaLabel="Search AI summaries"
-								placeholder="Search titles, channels, and summaries…"
+								ariaLabel={t("summaries.search")}
+								placeholder={t("summaries.searchPlaceholder")}
 							/>
 							<label className="ai-summaries-sort">
-								<span>Sort</span>
+								<span>{t("summaries.sort")}</span>
 								<select value={sort} onChange={event => setSort(event.target.value as SummarySort)}>
 									{SORT_OPTIONS.map(option => (
 										<option key={option.value} value={option.value}>{option.label}</option>
@@ -203,7 +204,7 @@ export const AISummariesView = () => {
 								</select>
 							</label>
 						</div>
-						<div className="ai-summaries-source-filter" role="group" aria-label="Filter summaries by source">
+						<div className="ai-summaries-source-filter" role="group" aria-label={t("summaries.filterSource")}>
 							{SOURCE_OPTIONS.map(option => (
 								<button key={option.value} type="button" aria-pressed={sourceFilter === option.value}
 									onClick={() => setSourceFilter(option.value)}>
@@ -212,27 +213,27 @@ export const AISummariesView = () => {
 							))}
 						</div>
 						<div className="ai-summaries-result-count" aria-live="polite">
-							{visibleSummaries.length} of {summaries.length} summaries
+							{visibleSummaries.length} / {summaries.length} {t("summaries.count")}
 						</div>
 					</div>
 					<div className="ai-summaries-results">
 						{visibleSummaries.length === 0 ? (
 							<div className="ai-summaries-empty">
 								<Bot size={32} aria-hidden="true" />
-								<strong>{hasActiveQuery ? "No matching summaries" : "No saved AI summaries"}</strong>
+								<strong>{hasActiveQuery ? t("summaries.noMatch") : t("summaries.noneSaved")}</strong>
 								<span>{hasActiveQuery
-									? "No summaries match the current search and filters."
-									: "Choose Generate AI summary on a video card. Your saved summaries will appear here."}</span>
+									? t("summaries.noMatchHelp")
+									: t("summaries.noneSavedHelp")}</span>
 								{!hasActiveQuery && <button type="button" onClick={() => {
 									void plugin.activateView().catch((error: unknown) => {
 										debugLogger.error("[AI summaries] Failed to open liked videos", error);
-										new Notice("Unable to open liked videos. Please try again.");
+										new Notice(t("summaries.openLikedFailed"));
 									});
-								}}>Browse liked videos</button>}
+								}}>{t("summaries.browseLiked")}</button>}
 								{hasActiveQuery && <button type="button" onClick={() => {
 									setSearchTerm("");
 									setSourceFilter("all");
-								}}>Clear search and filters</button>}
+								}}>{t("liked.clearSearchAndFilters")}</button>}
 							</div>
 						) : visibleSummaries.map(summary => {
 							const title = getTitle(summary);
@@ -245,7 +246,7 @@ export const AISummariesView = () => {
 								}}>
 								<strong>{title}</strong>
 								<span className="ai-summary-list-item__metadata">
-									<span className="ai-summary-list-item__source">{source === "transcript" ? "Transcript-based" : "Video-based"}</span>
+									<span className="ai-summary-list-item__source">{source === "transcript" ? t("summary.transcriptBased") : t("summary.videoBased")}</span>
 									<span>{getChannel(summary)}</span>
 									<span aria-hidden="true">·</span>
 									<time dateTime={summary.generatedAt}>{formatGeneratedAt(summary.generatedAt)}</time>
@@ -255,7 +256,7 @@ export const AISummariesView = () => {
 						})}
 					</div>
 				</div>
-				<div ref={detailRef} className="ai-summaries-detail" role="region" tabIndex={-1} aria-label="AI summary detail">
+				<div ref={detailRef} className="ai-summaries-detail" role="region" tabIndex={-1} aria-label={t("summaries.detail")}>
 					{selectedSummary ? (
 						<div className="ai-summary-reader">
 							<header className="ai-summary-reader__header">
@@ -263,11 +264,11 @@ export const AISummariesView = () => {
 									<button type="button" className="ai-summary-reader__back"
 										onClick={() => setSelectedVideoId(null)}>
 										<ArrowLeft size={16} aria-hidden="true" />
-										All summaries
+										{t("summaries.all")}
 									</button>
 									<div className="ai-summary-reader__header-actions">
 										<button type="button" className="ai-summary-reader__action"
-											title="Show comments" onClick={event => {
+											title={t("comments.title")} onClick={event => {
 												const trigger = event.currentTarget;
 												const modal = new VideoCommentsModal(
 													plugin.app,
@@ -281,12 +282,12 @@ export const AISummariesView = () => {
 												modal.open();
 											}}>
 											<MessageCircle size={14} aria-hidden="true" />
-											<span>Comments</span>
+											<span>{t("comments.title")}</span>
 										</button>
 										<button type="button" className="ai-summary-reader__action"
-											title="Open YouTube" onClick={() => void openVideo(selectedSummary)}>
+											title={t("youtube.open")} onClick={() => void openVideo(selectedSummary)}>
 											<ExternalLink size={14} aria-hidden="true" />
-											<span>Open YouTube</span>
+										<span>{t("youtube.open")}</span>
 										</button>
 										<SummarySpeechButton summary={speechSummary} disabled={summaryBusy} iconOnly />
 									</div>
@@ -332,7 +333,7 @@ export const AISummariesView = () => {
 					) : (
 						<div className="ai-summaries-detail-placeholder">
 							<Bot size={32} aria-hidden="true" />
-							<span>Select a summary to read it.</span>
+							<span>{t("summaries.selectToRead")}</span>
 						</div>
 					)}
 				</div>

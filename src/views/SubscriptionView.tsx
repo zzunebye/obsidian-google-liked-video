@@ -1,4 +1,5 @@
 import { Menu, Modal, Notice } from "obsidian";
+import { getFormatLocale, t } from "../i18n";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import {
@@ -37,7 +38,6 @@ import { ViewHeader } from "src/ui/ViewHeader";
 import { OpenYouTubeButton } from "src/ui/OpenYouTubeButton";
 import { useNoteExistenceMap } from "src/hooks/useNoteExistence";
 import { localStorageService } from "src/storage";
-import { UI_TEXT } from "src/constants/uiText";
 import type { SubscriptionProgress, SubscriptionSnapshot } from "src/services/subscriptionService";
 import type {
 	DurationFilter,
@@ -80,15 +80,15 @@ interface SubscriptionViewProps {
 }
 
 const SORT_OPTIONS = [
-	{ value: "viewCount", label: UI_TEXT.SORT_BY_VIEW_COUNT },
-	{ value: "averageViewsPerDay", label: UI_TEXT.SORT_BY_AVERAGE_VIEWS_PER_DAY },
-	{ value: "likeCount", label: UI_TEXT.SORT_BY_LIKE_COUNT },
-	{ value: "commentCount", label: UI_TEXT.SORT_BY_COMMENT_COUNT },
-	{ value: "likeViewRatio", label: UI_TEXT.SORT_BY_LIKE_VIEW_RATIO },
-	{ value: "date", label: UI_TEXT.SORT_BY_PUBLISHED_DATE },
-	{ value: "title", label: UI_TEXT.SORT_BY_TITLE },
-	{ value: "channelTitle", label: UI_TEXT.SORT_BY_CHANNEL_NAME },
-	{ value: "duration", label: UI_TEXT.SORT_BY_DURATION },
+	{ value: "viewCount", label: t("sort.viewCount") },
+	{ value: "averageViewsPerDay", label: t("sort.averageViewsPerDay") },
+	{ value: "likeCount", label: t("sort.likeCount") },
+	{ value: "commentCount", label: t("sort.commentCount") },
+	{ value: "likeViewRatio", label: t("sort.likeViewRatio") },
+	{ value: "date", label: t("sort.publishedDate") },
+	{ value: "title", label: t("sort.title") },
+	{ value: "channelTitle", label: t("sort.channel") },
+	{ value: "duration", label: t("sort.duration") },
 ] as const;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -98,15 +98,15 @@ const PERIOD_FILTER_OPTIONS: ReadonlyArray<{
 	label: string;
 	activeLabel: string;
 }> = [
-	{ value: "all", label: "Any time", activeLabel: "Any upload date" },
-	{ value: "day", label: "Last 24 hours", activeLabel: "Last 24 hours" },
-	{ value: "week", label: "Past 7 days", activeLabel: "Past 7 days" },
-	{ value: "month", label: "Past 30 days", activeLabel: "Past 30 days" },
-	{ value: "year", label: "Past year", activeLabel: "Past year" },
+	{ value: "all", label: t("filter.anyTime"), activeLabel: t("filter.anyUploadDate") },
+	{ value: "day", label: t("subscription.last24Hours"), activeLabel: t("subscription.last24Hours") },
+	{ value: "week", label: t("subscription.past7Days"), activeLabel: t("subscription.past7Days") },
+	{ value: "month", label: t("subscription.past30Days"), activeLabel: t("subscription.past30Days") },
+	{ value: "year", label: t("filter.pastYear"), activeLabel: t("filter.pastYear") },
 ];
 
 const FilterChip = ({ label, onClear }: { label: string; onClear: () => void }) => (
-	<button type="button" className="active-tag-filter__chip" title={`Clear ${label}`} onClick={onClear}>
+	<button type="button" className="active-tag-filter__chip" title={`${t("filter.clearFilter")}: ${label}`} onClick={onClear}>
 		<span className="active-tag-filter__label">{label}</span>
 		<span className="active-tag-filter__remove" aria-hidden="true">×</span>
 	</button>
@@ -120,13 +120,13 @@ function isAbortError(error: unknown): boolean {
 
 function formatUpdatedAt(updatedAt: number): string {
 	const elapsedMinutes = Math.floor((Date.now() - updatedAt) / 60000);
-	if (elapsedMinutes < 1) return "Updated just now";
-	if (elapsedMinutes < 60) return `Updated ${elapsedMinutes}m ago`;
-	return `Updated ${new Date(updatedAt).toLocaleString()}`;
+	if (elapsedMinutes < 1) return t("subscription.updatedJustNow");
+	if (elapsedMinutes < 60) return t("subscription.updatedMinutesAgo", { count: elapsedMinutes });
+	return `${t("subscription.lastChecked")} ${new Date(updatedAt).toLocaleString(getFormatLocale())}`;
 }
 
 function formatSubscriptionCutoffDate(maxAgeDays: number): string {
-	return new Date(Date.now() - maxAgeDays * DAY_MS).toLocaleDateString(undefined, {
+	return new Date(Date.now() - maxAgeDays * DAY_MS).toLocaleDateString(getFormatLocale(), {
 		year: "numeric",
 		month: "short",
 		day: "numeric",
@@ -191,15 +191,15 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 	const openPluginSettings = (): void => {
 		if (!plugin.settingTabRef?.openVideoDisplaySettings()) {
-			new Notice("Unable to open Geulo settings in this Obsidian version.");
+			new Notice(t("playlist.openError"));
 		}
 	};
 
 	const settingsAction = (
 		<button
 			type="button"
-			title={UI_TEXT.BTN_SETTINGS}
-			aria-label={UI_TEXT.BTN_SETTINGS}
+			title={t("common.settings")}
+			aria-label={t("common.settings")}
 			onClick={openPluginSettings}
 		>
 			<Settings size={16} />
@@ -265,7 +265,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			else setSnapshot(result);
 		} catch (fetchError) {
 			if (!isAbortError(fetchError)) {
-				setError(fetchError instanceof Error ? fetchError.message : "Failed to load subscriptions");
+				setError(fetchError instanceof Error ? fetchError.message : t("subscription.loadFailed"));
 			}
 		} finally {
 			if (abortControllerRef.current === controller) {
@@ -559,10 +559,10 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 	const hasActiveQuery = debouncedSearchTerm.length > 0 || activeFilterCount > 0;
 	const selectedSortLabel = SORT_OPTIONS.find((option) => option.value === sortOption)?.label;
 	const sortDirectionLabel = sortOption === "title" || sortOption === "channelTitle"
-		? sortOrder === "ASC" ? "A to Z" : "Z to A"
+		? sortOrder === "ASC" ? t("sort.aToZ") : t("sort.zToA")
 		: sortOption === "date"
-			? sortOrder === "ASC" ? "oldest first" : "newest first"
-			: sortOrder === "ASC" ? "lowest first" : "highest first";
+			? sortOrder === "ASC" ? t("sort.oldestFirst") : t("sort.newestFirst")
+			: sortOrder === "ASC" ? t("sort.lowestFirst") : t("sort.highestFirst");
 
 	const browsingKey = JSON.stringify([debouncedSearchTerm, selectedTag, channelId, period,
 		contentTypes, sortOption, sortOrder, selectedCategory, aiSummaryFilter, videoNoteFilter,
@@ -576,11 +576,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		try {
 			await likeVideoAndPersist(plugin.likedVideoApi, video, 0, plugin.videoNotes.captureLikedUpdate());
 			setLikedVideoIds((current) => new Set(current).add(video.id));
-			new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
+			new Notice(`${t("subscription.likedPrefix")} "${video.snippet.title}"`);
 		} catch (likeError) {
 			console.error("Failed to like subscription video:", likeError);
 			new Notice(likeError instanceof CacheOwnershipError
-				? likeError.message : UI_TEXT.NOTICE_LIKE_FAILED);
+				? likeError.message : t("subscription.likeFailed"));
 		} finally {
 			pendingLikeIdsRef.current.delete(video.id);
 			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
@@ -602,8 +602,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				return next;
 			});
 			const fragment = new DocumentFragment();
-			fragment.createSpan({ text: `Unliked "${video.snippet.title}" ` });
-			const undoButton = fragment.createEl("button", { text: "Undo", cls: "geulo-undo-btn" });
+			fragment.createSpan({ text: `${t("subscription.unlikedPrefix")} "${video.snippet.title}" ` });
+			const undoButton = fragment.createEl("button", { text: t("liked.undo"), cls: "geulo-undo-btn" });
 			const notice = new Notice(fragment, 5000);
 			undoButton.addEventListener("click", () => {
 				if (pendingLikeIdsRef.current.has(video.id)) return;
@@ -623,7 +623,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 					} catch (undoError) {
 						console.error("Failed to undo subscription video unlike:", undoError);
 						new Notice(undoError instanceof CacheOwnershipError
-							? undoError.message : UI_TEXT.NOTICE_LIKE_FAILED);
+							? undoError.message : t("subscription.likeFailed"));
 						undoButton.disabled = false;
 					} finally {
 						pendingLikeIdsRef.current.delete(video.id);
@@ -634,7 +634,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		} catch (unlikeError) {
 			console.error("Failed to unlike subscription video:", unlikeError);
 			new Notice(unlikeError instanceof CacheOwnershipError
-				? unlikeError.message : UI_TEXT.NOTICE_UNLIKE_FAILED);
+				? unlikeError.message : t("subscription.unlikeFailed"));
 		} finally {
 			pendingLikeIdsRef.current.delete(video.id);
 			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
@@ -683,7 +683,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			if (!controller.signal.aborted) setPendingSnapshot(result);
 		} catch (retryError) {
 			if (!isAbortError(retryError)) {
-				setError(retryError instanceof Error ? retryError.message : "Failed to retry channels");
+				setError(retryError instanceof Error ? retryError.message : t("subscription.retryChannelsFailed"));
 			}
 		} finally {
 			if (abortControllerRef.current === controller) {
@@ -731,7 +731,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 
 	const openSortMenu = (event: MouseEvent<HTMLButtonElement>): void => {
 		const menu = new Menu().setUseNativeMenu(false);
-		menu.addItem((item) => item.setTitle("Sort by").setIsLabel(true));
+		menu.addItem((item) => item.setTitle(t("liked.sortBy")).setIsLabel(true));
 		SORT_OPTIONS.forEach((option) => {
 			menu.addItem((item) => item
 				.setTitle(option.label)
@@ -740,11 +740,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		});
 		menu.addSeparator();
 		menu.addItem((item) => item
-			.setTitle("Ascending")
+			.setTitle(t("liked.ascending"))
 			.setChecked(sortOrder === "ASC")
 			.onClick(() => setSortOrder("ASC")));
 		menu.addItem((item) => item
-			.setTitle("Descending")
+			.setTitle(t("liked.descending"))
 			.setChecked(sortOrder === "DESC")
 			.onClick(() => setSortOrder("DESC")));
 		const rect = event.currentTarget.getBoundingClientRect();
@@ -763,20 +763,20 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				setChannelId("all");
 			}
 			if (result.succeededChannels.length === 1) {
-				new Notice(`Unsubscribed from ${result.succeededChannels[0].title}.`);
+				new Notice(`${t("subscription.unsubscribedPrefix")} ${result.succeededChannels[0].title} ${t("subscription.unsubscribedSuffix")}`);
 			} else if (result.succeededChannels.length > 1) {
-				new Notice(`Unsubscribed from ${result.succeededChannels.length} channel(s).`);
+				new Notice(t("subscription.unsubscribedMany", { count: result.succeededChannels.length }));
 			}
 			if (result.failedChannels.length === 1) {
-				new Notice(`Could not unsubscribe from ${result.failedChannels[0].channel.title}.`, 8000);
+				new Notice(`${t("subscription.unsubscribeFailedPrefix")} ${result.failedChannels[0].channel.title} ${t("subscription.unsubscribedFailedSuffix")}`, 8000);
 			} else if (result.failedChannels.length > 1) {
-				new Notice(`Could not unsubscribe from ${result.failedChannels.length} channel(s).`, 8000);
+				new Notice(t("subscription.unsubscribeFailedMany", { count: result.failedChannels.length }), 8000);
 			}
 		} catch (unsubscribeError) {
 			new Notice(
 				unsubscribeError instanceof Error
 					? unsubscribeError.message
-					: "Failed to update the subscription cache.",
+					: t("subscription.failedCacheUpdate"),
 				8000,
 			);
 		} finally {
@@ -790,26 +790,26 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		const singleChannel = channels.length === 1 ? channels[0] : null;
 		const modal = new Modal(plugin.app);
 		modal.setTitle(
-			singleChannel
-				? `Unsubscribe from ${singleChannel.title}?`
-				: `Unsubscribe from ${channels.length} channels?`,
+				singleChannel
+					? `${t("subscription.confirmUnsubscribeTitle")} ${singleChannel.title}?`
+					: t("subscription.confirmUnsubscribeMany", { count: channels.length }),
 		);
 		modal.contentEl.createEl("p", {
-			text: "This removes the subscriptions from your YouTube account and removes their cached videos from this view.",
+			text: t("subscription.confirmUnsubscribeHelp"),
 		});
 		if (!singleChannel) {
 			const channelList = modal.contentEl.createEl("ul");
 			channels.forEach((channel) => channelList.createEl("li", { text: channel.title }));
 		}
 		modal.contentEl.createEl("p", {
-				text: `YouTube API quota: ${quotaUnits} units (YouTube sets each subscription change at a fixed 50 units).`,
+				text: `${t("subscription.quota")} ${quotaUnits} ${t("subscription.quotaHelp")}`,
 			cls: "subscription-unsubscribe__quota",
 		});
 		const actions = modal.contentEl.createDiv({ cls: "subscription-unsubscribe__actions" });
-		const cancelButton = actions.createEl("button", { text: "Cancel" });
+		const cancelButton = actions.createEl("button", { text: t("settings.cancel") });
 		cancelButton.addEventListener("click", () => modal.close());
 		const unsubscribeButton = actions.createEl("button", {
-			text: "Unsubscribe",
+			text: t("subscription.unsubscribe"),
 			cls: "mod-warning",
 		});
 		unsubscribeButton.addEventListener("click", () => {
@@ -824,15 +824,15 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			<div className="subscription-view">
 				<ViewHeader
 					icon={<Rss className="video-view-header__icon" />}
-					title="Subscriptions"
+					title={t("subscription.title")}
 					actions={settingsAction}
 				/>
 				<div className="no-videos-found">
 					<Rss size={32} aria-hidden="true" />
-					<div className="no-videos-found__title">Subscriptions are not loaded</div>
-					<div className="no-videos-found__text">Load the latest 10 uploads from each subscribed channel when you are ready.</div>
+					<div className="no-videos-found__title">{t("subscription.loadUnloaded")}</div>
+					<div className="no-videos-found__text">{t("subscription.loadPromptText")}</div>
 					<button type="button" className="videos-error__retry-button" onClick={() => void runFetch(false)}>
-						<RefreshCw size={16} /> Load subscriptions
+						<RefreshCw size={16} /> {t("subscription.loadButtonText")}
 					</button>
 				</div>
 			</div>
@@ -844,14 +844,14 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			<div className="subscription-view">
 				<ViewHeader
 					icon={<Rss className="video-view-header__icon" />}
-					title="Subscriptions"
+					title={t("subscription.title")}
 					actions={settingsAction}
 				/>
 				<div className="subscription-loading">
 					<Loader2 size={24} className="animate-spin" />
-					<span role="status" aria-atomic="true">Loading subscriptions…</span>
-					{progress && <span>{progress.completedChannels} / {progress.totalChannels} channels checked</span>}
-					<button type="button" onClick={() => abortControllerRef.current?.abort()}>Stop</button>
+					<span role="status" aria-atomic="true">{t("subscription.loadingStatus")}</span>
+					{progress && <span>{progress.completedChannels} / {progress.totalChannels} {t("subscription.channelsCheckedLabel")}</span>}
+					<button type="button" onClick={() => abortControllerRef.current?.abort()}>{t("subscription.stop")}</button>
 				</div>
 			</div>
 		);
@@ -862,15 +862,15 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			<div className="subscription-view">
 				<ViewHeader
 					icon={<Rss className="video-view-header__icon" />}
-					title="Subscriptions"
+					title={t("subscription.title")}
 					actions={settingsAction}
 				/>
 				<div className="videos-error" role="alert">
 					<AlertCircle size={48} />
-					<div className="videos-error__title">Failed to load subscriptions</div>
+					<div className="videos-error__title">{t("subscription.loadError")}</div>
 					<div className="videos-error__message">{error}</div>
 					<button type="button" className="videos-error__retry-button" onClick={onRequestRefresh}>
-						<RefreshCw size={16} /> Try again
+						<RefreshCw size={16} /> {t("subscription.tryAgain")}
 					</button>
 				</div>
 			</div>
@@ -881,11 +881,11 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 		<div ref={keyboardFocus.viewRef} className="subscription-view" onKeyDown={handleViewKeyDown}>
 			<ViewHeader
 				icon={<Rss className="video-view-header__icon" />}
-				title="Subscriptions"
-				badge={`${snapshot?.channels.length ?? 0} channels`}
+				title={t("subscription.title")}
+				badge={`${snapshot?.channels.length ?? 0} ${t("subscription.channels")}`}
 				actions={
 					<>
-						<button type="button" className="refresh-button" onClick={onRequestRefresh} disabled={isLoading} title="Refresh subscriptions">
+						<button type="button" className="refresh-button" onClick={onRequestRefresh} disabled={isLoading} title={t("subscription.refresh")}>
 							<RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
 						</button>
 						{settingsAction}
@@ -894,22 +894,22 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			/>
 
 			<div className="subscription-status">
-				<span>{snapshot ? formatUpdatedAt(snapshot.updatedAt) : "Not updated"}</span>
-				<span>Latest 10 uploads per channel · Cutoff: {subscriptionCutoffDate}</span>
+				<span>{snapshot ? formatUpdatedAt(snapshot.updatedAt) : t("subscription.statusNotUpdated")}</span>
+				<span>{t("subscription.latestUploadsStatus")} · {t("subscription.cutoffLabel")} {subscriptionCutoffDate}</span>
 			</div>
 
 			{isLoading && progress && (
 				<div className="subscription-progress">
 					<span>{progress.completedChannels} / {progress.totalChannels} channels checked</span>
-					<progress aria-label="Subscription channels checked" value={progress.completedChannels} max={Math.max(progress.totalChannels, 1)} />
-					<button type="button" onClick={() => abortControllerRef.current?.abort()}>Stop</button>
+					<progress aria-label={t("subscription.channelsCheckedLabel")} value={progress.completedChannels} max={Math.max(progress.totalChannels, 1)} />
+							<button type="button" onClick={() => abortControllerRef.current?.abort()}>{t("subscription.stop")}</button>
 				</div>
 			)}
 
 			{pendingSnapshot && (
 				<div role="status" aria-atomic="true">
 					<button type="button" className="subscription-new-videos" onClick={applyPendingSnapshot}>
-						{newVideoCount > 0 ? `Show ${newVideoCount} new videos` : "Apply refreshed videos"}
+						{newVideoCount > 0 ? t("subscription.showNewVideos", { count: newVideoCount }) : t("subscription.applyRefreshedVideos")}
 					</button>
 				</div>
 			)}
@@ -918,39 +918,39 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				&& dismissedFailureUpdatedAt !== snapshot.updatedAt && (
 				<div className="subscription-warning">
 					<div className="subscription-warning__header">
-						<span role="status" aria-atomic="true">{snapshot.failedChannels.length} channels could not be updated. Previous videos were kept.</span>
+						<span role="status" aria-atomic="true">{t("subscription.failedChannelsCount", { count: snapshot.failedChannels.length })}</span>
 						<div className="subscription-warning__actions">
 							{hasRetryableFailures && (
-								<button type="button" onClick={() => void retryFailedChannels()} disabled={isLoading}>Retry</button>
+								<button type="button" onClick={() => void retryFailedChannels()} disabled={isLoading}>{t("subscription.retry")}</button>
 							)}
 							<button
 								type="button"
 								className="subscription-warning__dismiss"
 								onClick={() => setDismissedFailureUpdatedAt(snapshot.updatedAt)}
-								aria-label="Dismiss failed channel notice"
-								title="Dismiss"
+								aria-label={t("subscription.dismissFailure")}
+								title={t("subscription.failureDismiss")}
 							>
 								<X size={16} />
 							</button>
 						</div>
 					</div>
 					<details className="subscription-warning__details">
-						<summary>Show failed channels</summary>
+						<summary>{t("subscription.showFailedChannels")}</summary>
 						<ul>
 							{snapshot.failedChannels.map((channel) => {
 								const detail = snapshot.failureDetails[channel.id];
 								return (
 									<li key={channel.id}>
 										<strong>{channel.title}</strong>
-										<span>{detail?.message ?? "Failure reason was not recorded. Retry once to check it."}</span>
+										<span>{detail?.message ?? t("subscription.failureUnrecordedHelp")}</span>
 										<button
 											type="button"
 											className="subscription-warning__channel-link"
 											onClick={() => openChannel(channel)}
-											aria-label={`Open ${channel.title} channel on YouTube`}
+											aria-label={t("subscription.openChannelOnYoutube")}
 										>
 											<ExternalLink size={14} aria-hidden="true" />
-											<span>Open channel</span>
+											<span>{t("subscription.openChannel")}</span>
 										</button>
 									</li>
 								);
@@ -962,7 +962,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 							onClick={() => confirmUnsubscribeChannels(snapshot.failedChannels)}
 							disabled={isLoading || isUnsubscribing}
 						>
-							{isUnsubscribing ? "Unsubscribing…" : "Unsubscribe the channel(s)"}
+							{isUnsubscribing ? t("subscription.unsubscribingStatus") : t("subscription.unsubscribeSelected")}
 						</button>
 					</details>
 				</div>
@@ -976,7 +976,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 						searchTerm={searchTerm}
 						onSearchTermChange={setSearchTerm}
 						escapeClearsSearch
-						ariaLabel="Search subscriptions"
+						ariaLabel={t("subscription.searchLabel")}
 					/>
 				</div>
 				<button
@@ -984,8 +984,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 					className={`filter-toggle-button ${activeFilterCount > 0 ? "filter-toggle-button--active" : ""}`}
 					title={
 						filtersExpanded
-							? UI_TEXT.FILTERS_HIDE
-							: UI_TEXT.FILTERS_SHOW
+							? t("filters.hide")
+							: t("filters.show")
 					}
 					aria-expanded={filtersExpanded}
 					aria-controls={filtersId}
@@ -999,8 +999,8 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				<button
 					type="button"
 					className="sort-menu-button"
-					title={`Sort by: ${selectedSortLabel}, ${sortDirectionLabel}`}
-					aria-label={`Sort videos. Current: ${selectedSortLabel}, ${sortDirectionLabel}`}
+					title={`${t("liked.sortBy")}: ${selectedSortLabel}, ${sortDirectionLabel}`}
+					aria-label={`${t("subscription.sortVideos")}. ${t("subscription.currentSort")}: ${selectedSortLabel}, ${sortDirectionLabel}`}
 					aria-haspopup="menu"
 					onClick={openSortMenu}
 				>
@@ -1012,117 +1012,117 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				</button>
 			</div>
 			{activeFilterCount > 0 && (
-				<div className="active-tag-filter active-filter-list" aria-label="Active filters">
-					{selectedTag && <FilterChip label={`Tag: ${selectedTag}`} onClear={() => setSelectedTag(null)} />}
-					{channelId !== "all" && <FilterChip label={`Channel: ${selectedChannel?.title ?? channelId}`} onClear={() => setChannelId("all")} />}
-					{selectedCategory !== "all" && <FilterChip label={`Category: ${selectedCategoryTitle}`} onClear={() => setSelectedCategory("all")} />}
-					{hasContentTypeFilter && <FilterChip label={`Type: ${contentTypeFilterLabel}`} onClear={() => setContentTypes([])} />}
+				<div className="active-tag-filter active-filter-list" aria-label={t("filter.active")}>
+					{selectedTag && <FilterChip label={`${t("filter.tag")}: ${selectedTag}`} onClear={() => setSelectedTag(null)} />}
+					{channelId !== "all" && <FilterChip label={`${t("filter.channel")}: ${selectedChannel?.title ?? channelId}`} onClear={() => setChannelId("all")} />}
+					{selectedCategory !== "all" && <FilterChip label={`${t("filter.category")}: ${selectedCategoryTitle}`} onClear={() => setSelectedCategory("all")} />}
+					{hasContentTypeFilter && <FilterChip label={`${t("filter.type")}: ${contentTypeFilterLabel}`} onClear={() => setContentTypes([])} />}
 					{aiSummaryFilter !== "all" && (
-						<FilterChip label={`AI summary: ${aiSummaryFilterLabel}`} onClear={() => setAISummaryFilter("all")} />
+						<FilterChip label={`${t("filter.aiSummary")}: ${aiSummaryFilterLabel}`} onClear={() => setAISummaryFilter("all")} />
 					)}
 					{videoNoteFilter !== "all" && (
-						<FilterChip label={videoNoteFilter === "with" ? "Has video note" : "No video note"} onClear={() => setVideoNoteFilter("all")} />
+						<FilterChip label={videoNoteFilter === "with" ? t("filter.hasVideoNote") : t("filter.noVideoNote")} onClear={() => setVideoNoteFilter("all")} />
 					)}
 					{period !== "all" && (
-						<FilterChip label={`Uploaded: ${periodLabel}`} onClear={() => setPeriod("all")} />
+						<FilterChip label={`${t("filter.uploadDate")}: ${periodLabel}`} onClear={() => setPeriod("all")} />
 					)}
 					{durationFilter !== "all" && (
-						<FilterChip label={`Duration: ${durationFilterLabel}`} onClear={() => setDurationFilter("all")} />
+						<FilterChip label={`${t("filter.duration")}: ${durationFilterLabel}`} onClear={() => setDurationFilter("all")} />
 					)}
 					{audioLanguageFilter !== "all" && (
-						<FilterChip label={`Audio language: ${getVideoLanguageLabel(audioLanguageFilter)}`} onClear={() => setAudioLanguageFilter("all")} />
+						<FilterChip label={`${t("filter.audioLanguage")}: ${getVideoLanguageLabel(audioLanguageFilter)}`} onClear={() => setAudioLanguageFilter("all")} />
 					)}
 					{languageFilter !== "all" && (
-						<FilterChip label={`Language: ${getVideoLanguageLabel(languageFilter)}`} onClear={() => setLanguageFilter("all")} />
+						<FilterChip label={`${t("filter.language")}: ${getVideoLanguageLabel(languageFilter)}`} onClear={() => setLanguageFilter("all")} />
 					)}
-					<button type="button" className="active-filter-list__clear" onClick={clearAllFilters}>Clear all</button>
+					<button type="button" className="active-filter-list__clear" onClick={clearAllFilters}>{t("filter.clearAll")}</button>
 				</div>
 			)}
 
 			{filtersExpanded && (
 				<div id={filtersId} className="filters-container liked-video-filters">
-					<section className="liked-video-filter-group" aria-label="Channel">
-						<h3 className="liked-video-filter-group__title">Channel</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.channel")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.channel")}</h3>
 						<div className="liked-video-filter-group__fields liked-video-filter-group__fields--category">
 							<LikedVideoFilterSelect
-								label="Channel" ariaLabel="Filter by channel" showLabel={false}
+								label={t("filter.channel")} ariaLabel={t("filter.channel")} showLabel={false}
 								value={channelId} onChange={setChannelId}
 								options={[
-									{ value: "all", label: "All channels", count: videos.length },
+									{ value: "all", label: t("playlist.allChannels"), count: videos.length },
 									...(snapshot?.channels ?? []).map((channel) => ({ value: channel.id, label: channel.title })),
 								]}
 							/>
 						</div>
 					</section>
-					<section className="liked-video-filter-group" aria-label="Category">
-						<h3 className="liked-video-filter-group__title">Category</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.category")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.category")}</h3>
 						<div className="liked-video-filter-group__fields liked-video-filter-group__fields--category">
 							<LikedVideoFilterSelect
-								label="Category" ariaLabel="Filter by category" showLabel={false}
+								label={t("filter.category")} ariaLabel={t("filter.category")} showLabel={false}
 								value={selectedCategory} onChange={setSelectedCategory}
 								disabled={!isCategoriesReady || availableCategories.length === 0}
 								options={[
-									{ value: "all", label: "All", count: videos.length },
+									{ value: "all", label: t("filter.all"), count: videos.length },
 									...availableCategories.map((category) => ({
 										value: category.id, label: category.title, count: categoryCounts[category.id] || 0,
 									})),
-									...(!isCategoriesReady ? [{ value: "loading", label: "Loading categories...", disabled: true }] : []),
+									...(!isCategoriesReady ? [{ value: "loading", label: t("filter.loadingCategories"), disabled: true }] : []),
 								]}
 							/>
 						</div>
 					</section>
-					<section className="liked-video-filter-group" aria-label="Content">
-						<h3 className="liked-video-filter-group__title">Content</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.content")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.content")}</h3>
 						<div className="liked-video-filter-group__fields">
 							<ContentTypeDropdown
 								selection={contentTypes} onChange={setContentTypes}
 								shortVideoMaxDurationSeconds={shortVideoMaxDurationSeconds}
 							/>
 							<LikedVideoFilterSelect
-								label="Upload date" ariaLabel="Filter by upload date"
+								label={t("filter.uploadDate")} ariaLabel={t("filter.uploadDate")}
 								value={period} options={PERIOD_FILTER_OPTIONS}
 								onChange={(value) => setPeriod(value as SubscriptionPeriod)}
 							/>
 							<LikedVideoFilterSelect
-								label="Duration" ariaLabel="Filter by duration"
+								label={t("filter.duration")} ariaLabel={t("filter.duration")}
 								value={durationFilter} options={DURATION_FILTER_OPTIONS}
 								onChange={(value) => setDurationFilter(value as DurationFilter)}
 							/>
 						</div>
 					</section>
-					<section className="liked-video-filter-group" aria-label="Language">
-						<h3 className="liked-video-filter-group__title">Language</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.language")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.language")}</h3>
 						<div className="liked-video-filter-group__fields">
 							<LikedVideoFilterSelect
-								label="Title & description" ariaLabel="Filter by language"
-								description="Language of the video's title and description. Videos without language information appear under Unknown."
+								label={t("filter.titleDescription")} ariaLabel={t("filter.filterByLanguage")}
+								description={t("filter.titleDescriptionHelp")}
 								value={languageFilter} onChange={setLanguageFilter}
-								options={[{ value: "all", label: "All", count: videos.length }, ...languageOptions]}
+								options={[{ value: "all", label: t("filter.all"), count: videos.length }, ...languageOptions]}
 							/>
 							<LikedVideoFilterSelect
-								label="Audio" ariaLabel="Filter by audio language"
-								description="Audio language of the default track. Videos without language information appear under Unknown."
+								label={t("filter.audio")} ariaLabel={t("filter.audioLanguage")}
+								description={t("filter.audioHelp")}
 								value={audioLanguageFilter} onChange={setAudioLanguageFilter}
-								options={[{ value: "all", label: "All", count: videos.length }, ...audioLanguageOptions]}
+								options={[{ value: "all", label: t("filter.all"), count: videos.length }, ...audioLanguageOptions]}
 							/>
 						</div>
 					</section>
-					<section className="liked-video-filter-group" aria-label="Saved state">
-						<h3 className="liked-video-filter-group__title">Saved state</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.savedState")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.savedState")}</h3>
 						<div className="liked-video-filter-group__fields">
 							<LikedVideoFilterSelect
-								label="AI summary" ariaLabel="Filter by AI summary"
+								label={t("filter.aiSummary")} ariaLabel={t("filter.filterByAISummary")}
 								value={aiSummaryFilter} options={AI_SUMMARY_FILTER_OPTIONS}
 								onChange={(value) => setAISummaryFilter(value as PresenceFilter)}
 							/>
 							<LikedVideoFilterSelect
-								label="Video note" ariaLabel="Filter by video note"
+								label={t("filter.videoNote")} ariaLabel={t("filter.filterByVideoNote")}
 								value={videoNoteFilter}
 								onChange={(value) => setVideoNoteFilter(value as PresenceFilter)}
 								options={[
-									{ value: "all", label: "All" },
-									{ value: "with", label: "Has note" },
-									{ value: "without", label: "No note" },
+									{ value: "all", label: t("filter.all") },
+									{ value: "with", label: t("filter.hasVideoNote") },
+									{ value: "without", label: t("filter.noVideoNote") },
 								]}
 							/>
 						</div>
@@ -1130,9 +1130,9 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 				</div>
 			)}
 			<div className="liked-video-result-count" aria-live="polite" aria-atomic="true">
-				<span>{filteredVideos.length} of {videos.length} videos</span>
+				<span>{filteredVideos.length} / {videos.length} {t("subscription.resultCount")}</span>
 				<span aria-hidden="true">·</span>
-				<span className="liked-video-result-sort" aria-label={`Sorted by ${selectedSortLabel}, ${sortDirectionLabel}`}>
+				<span className="liked-video-result-sort" aria-label={`${t("subscription.sortedBy")} ${selectedSortLabel}, ${sortDirectionLabel}`}>
 					{selectedSortLabel} <span aria-hidden="true">{sortOrder === "DESC" ? "↓" : "↑"}</span>
 				</span>
 			</div>
@@ -1140,28 +1140,28 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 			{snapshot?.channels.length === 0 ? (
 				<div className="no-videos-found">
 					<Rss size={32} aria-hidden="true" />
-					<div className="no-videos-found__title">No subscriptions found</div>
-					<div className="no-videos-found__text">Subscribe to channels on YouTube to see their latest videos here.</div>
+					<div className="no-videos-found__title">{t("subscription.noSubscriptions")}</div>
+					<div className="no-videos-found__text">{t("subscription.noSubscriptionsHelp")}</div>
 				</div>
 			) : filteredVideos.length === 0 ? (
 				<div className="no-videos-found">
 					<Search size={32} aria-hidden="true" />
-					<div className="no-videos-found__title">No matching videos</div>
-					<div className="no-videos-found__text">No collected videos match these filters.</div>
+					<div className="no-videos-found__title">{t("subscription.noMatchingVideos")}</div>
+					<div className="no-videos-found__text">{t("subscription.noMatchingVideosHelp")}</div>
 					<OpenYouTubeButton query={searchTerm} />
 					{hasActiveQuery && (
 						<button type="button" className="no-videos-found__clear-button" onClick={clearAllFilters}>
-							Clear search and filters
+							{t("liked.clearSearchAndFilters")}
 						</button>
 					)}
 				</div>
 			) : null}
 			<span ref={keyboardFocus.entryRef} tabIndex={sortedVideos.length > 0 ? 0 : -1} className="liked-video-focus-entry"
 				onFocus={keyboardFocus.focusEntry}>
-				Browse subscription videos. Use Up and Down to navigate, Tab to leave the list, F2 for card controls, and Escape to return to the card.
+				{t("subscription.keyboardHelp")}
 			</span>
 			<LikedVideoCollection ref={keyboardFocus.collectionRef} videos={sortedVideos} mode="infinite"
-				label="Subscription videos" currentPage={1} onPageChange={() => {}}
+				label={t("subscription.videosLabel")} currentPage={1} onPageChange={() => {}}
 				noteExistenceMap={noteExistenceMap} resetKey={browsingKey}
 				renderVideo={(video, noteExists, summaryState) => {
 					const channel = snapshot?.channels.find((candidate) => candidate.id === video.snippet.channelId);
@@ -1190,7 +1190,7 @@ export const SubscriptionView: React.FC<SubscriptionViewProps> = ({
 							onAddToDailyNote={async (videoData, file) => {
 								await appendNoteContent(plugin.app, file, { text: `\n${videoData}` });
 								await plugin.app.workspace.openLinkText(file.path, "", false);
-								new Notice(`Added video to ${file.basename} and opened the note`);
+				new Notice(`${t("notes.addedVideoToNote")}: ${file.basename}`);
 							}}
 						/>
 					);

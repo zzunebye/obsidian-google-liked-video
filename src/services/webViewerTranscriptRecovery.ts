@@ -4,6 +4,7 @@ import { debugLogger } from 'src/debug';
 import { transcriptService, TranscriptServiceError } from './transcriptService';
 import type { TranscriptProgressCallback, TranscriptProgressPhase, VideoTranscript } from './transcriptService';
 import { readWebViewerTranscript, videoIdFromUrl } from './webViewerTranscriptService';
+import { t } from '../i18n';
 
 interface RecoveryRequest {
 	controller: AbortController;
@@ -85,7 +86,7 @@ export class WebViewerTranscriptRecovery extends Component {
 	private async recover(videoId: string, controller: AbortController, onProgress: TranscriptProgressCallback): Promise<VideoTranscript> {
 		const signal = controller.signal;
 		if (signal.aborted) throw abortError();
-		const loading = new Notice('Geulo: Loading captions from YouTube in Web Viewer…', 0);
+		const loading = new Notice(t("transcript.recoveringCaptions"), 0);
 		let timedOut = false;
 		const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, RECOVERY_TIMEOUT_MS);
 		let onAbort = (): void => {};
@@ -105,7 +106,7 @@ export class WebViewerTranscriptRecovery extends Component {
 		} catch (error: unknown) {
 			if (signal.aborted && !timedOut) throw abortError();
 			debugLogger.warn('[Web Viewer] Could not load the full transcript', videoId, error);
-			throw new TranscriptServiceError('blocked', 'Could not load the full transcript. Check that Web Viewer is enabled, open Show transcript on the YouTube page, and sign in if YouTube asks. Then retry in Geulo.');
+			throw new TranscriptServiceError('blocked', t('transcript.webViewerRecoveryFailed'));
 		} finally {
 			window.clearTimeout(timeout);
 			signal.removeEventListener('abort', onAbort);

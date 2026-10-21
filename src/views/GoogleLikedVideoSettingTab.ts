@@ -1,5 +1,6 @@
 import { AbstractInputSuggest, App, getLanguage, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
 import type { SettingDefinitionItem } from 'obsidian';
+import { getFormatLocale, t } from '../i18n';
 import { localStorageService } from 'src/storage';
 import { googleTokenStorageService } from 'src/services/googleTokenStorageService';
 import { handleGoogleLogin, handleGoogleLogout, refreshAccessToken } from 'src/auth';
@@ -12,7 +13,6 @@ import { AI_PROVIDERS, AI_PROVIDER_LABELS, DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DA
 import GoogleLikedVideoPlugin from '../main';
 import { debugLogger, DebugConfig } from 'src/debug';
 import { confirmAction } from '../ui/ConfirmationModal';
-import { UI_TEXT } from '../constants/uiText';
 import { DEFAULT_TEMPLATE, TEMPLATE_VARIABLES_REFERENCE } from '../utils/templateConstants';
 import { PlaylistVideosPane } from './PlaylistVideosPane';
 import { SubscriptionPane, VIEW_TYPE_SUBSCRIPTIONS } from './SubscriptionPane';
@@ -229,7 +229,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderVideoDisplaySection(containerEl: HTMLElement): void {
         containerEl.dataset.geuloSettingsSection = 'video-display';
-        new Setting(containerEl).setHeading().setName('Video display');
+        new Setting(containerEl).setHeading().setName(t('settings.videoDisplay'));
         this.renderLikedVideoViewModeSetting(containerEl);
         this.renderOpenInWebViewerSetting(containerEl);
         this.renderTranscriptLanguageSetting(containerEl);
@@ -260,7 +260,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     }
 
     private renderSyncSection(containerEl: HTMLElement, isLoggedIn: boolean): void {
-		new Setting(containerEl).setHeading().setName('Sync');
+		new Setting(containerEl).setHeading().setName(t('settings.sync'));
 		this.renderStoredVideos(containerEl);
 		this.renderSubscriptionVideoMaxAgeSetting(containerEl);
 		if (isLoggedIn) {
@@ -273,19 +273,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         const likedVideosCount = localStorageService.getLikedVideos().length;
 
         const storedVideosSetting = new Setting(containerEl)
-            .setName('Stored videos')
-            .setDesc('Liked videos saved in this vault.');
+            .setName(t('settings.storedVideos'))
+            .setDesc(t('settings.storedVideosHelp'));
         storedVideosSetting.controlEl.createSpan({
             cls: 'geulo-stored-video-count',
-            text: likedVideosCount.toLocaleString(),
+            text: likedVideosCount.toLocaleString(getFormatLocale()),
         });
     }
 
     private renderOpenInWebViewerSetting(containerEl: HTMLElement): void {
         const viewerEl = containerEl.createDiv();
         new Setting(viewerEl)
-            .setName('Open videos in Obsidian Web Viewer')
-            .setDesc('Open videos inside Obsidian. Requires the Web Viewer core plugin.')
+            .setName(t('settings.openWebViewer'))
+            .setDesc(t('settings.openWebViewerHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.openInObsidianWebViewer)
                 .onChange(async (value) => {
@@ -294,11 +294,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         const openInSetting = new Setting(viewerEl)
-            .setName('Open in')
+            .setName(t('settings.openIn'))
             .setClass('geulo-web-viewer-option')
             .addDropdown(dropdown => dropdown
-                .addOption('tab', 'New tab')
-                .addOption('split', 'Split pane')
+                .addOption('tab', t('settings.newTab'))
+                .addOption('split', t('settings.splitPane'))
                 .setValue(this.plugin.settings.openWebViewerInSplitPane ? 'split' : 'tab')
                 .onChange(async (value) => {
                     await this.saveSetting('openWebViewerInSplitPane', value === 'split');
@@ -306,8 +306,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         openInSetting.settingEl.hidden = !this.plugin.settings.openInObsidianWebViewer;
 
 		new Setting(viewerEl)
-			.setName('Open Web Viewer readers in right sidebar')
-			.setDesc('Reuse one right-sidebar view for AI summaries and transcripts instead of creating a new split for each video.')
+			.setName(t('settings.webViewerSidebar'))
+			.setDesc(t('settings.webViewerSidebarHelp'))
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.openWebViewerReaderInRightSidebar)
 				.onChange(async (value) => {
@@ -317,11 +317,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderLikedVideoViewModeSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
-            .setName('Liked video view mode')
-            .setDesc('Choose how liked videos are displayed.')
+            .setName(t('settings.likedViewMode'))
+            .setDesc(t('settings.likedViewModeHelp'))
             .addDropdown(dropdown => dropdown
-                .addOption('pagination', 'Pagination')
-                .addOption('infinite', 'Infinite scroll')
+                .addOption('pagination', t('settings.pagination'))
+                .addOption('infinite', t('settings.infiniteScroll'))
                 .setValue(localStorageService.getLikedVideoPaginationMode())
                 .onChange(async (value) => {
                     const paginationMode = value === 'infinite' ? 'infinite' : 'pagination';
@@ -332,8 +332,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderTranscriptLanguageSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
-            .setName('Transcript language')
-            .setDesc('Preferred caption language for reading transcripts and OpenRouter or OpenAI summaries. Falls back to English, then the first available language. Reopen an existing transcript to apply changes.')
+            .setName(t('settings.transcriptLanguage'))
+            .setDesc(t('settings.transcriptLanguageHelp'))
             .addDropdown(dropdown => dropdown
                 .addOptions(TRANSCRIPT_LANGUAGE_OPTIONS)
                 .setValue(this.plugin.settings.transcriptLanguage)
@@ -344,11 +344,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 	private renderSummaryLineHeightSetting(containerEl: HTMLElement): void {
 		new Setting(containerEl)
-			.setName('AI summary line spacing')
-			.setDesc('Line spacing for the AI summary reader. Changes apply immediately.')
+			.setName(t('settings.summaryLineSpacing'))
+			.setDesc(t('settings.summaryLineSpacingHelp'))
 			.addDropdown(dropdown => {
 				SUMMARY_LINE_HEIGHT_OPTIONS.forEach(lineHeight => {
-					dropdown.addOption(String(lineHeight), `${lineHeight.toFixed(1)}${lineHeight === 1.5 ? ' (default)' : ''}`);
+					dropdown.addOption(String(lineHeight), `${lineHeight.toFixed(1)}${lineHeight === 1.5 ? ` (${t('settings.default')})` : ''}`);
 				});
 				dropdown
 					.setValue(String(this.plugin.settings.summaryLineHeight))
@@ -362,8 +362,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderVideoTagsSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
-            .setName('Show video tags')
-            .setDesc('Display responsive YouTube tag chips on video cards.')
+            .setName(t('settings.showVideoTags'))
+            .setDesc(t('settings.showVideoTagsHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showVideoTags)
                 .onChange(async (value) => {
@@ -376,11 +376,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderShortVideoDurationSetting(containerEl: HTMLElement): void {
         new Setting(containerEl)
-            .setName('Maximum Short-form duration')
-            .setDesc('Include videos up to this length in the Short-form filter.')
+            .setName(t('settings.shortMaxDuration'))
+            .setDesc(t('settings.shortMaxDurationHelp'))
             .addDropdown(dropdown => {
                 SHORT_VIDEO_MAX_DURATION_OPTIONS.forEach(seconds => {
-                    dropdown.addOption(String(seconds), `${seconds} seconds`);
+                    dropdown.addOption(String(seconds), `${seconds} ${t('settings.seconds')}`);
                 });
                 dropdown
                     .setValue(String(this.plugin.settings.shortVideoMaxDurationSeconds))
@@ -398,15 +398,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     private renderVideoNotesSection(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setHeading()
-            .setName('Video notes')
-            .setDesc('Configure the video note settings');
+            .setName(t('settings.videoNotes'))
+            .setDesc(t('settings.videoNotesHelp'));
 
         new Setting(containerEl)
-            .setName('Video note location')
-            .setDesc('Specify where video notes should be created. Leave empty to use Obsidian\'s default new file location, or enter a custom folder path.')
+            .setName(t('settings.videoNoteLocation'))
+            .setDesc(t('settings.videoNoteLocationHelp'))
             .addText(text => {
                 text
-                    .setPlaceholder('e.g. Youtube, Youtube/Videos')
+                    .setPlaceholder(t('settings.videoNoteLocationPlaceholder'))
                     .setValue(this.plugin.settings.videoNotePath)
                     .onChange(async (value) => {
                         await this.saveSetting('videoNotePath', value.trim());
@@ -415,8 +415,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName('Organize by channel')
-            .setDesc('Create subfolders for each channel (e.g., Youtube/Channel Name/video.md). Only applies when using a custom video note location.')
+            .setName(t('settings.organizeByChannel'))
+            .setDesc(t('settings.organizeByChannelHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.organizeByChannel)
                 .setDisabled(!this.plugin.settings.videoNotePath || !this.plugin.settings.videoNotePath.trim())
@@ -425,8 +425,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Automatically create notes')
-            .setDesc('If enabled, a new note will be created for each new video fetched.')
+            .setName(t('settings.autoCreateNotes'))
+            .setDesc(t('settings.autoCreateNotesHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoCreateNoteEnabled)
                 .onChange(async (value) => {
@@ -435,8 +435,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.autoCreateNoteEnabled) {
             new Setting(containerEl)
-                .setName('Link to daily note')
-                .setDesc('If enabled, a link to the new video note will be added to your daily note.')
+                .setName(t('settings.linkDailyNote'))
+                .setDesc(t('settings.linkDailyNoteHelp'))
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.linkToDailyNote)
                     .onChange(async (value) => {
@@ -448,12 +448,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     private renderTemplateSection(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setHeading()
-            .setName('Template System')
-            .setDesc('Customize video note templates');
+            .setName(t('settings.templateSystem'))
+            .setDesc(t('settings.templateSystemHelp'));
 
         new Setting(containerEl)
-            .setName('Enable custom templates')
-            .setDesc('Use custom markdown templates for video notes instead of the default format')
+            .setName(t('settings.enableCustomTemplates'))
+            .setDesc(t('settings.enableCustomTemplatesHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableTemplateSystem)
                 .onChange(async (value) => {
@@ -465,27 +465,27 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
 
         const editorEl = containerEl.createEl('details', { cls: 'geulo-settings-details' });
-        editorEl.createEl('summary', { text: 'Edit template' });
+        editorEl.createEl('summary', { text: t('settings.editTemplate') });
 
         new Setting(editorEl)
-            .setName('Custom template')
-            .setDesc('Edit your video note template directly. Use {{variable}} syntax for dynamic content.')
+            .setName(t('settings.customTemplate'))
+            .setDesc(t('settings.customTemplateHelp'))
             .addButton(button => button
-                .setButtonText('Reset to Default')
+                .setButtonText(t('settings.resetToDefault'))
                 .onClick(async () => {
                     const confirmed = await confirmAction(
                         this.app,
-                        'This will reset your template to the default. Any customizations will be lost.',
+                        t('settings.resetTemplateConfirm'),
                         {
-                            title: 'Reset Template?',
-                            confirmText: 'Reset',
-                            cancelText: 'Cancel',
+                            title: t('settings.resetTemplateTitle'),
+                            confirmText: t('settings.reset'),
+                            cancelText: t('settings.cancel'),
                             type: 'warning'
                         }
                     );
                     if (confirmed.confirmed) {
                         await this.saveSetting('customTemplate', DEFAULT_TEMPLATE, { display: true });
-                        new Notice('Template reset to default');
+                        new Notice(t('settings.templateReset'));
                     }
                 }));
 
@@ -500,7 +500,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         createCollapsibleReference(
             editorEl,
-            '📖 Available Variables (click to expand)',
+            `📖 ${t('settings.availableVariables')}`,
             TEMPLATE_VARIABLES_REFERENCE
         );
     }
@@ -508,12 +508,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
     private renderAISection(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setHeading()
-            .setName('AI Features')
-            .setDesc('Configure AI-powered features');
+            .setName(t('settings.aiFeatures'))
+            .setDesc(t('settings.aiFeaturesHelp'));
 
         new Setting(containerEl)
-            .setName('Enable AI Summary')
-            .setDesc('Generate video summaries with your selected AI provider. Requires an API key for that provider.')
+            .setName(t('settings.enableAISummary'))
+            .setDesc(t('settings.enableAISummaryHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAISummary)
                 .onChange(async (value) => {
@@ -529,8 +529,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName('Include AI Summary heading')
-            .setDesc('Add an AI Summary heading when saving a summary to a note. Applies to future saves and replacements; existing notes are unchanged until saved again.')
+            .setName(t('settings.includeSummaryHeading'))
+            .setDesc(t('settings.includeSummaryHeadingHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.includeAISummaryHeading)
                 .onChange(async (value) => {
@@ -538,8 +538,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Save summaries as block quotes')
-            .setDesc('When adding an AI summary to a note, wrap the summary content in a Markdown block quote.')
+            .setName(t('settings.saveAsBlockquotes'))
+            .setDesc(t('settings.saveAsBlockquotesHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.saveAISummariesAsBlockquotes)
                 .onChange(async (value) => {
@@ -547,8 +547,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('AI Provider')
-            .setDesc('OpenRouter and OpenAI summarize the transcript with your selected model. Google Gemini analyzes the video directly without sending the transcript.')
+            .setName(t('settings.aiProvider'))
+            .setDesc(t('settings.aiProviderHelp'))
             .addDropdown(dropdown => {
                 for (const provider of AI_PROVIDERS) {
                     dropdown.addOption(provider, AI_PROVIDER_LABELS[provider]);
@@ -563,9 +563,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.aiProvider === 'gemini') {
             addWideTextSetting(containerEl, {
-                name: 'Gemini API Key',
-                desc: 'Use a Google AI Studio API key for the Google Gemini provider. Get a key at aistudio.google.com/app/apikey.',
-                placeholder: 'Enter your Gemini API key',
+                name: t('settings.geminiApiKey'),
+                desc: t('settings.geminiApiKeyHelp'),
+                placeholder: t('settings.enterGeminiKey'),
                 value: this.plugin.settings.geminiApiKey,
                 secret: true,
                 copyable: true,
@@ -575,8 +575,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             });
         } else if (this.plugin.settings.aiProvider === 'openrouter') {
             addWideTextSetting(containerEl, {
-                name: 'OpenRouter API Key',
-                desc: 'Use an OpenRouter API key for the OpenRouter provider. Get a key at openrouter.ai/keys.',
+                name: t('settings.openRouterApiKey'),
+                desc: t('settings.openRouterApiKeyHelp'),
                 placeholder: 'sk-or-...',
                 value: this.plugin.settings.openRouterApiKey,
                 secret: true,
@@ -589,12 +589,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             const currentModel = this.plugin.settings.openRouterModel;
             const isPresetModel = isOpenRouterModelPreset(currentModel);
             const modelSetting = new Setting(containerEl)
-                .setName('Model ID')
-                .setDesc('Choose an OpenRouter model that supports text input. The transcript is included with your summary prompt.');
+                .setName(t('settings.modelId'))
+                .setDesc(t('settings.openRouterModelHelp'));
 
             const customModelSetting = addWideTextSetting(containerEl, {
-                name: 'Custom model ID',
-                desc: 'Enter the complete OpenRouter model ID.',
+                name: t('settings.customModelId'),
+                desc: t('settings.openRouterCustomModelHelp'),
                 placeholder: 'provider/model-id',
                 value: currentModel,
                 onChange: async (value) => {
@@ -609,7 +609,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     dropdown.addOption(model, model);
                 }
                 dropdown
-                    .addOption(CUSTOM_OPENROUTER_MODEL_OPTION, 'Custom')
+                    .addOption(CUSTOM_OPENROUTER_MODEL_OPTION, t('settings.custom'))
                     .setValue(isPresetModel ? currentModel : CUSTOM_OPENROUTER_MODEL_OPTION)
                     .onChange(async (value) => {
                         if (value === CUSTOM_OPENROUTER_MODEL_OPTION) {
@@ -626,8 +626,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             });
         } else if (this.plugin.settings.aiProvider === 'openai') {
             addWideTextSetting(containerEl, {
-                name: 'OpenAI API Key',
-                desc: 'Use an OpenAI API key for the OpenAI provider. Get a key at platform.openai.com/api-keys.',
+                name: t('settings.openAIApiKey'),
+                desc: t('settings.openAIApiKeyHelp'),
                 placeholder: 'sk-...',
                 value: this.plugin.settings.openAIApiKey,
                 secret: true,
@@ -640,12 +640,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             const currentModel = this.plugin.settings.openAIModel;
             const isPresetModel = isOpenAIModelPreset(currentModel);
             const modelSetting = new Setting(containerEl)
-                .setName('Model ID')
-                .setDesc('Choose an OpenAI model that supports text input through the Responses API. The transcript is included with your summary prompt.');
+                .setName(t('settings.modelId'))
+                .setDesc(t('settings.openAIModelHelp'));
 
             const customModelSetting = addWideTextSetting(containerEl, {
-                name: 'Custom model ID',
-                desc: 'Enter the complete OpenAI model ID.',
+                name: t('settings.customModelId'),
+                desc: t('settings.openAICustomModelHelp'),
                 placeholder: 'model-id',
                 value: currentModel,
                 onChange: async (value) => {
@@ -660,7 +660,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     dropdown.addOption(model, model);
                 }
                 dropdown
-                    .addOption(CUSTOM_OPENAI_MODEL_OPTION, 'Custom')
+                    .addOption(CUSTOM_OPENAI_MODEL_OPTION, t('settings.custom'))
                     .setValue(isPresetModel ? currentModel : CUSTOM_OPENAI_MODEL_OPTION)
                     .onChange(async (value) => {
                         if (value === CUSTOM_OPENAI_MODEL_OPTION) {
@@ -678,8 +678,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName('Summary Prompt')
-            .setDesc('Customize the instructions sent to your selected AI provider when generating video summaries.');
+            .setName(t('settings.summaryPrompt'))
+            .setDesc(t('settings.summaryPromptHelp'));
 
         createMonospaceTextarea(containerEl, {
             className: 'summary-prompt-textarea',
@@ -693,9 +693,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 	private renderSpeechSection(containerEl: HTMLElement): void {
 		containerEl.dataset.geuloSettingsSection = 'speech';
-		new Setting(containerEl).setHeading().setName('Speech')
-			.setDesc('Read AI summaries aloud. Speech uses its own API key and model, independently of AI summaries.');
-		new Setting(containerEl).setName('Speech provider')
+		new Setting(containerEl).setHeading().setName(t('settings.speech'))
+			.setDesc(t('settings.speechHelp'));
+		new Setting(containerEl).setName(t('settings.speechProvider'))
 			.addDropdown(dropdown => dropdown.addOption('openrouter', 'OpenRouter')
 				.setValue(this.plugin.settings.speechProvider)
 				.onChange(async () => { await this.saveSetting('speechProvider', 'openrouter'); }));
@@ -708,8 +708,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 		});
 		const currentModel = this.plugin.settings.speechModel;
 		const isPreset = SPEECH_MODEL_PRESETS.some(model => model.id === currentModel);
-		const modelSetting = new Setting(containerEl).setName('Speech model')
-			.setDesc('Choose a text-to-speech model. Supported languages and voices vary by model.');
+		const modelSetting = new Setting(containerEl).setName(t('settings.speechModel'))
+			.setDesc(t('settings.speechModelHelp'));
 		const customModel = addWideTextSetting(containerEl, {
 			name: 'Custom speech model ID', desc: 'Enter an OpenRouter model with speech output support.',
 			placeholder: 'provider/model-id', value: currentModel,
@@ -745,8 +745,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 	private renderSubscriptionVideoMaxAgeSetting(containerEl: HTMLElement): void {
 		new Setting(containerEl)
-			.setName('Subscription video age limit')
-			.setDesc('Skip video details for subscription uploads older than this during the next sync.')
+			.setName(t('settings.subscriptionAgeLimit'))
+			.setDesc(t('settings.subscriptionAgeLimitHelp'))
 			.addDropdown(dropdown => {
 				SUBSCRIPTION_VIDEO_MAX_AGE_OPTIONS.forEach(days => {
 					const defaultLabel = days === DEFAULT_SUBSCRIPTION_VIDEO_MAX_AGE_DAYS ? ' (default)' : '';
@@ -764,8 +764,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderAutoFetchSection(containerEl: HTMLElement): void {
         new Setting(containerEl)
-            .setName('Enable automatic fetch')
-            .setDesc('Automatically fetch liked videos at regular intervals')
+            .setName(t('settings.enableAutoFetch'))
+            .setDesc(t('settings.enableAutoFetchHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoFetchEnabled)
                 .onChange(async (value) => {
@@ -777,8 +777,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName('Fetch interval')
-            .setDesc('How often to automatically fetch videos (in minutes)')
+            .setName(t('settings.fetchInterval'))
+            .setDesc(t('settings.fetchIntervalHelp'))
             .addDropdown(dropdown => {
                 const debugConfig = debugLogger.getConfig();
                 if (debugConfig.enabled) {
@@ -799,7 +799,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         const interval = parseFloat(value);
                         await this.saveSetting('autoFetchInterval', interval, { display: true, listPane: true });
                         if (interval < 1) {
-                            new Notice('⚠️ Debug mode: Using very short fetch interval!');
+                            new Notice(t('settings.debugShortInterval'));
                         }
                     });
 
@@ -807,19 +807,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
-            .setName('Full fetch on every auto-fetch')
-            .setDesc(UI_TEXT.FULL_FETCH_WARNING_DESC)
+            .setName(t('settings.fullFetchOnAutoFetch'))
+            .setDesc(t('settings.fullFetchWarningDesc'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.fullFetchOnEveryAutoFetch)
                 .onChange(async (value) => {
                     if (value && !this.plugin.settings.fullFetchOnEveryAutoFetch) {
                         const result = await confirmAction(
                             this.app,
-                            UI_TEXT.FULL_FETCH_CONFIRM_MESSAGE,
+                            t('settings.fullFetchConfirm'),
                             {
-                                title: UI_TEXT.FULL_FETCH_WARNING_TITLE,
-                                confirmText: 'Yes, Enable Full Fetch',
-                                cancelText: 'Cancel',
+                                title: t('settings.fullFetchWarningTitle'),
+                                confirmText: t('settings.confirmEnableFullFetch'),
+                                cancelText: t('settings.cancel'),
                                 type: 'warning',
                                 showRememberChoice: false
                             }
@@ -833,20 +833,20 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
                     await this.saveSetting('fullFetchOnEveryAutoFetch', value, { display: true });
                     if (value) {
-                        new Notice(UI_TEXT.FULL_FETCH_ENABLED_NOTICE);
+                        new Notice(t('settings.fullFetchEnabled'));
                     }
                 }));
 
         if (this.plugin.settings.fullFetchOnEveryAutoFetch && this.plugin.settings.autoCreateNoteEnabled) {
             new Setting(containerEl)
-                .setName('⚠️ Warning')
-                .setDesc(UI_TEXT.FULL_FETCH_NOT_RECOMMEND_AUTO_VIDEO_NOTE_WARNING)
+                .setName(t('settings.warning'))
+                .setDesc(t('settings.notRecommended'))
                 .setClass('setting-item-info');
         }
 
         new Setting(containerEl)
-            .setName('Fetch on startup')
-            .setDesc('Automatically fetch videos when Obsidian starts')
+            .setName(t('settings.fetchOnStartup'))
+            .setDesc(t('settings.fetchOnStartupHelp'))
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.fetchOnStartup)
                 .onChange(async (value) => {
@@ -860,8 +860,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 : `${this.plugin.settings.autoFetchInterval}min`;
 
             new Setting(containerEl)
-                .setName('Last auto-fetch')
-                .setDesc(`Last: ${lastFetch.toLocaleString()} (every ${intervalDisplay})`);
+                .setName(t('settings.lastAutoFetch'))
+                .setDesc(`${t('settings.last')} ${lastFetch.toLocaleString(getFormatLocale())} (${intervalDisplay})`);
         }
     }
 
@@ -869,19 +869,19 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         if (isLoggedIn) {
             new Setting(containerEl)
-                .setName('Full scan')
-                .setDesc('Check all liked videos and replace the saved list with the results. Videos no longer returned by YouTube are removed from this list.')
+                .setName(t('settings.fullScan'))
+                .setDesc(t('settings.fullScanHelp'))
                 .addButton(button => button
-                    .setButtonText('Full scan')
+                    .setButtonText(t('settings.fullScan'))
                     .onClick(async () => {
                         await this.plugin.performAutoFetch(true, false);
                     }));
 
             new Setting(containerEl)
-                .setName('Fetch recent videos')
-                .setDesc('Check the 50 most recent liked videos. Add new videos and update matching saved videos, keeping the rest of your saved list.')
+                .setName(t('settings.fetchRecentVideos'))
+                .setDesc(t('settings.fetchRecentVideosHelp'))
                 .addButton(button => button
-                    .setButtonText('Fetch recent videos')
+                    .setButtonText(t('settings.fetchRecentVideos'))
                     .onClick(async () => {
                         await this.plugin.performAutoFetch(false, false);
                     }));
@@ -899,21 +899,21 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             .setDesc(fileName);
         const sizeEl = setting.controlEl.createSpan({
             cls: 'geulo-data-file-size',
-            text: 'Loading…',
+            text: t('settings.loading'),
         });
 
         const manifestDir = this.plugin.manifest.dir;
         if (!manifestDir) {
-            sizeEl.setText('Unavailable');
+            sizeEl.setText(t('settings.unavailable'));
             return;
         }
 
         void this.app.vault.adapter.stat(`${manifestDir}/${fileName}`)
             .then(stat => {
-                sizeEl.setText(stat ? this.formatFileSize(stat.size) : 'Not created yet');
+				sizeEl.setText(stat ? this.formatFileSize(stat.size) : t('settings.notCreatedYet'));
             })
             .catch(() => {
-                sizeEl.setText('Unavailable');
+				sizeEl.setText(t('settings.unavailable'));
             });
     }
 
@@ -936,25 +936,25 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
     private renderDataManagementSection(containerEl: HTMLElement): void {
         const storedCount = localStorageService.getLikedVideos().length;
-        new Setting(containerEl).setHeading().setName('Data management');
-        this.renderDataFileSizeSetting(containerEl, 'Liked videos', 'liked-videos.json');
-        this.renderDataFileSizeSetting(containerEl, 'Subscriptions', 'subscriptions.json');
-        this.renderDataFileSizeSetting(containerEl, 'Summaries', 'summaries.json');
+        new Setting(containerEl).setHeading().setName(t('settings.dataManagement'));
+        this.renderDataFileSizeSetting(containerEl, t('settings.likedVideos'), 'liked-videos.json');
+        this.renderDataFileSizeSetting(containerEl, t('settings.subscriptions'), 'subscriptions.json');
+        this.renderDataFileSizeSetting(containerEl, t('settings.summaries'), 'summaries.json');
         new Setting(containerEl)
-            .setName('Clear saved liked videos')
-            .setDesc('Remove the saved liked-video list from this vault. YouTube likes, existing video notes, playlists, and saved summaries are kept.')
+            .setName(t('settings.clearSavedLikedVideos'))
+            .setDesc(t('settings.clearSavedLikedVideosHelp'))
             .addButton(button => button
-                .setButtonText('Clear saved videos')
+                .setButtonText(t('settings.clearSavedVideos'))
                 .setDestructive()
                 .setDisabled(storedCount === 0)
                 .onClick(async () => {
                     const result = await confirmAction(
                         this.app,
-                        `Remove all ${localStorageService.getLikedVideos().length} saved liked videos from this vault?\n\nThis does not unlike videos on YouTube or delete existing video notes, playlists, or saved summaries.\n\nTo repopulate the list, run a Full scan. Videos no longer available from YouTube may not be restored.`,
+						t('settings.clearSavedVideosConfirmBody').replace('{count}', String(localStorageService.getLikedVideos().length)),
                         {
-                            title: 'Clear saved liked videos?',
-                            confirmText: 'Clear saved videos',
-                            cancelText: 'Cancel',
+							title: t('settings.clearSavedVideosConfirmTitle'),
+							confirmText: t('settings.clearSavedVideos'),
+							cancelText: t('common.cancel'),
                             type: 'danger',
                             showRememberChoice: false,
                         }
@@ -964,14 +964,14 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                     }
                     localStorageService.setLikedVideos([]);
                     this.update();
-                    new Notice('Saved liked-video list cleared. YouTube likes and existing notes were kept.');
+                    new Notice(t('settings.savedLikedVideosCleared'));
                 }));
     }
 
 	private renderHealthChecksSection(containerEl: HTMLElement): void {
 		new Setting(containerEl)
 			.setHeading()
-			.setName('Health checks');
+			.setName(t('settings.healthChecks'));
 		this.renderGoogleHealthCheck(containerEl);
 		this.renderTranscriptHealthCheck(containerEl);
 	}
@@ -981,15 +981,15 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setHeading()
-            .setName('Google connection');
+			.setName(t('settings.googleConnection'));
 
         new Setting(containerEl)
-            .setName(isLoggedIn ? 'Connected to Google' : 'Not connected to Google')
+            .setName(isLoggedIn ? t('settings.connectedGoogle') : t('settings.notConnectedGoogle'))
             .setDesc(isLoggedIn
-                ? 'Your Google account is connected. You can fetch your liked videos.'
-                : 'Import a credentials JSON file or enter your Google API credentials below, then connect your account.')
+                ? t('settings.googleConnectedHelp')
+                : t('settings.googleNotConnectedHelp'))
             .addButton(button => button
-                .setButtonText(isLoggedIn ? 'Disconnect' : 'Connect with Google')
+                .setButtonText(isLoggedIn ? t('settings.disconnect') : t('settings.connectGoogle'))
                 .onClick(async (): Promise<void> => {
                     const refreshDisplay = (): void => {
 						this.invalidateGoogleHealthCheck();
@@ -1005,10 +1005,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
 		new Setting(containerEl)
-			.setName('Import Google credentials')
-			.setDesc('Load a Google OAuth client JSON file and review it before saving.')
+			.setName(t('settings.importCredentials'))
+			.setDesc(t('settings.importCredentialsHelp'))
 			.addButton(button => button
-				.setButtonText('Import JSON')
+				.setButtonText(t('settings.importJson'))
 				.onClick(() => {
 					new GoogleCredentialsImportModal(
 						this.app,
@@ -1021,41 +1021,41 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
             cls: 'geulo-google-credentials',
         });
         credentialsEl.open = !isLoggedIn;
-        credentialsEl.createEl('summary', { text: 'Google API credentials' });
+        credentialsEl.createEl('summary', { text: t('settings.googleApiCredentials') });
 
         new Setting(credentialsEl)
-            .setName('Open Youtube Data API Console')
-            .setDesc('Click the button below to open the Google Developer Console, where you can manage your Google APIs and credentials.')
+            .setName(t('settings.openYoutubeConsole'))
+            .setDesc(t('settings.openDeveloperConsoleHelp'))
             .addButton(button => button
-                .setButtonText('Open Google Developer Console')
+                .setButtonText(t('settings.openDeveloperConsole'))
                 .onClick(async () => {
                     window.open('https://console.cloud.google.com/apis/api/youtube.googleapis.com', '_blank');
                 }));
 
         new Setting(credentialsEl)
-            .setName('Client ID')
-            .setDesc('Client ID required to authenticate your Google account and access the YouTube Data API v3.')
+            .setName(t('settings.clientId'))
+            .setDesc(t('settings.clientIdHelp'))
             .addText(text => text
-                .setPlaceholder('Enter your client ID')
+                .setPlaceholder(t('settings.enterClientId'))
                 .setValue(this.plugin.settings.googleClientId)
                 .onChange(async (value) => {
                     await this.saveSetting('googleClientId', value);
                 }));
 
         new Setting(credentialsEl)
-            .setName('Client secret')
-            .setDesc('Client secret for accessing the YouTube Data API v3')
+            .setName(t('settings.clientSecret'))
+            .setDesc(t('settings.clientSecretHelp'))
             .addText(text => {
                 text.inputEl.type = 'password';
                 text
-                    .setPlaceholder('Enter your client secret')
+                    .setPlaceholder(t('settings.enterClientSecret'))
                     .setValue(googleTokenStorageService.getClientSecret())
                     .onChange((value) => {
                         try {
                             googleTokenStorageService.setClientSecret(value);
                         } catch (error) {
                             if (error instanceof Error) {
-                                new Notice('Failed to save the Google client secret.');
+                                new Notice(t('settings.saveClientSecretFailed'));
                                 this.update();
                                 return;
                             }
@@ -1074,12 +1074,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 	private renderGoogleHealthCheck(containerEl: HTMLElement): void {
 		new Setting(containerEl)
-			.setName('Google connection')
-			.setDesc('Verify OAuth credentials, Google authorization, and YouTube Data API access. Runs only when requested and uses 1 YouTube quota unit.')
+			.setName(t('settings.googleConnection'))
+			.setDesc(t('settings.googleCheckHelp'))
 			.addButton(button => button
 				.setButtonText(this.googleHealthCheckRunning
-					? 'Checking…'
-					: this.googleHealthCheckReport ? 'Check again' : 'Run health check')
+					? t('settings.checking')
+					: this.googleHealthCheckReport ? t('settings.checkAgain') : t('settings.runHealthCheck'))
 				.setDisabled(this.googleHealthCheckRunning)
 				.onClick(() => {
 					void this.runGoogleHealthCheck();
@@ -1092,8 +1092,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 		if (this.googleHealthCheckRunning) {
 			this.renderHealthCheckCard(containerEl, {
 				status: 'running',
-				title: 'Checking Google connection…',
-				summary: 'Renewing authorization and contacting YouTube.',
+				title: t('settings.googleCheckRunning'),
+				summary: t('settings.googleCheckRunningHelp'),
 			});
 			return;
 		}
@@ -1103,11 +1103,11 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 		this.renderHealthCheckCard(containerEl, {
 			status: healthReport.status,
 			title: healthReport.status === 'healthy'
-				? 'Google connection is healthy'
-				: 'Google connection needs attention',
+				? t('settings.googleHealthy')
+				: t('settings.googleNeedsAttention'),
 			summary: healthReport.status === 'healthy'
-				? 'OAuth renewal and YouTube API access both succeeded.'
-				: 'Review the failed check below, make the suggested change, and try again.',
+				? t('settings.googleHealthHelp')
+				: t('settings.googleHealthFailureHelp'),
 			steps: healthReport.steps,
 			checkedAt: healthReport.checkedAt,
 		});
@@ -1115,12 +1115,12 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 	private renderTranscriptHealthCheck(containerEl: HTMLElement): void {
 		new Setting(containerEl)
-			.setName('Transcript access')
-			.setDesc('Test the public YouTube transcript path with your most recently saved video. No Google OAuth or Data API quota is used.')
+			.setName(t('settings.transcriptAccess'))
+			.setDesc(t('settings.transcriptAccessHelp'))
 			.addButton(button => button
 				.setButtonText(this.transcriptHealthCheckRunning
-					? 'Checking…'
-					: this.transcriptHealthCheckReport ? 'Check again' : 'Run health check')
+					? t('settings.checking')
+					: this.transcriptHealthCheckReport ? t('settings.checkAgain') : t('settings.runHealthCheck'))
 				.setDisabled(this.transcriptHealthCheckRunning)
 				.onClick(() => {
 					void this.runTranscriptHealthCheck();
@@ -1132,8 +1132,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 		if (this.transcriptHealthCheckRunning) {
 			this.renderHealthCheckCard(containerEl, {
 				status: 'running',
-				title: 'Checking transcript access…',
-				summary: 'Contacting the public YouTube transcript endpoints.',
+				title: t('settings.transcriptCheckRunning'),
+				summary: t('settings.transcriptCheckRunningHelp'),
 			});
 			return;
 		}
@@ -1143,10 +1143,10 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 		this.renderHealthCheckCard(containerEl, {
 			status: healthReport.status,
 			title: healthReport.status === 'healthy'
-				? 'Transcript access is working'
+				? t('settings.transcriptWorking')
 				: healthReport.status === 'inconclusive'
-					? 'Transcript access was not verified'
-					: 'Transcript access needs attention',
+					? t('settings.transcriptUnverified')
+					: t('settings.transcriptNeedsAttention'),
 			summary: healthReport.detail,
 			checkedAt: healthReport.checkedAt,
 		});
@@ -1188,7 +1188,7 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 		if (options.checkedAt) {
 			cardEl.createEl('time', {
 				cls: 'geulo-health-check__time',
-				text: `Checked ${options.checkedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
+				text: `${t('settings.checked')} ${options.checkedAt.toLocaleTimeString(getFormatLocale(), { hour: 'numeric', minute: '2-digit' })}`,
 				attr: { datetime: options.checkedAt.toISOString() },
 			});
 		}
@@ -1223,8 +1223,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 		} catch (error: unknown) {
 			if (runId !== this.googleHealthCheckRunId) return;
 			new Notice(error instanceof Error
-				? `Google health check failed: ${error.message}`
-				: 'Google health check failed. Please try again.');
+				? `${t('settings.googleHealthCheckFailed')}: ${error.message}`
+				: t('settings.googleHealthCheckTryAgain'));
 		} finally {
 			if (runId === this.googleHealthCheckRunId) {
 				this.googleHealthCheckRunning = false;
@@ -1257,8 +1257,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 		} catch (error: unknown) {
 			if (runId !== this.transcriptHealthCheckRunId) return;
 			new Notice(error instanceof Error
-				? `Transcript health check failed: ${error.message}`
-				: 'Transcript health check failed. Please try again.');
+				? `${t('settings.transcriptHealthCheckFailed')}: ${error.message}`
+				: t('settings.transcriptHealthCheckTryAgain'));
 		} finally {
 			if (runId === this.transcriptHealthCheckRunId) {
 				this.transcriptHealthCheckRunning = false;
@@ -1269,13 +1269,13 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
 	private async importGoogleCredentials(credentials: GoogleClientCredentials): Promise<void> {
 		if (googleTokenStorageService.getRefreshToken() || googleTokenStorageService.getAccessToken()) {
-			throw new Error('Disconnect your Google account before importing new credentials.');
+			throw new Error(t('credentialsImport.disconnectBeforeImport'));
 		}
 		const previousClientSecret = googleTokenStorageService.getClientSecret();
 		try {
 			googleTokenStorageService.setClientSecret(credentials.clientSecret);
 		} catch {
-			throw new Error('Could not save the client secret in Obsidian SecretStorage. Please try again.');
+			throw new Error(t('credentialsImport.secretSaveFailed'));
 		}
 		try {
 			await this.plugin.saveData({ ...this.plugin.settings, googleClientId: credentials.clientId });
@@ -1283,9 +1283,9 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 			try {
 				googleTokenStorageService.setClientSecret(previousClientSecret);
 			} catch {
-				throw new Error('Could not save credentials or restore the previous secret. Import the file again before connecting.');
+				throw new Error(t('credentialsImport.restoreFailed'));
 			}
-			throw new Error('Could not save credentials. Please try again.');
+			throw new Error(t('credentialsImport.credentialsSaveFailed'));
 		}
 		this.plugin.settings.googleClientId = credentials.clientId;
 		this.invalidateGoogleHealthCheck();
@@ -1300,27 +1300,31 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setHeading()
-            .setName('🔧 Debug Settings')
-            .setDesc('Development mode only');
+            .setName(`🔧 ${t('settings.debugSettings')}`)
+            .setDesc(t('settings.developmentOnly'));
 
         new Setting(containerEl)
-            .setName('Log Level')
-            .setDesc('Set the verbosity of debug logs')
+            .setName(t('settings.logLevel'))
+            .setDesc(t('settings.logLevelHelp'))
             .addDropdown(dropdown => dropdown
-                .addOption('error', 'Error')
-                .addOption('warn', 'Warning')
-                .addOption('info', 'Info')
-                .addOption('debug', 'Debug')
-                .addOption('verbose', 'Verbose')
+                .addOption('error', t('settings.error'))
+                .addOption('warn', t('settings.warn'))
+                .addOption('info', t('settings.info'))
+                .addOption('debug', t('settings.debug'))
+                .addOption('verbose', t('settings.verbose'))
                 .setValue(debugConfig.logLevel)
                 .onChange((value) => {
                     debugLogger.updateConfig({ logLevel: value as DebugConfig['logLevel'] });
-                    new Notice(`Debug log level set to: ${value}`);
+                    const level = value === 'error' ? t('settings.error')
+                        : value === 'warn' ? t('settings.warn')
+                            : value === 'info' ? t('settings.info')
+                                : value === 'debug' ? t('settings.debug') : t('settings.verbose');
+                    new Notice(`${t('settings.logLevelSet')}: ${level}`);
                 }));
 
         new Setting(containerEl)
-            .setName('Log API Calls')
-            .setDesc('Log all API requests and responses')
+            .setName(t('settings.logApiCalls'))
+            .setDesc(t('settings.logApiCallsHelp'))
             .addToggle(toggle => toggle
                 .setValue(debugConfig.logApiCalls)
                 .onChange(value => {
@@ -1328,8 +1332,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Log State Changes')
-            .setDesc('Log state updates and changes')
+            .setName(t('settings.logStateChanges'))
+            .setDesc(t('settings.logStateChangesHelp'))
             .addToggle(toggle => toggle
                 .setValue(debugConfig.logStateChanges)
                 .onChange(value => {
@@ -1337,8 +1341,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Log Auto-Fetch')
-            .setDesc('Log automatic fetch operations')
+            .setName(t('settings.logAutoFetch'))
+            .setDesc(t('settings.logAutoFetchHelp'))
             .addToggle(toggle => toggle
                 .setValue(debugConfig.logAutoFetch)
                 .onChange(value => {
@@ -1346,8 +1350,8 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Auto-Fetch Interval Override (minutes)')
-            .setDesc('Override auto-fetch interval for testing (0 = use normal setting)')
+            .setName(t('settings.autoFetchOverride'))
+            .setDesc(t('settings.autoFetchOverrideHelp'))
             .addText(text => text
                 .setPlaceholder('0')
                 .setValue(String(debugConfig.autoFetchIntervalOverride || 0))
@@ -1357,22 +1361,22 @@ export class GoogleLikedVideoSettingTab extends PluginSettingTab {
                         autoFetchIntervalOverride: minutes > 0 ? minutes : undefined
                     });
                     if (minutes > 0) {
-                        new Notice(`Auto-fetch interval overridden to ${minutes} minutes. Restart plugin to apply.`);
+						new Notice(t('settings.intervalOverrideApplied', { count: minutes }));
                     }
                 }));
 
         new Setting(containerEl)
-            .setName('Force Fetch Now')
-            .setDesc('Trigger an immediate fetch for testing')
+            .setName(t('settings.forceFetchNow'))
+            .setDesc(t('settings.forceFetchNowHelp'))
             .addButton(button => button
-                .setButtonText('Fetch Now')
+                .setButtonText(t('settings.fetchNow'))
                 .onClick(async () => {
                     debugLogger.info('Manual debug fetch triggered');
                     await this.plugin.performAutoFetch();
                 }));
 
         new Setting(containerEl)
-            .setName('Debug Console Commands')
-            .setDesc('Enable: enableGeuloDebug() | Disable: disableGeuloDebug()');
+            .setName(t('settings.debugCommands'))
+            .setDesc(t('settings.debugCommandsHelp'));
     }
 }

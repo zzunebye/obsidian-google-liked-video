@@ -1,6 +1,7 @@
 import { Notice } from "obsidian";
 import { debugLogger } from "src/debug";
 import { usePlugin } from "src/store/pluginContext";
+import { t } from "../i18n";
 import type { YouTubeVideo } from "src/types";
 
 export function YouTubeChannelButton({ video }: { readonly video: YouTubeVideo }) {
@@ -16,7 +17,7 @@ export function YouTubeChannelButton({ video }: { readonly video: YouTubeVideo }
 			await leaf.setViewState({ type: "webviewer", state: { url, navigate: true }, active: true });
 		} catch (error: unknown) {
 			debugLogger.error("Failed to open YouTube channel:", error);
-			new Notice("Unable to open YouTube channel. Please try again.");
+			new Notice(t("youtube.openChannelFailed"));
 		}
 	};
 

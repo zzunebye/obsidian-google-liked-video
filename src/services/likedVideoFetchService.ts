@@ -2,6 +2,7 @@ import { LikedVideoApi } from 'src/api';
 import { localStorageService } from 'src/storage';
 import { YouTubeVideo } from 'src/types';
 import { mergeVideos } from 'src/utils/videoMergeUtils';
+import { t } from '../i18n';
 
 export type LikedVideoFetchMode = 'full' | 'partial';
 
@@ -67,7 +68,7 @@ export async function fetchAndMergeLikedVideos(
 	if (options.mode === 'full' && !options.keepUnfetched
 		&& !options.allowEmptyFullReplacement
 		&& fetchedVideos.length === 0 && storedVideos.length > 0) {
-		throw new Error('YouTube returned no liked videos. Your saved list was kept. To remove it, use "Clear saved videos" in Geulo settings.');
+		throw new Error(t('liked.emptyFetchPreserved'));
 	}
 	const { mergedVideos, newVideos, updatedCount } = mergeVideos(
 		fetchedVideos,

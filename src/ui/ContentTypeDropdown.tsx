@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
-import { UI_TEXT } from "src/constants/uiText";
+import { t } from "../i18n";
 import type { ContentTypeOption, ContentTypeSelection } from "src/types";
 
 interface ContentTypeDropdownProps {
@@ -12,15 +12,15 @@ interface ContentTypeDropdownProps {
 }
 
 const CONTENT_TYPE_LABELS: Record<ContentTypeOption, string> = {
-	videos: UI_TEXT.CONTENT_TYPE_VIDEOS,
-	shorts: UI_TEXT.CONTENT_TYPE_SHORTS,
-	music: UI_TEXT.CONTENT_TYPE_MUSIC,
+	videos: t("content.longForm"),
+	shorts: t("content.shortForm"),
+	music: t("content.music"),
 };
 
 const COMPACT_CONTENT_TYPE_LABELS: Record<ContentTypeOption, string> = {
-	videos: "Long",
-	shorts: "Short",
-	music: UI_TEXT.CONTENT_TYPE_MUSIC,
+	videos: t("content.long"),
+	shorts: t("content.short"),
+	music: t("content.music"),
 };
 
 export function formatContentTypeSelection(selection: ContentTypeSelection): string {
@@ -39,13 +39,13 @@ export const ContentTypeDropdown = ({
 	const menuRef = useRef<HTMLDivElement>(null);
 	const menuId = useId();
 	const options = [
-		{ value: "videos", label: UI_TEXT.CONTENT_TYPE_VIDEOS, description: UI_TEXT.TOOLTIP_VIDEOS(shortVideoMaxDurationSeconds) },
-		{ value: "shorts", label: UI_TEXT.CONTENT_TYPE_SHORTS, description: UI_TEXT.TOOLTIP_SHORTS(shortVideoMaxDurationSeconds) },
-		{ value: "music", label: UI_TEXT.CONTENT_TYPE_MUSIC, description: UI_TEXT.TOOLTIP_MUSIC },
+		{ value: "videos", label: t("content.longForm"), description: t("content.videosHelp", { count: shortVideoMaxDurationSeconds }) },
+		{ value: "shorts", label: t("content.shortForm"), description: t("content.shortsHelp", { count: shortVideoMaxDurationSeconds }) },
+		{ value: "music", label: t("content.music"), description: t("content.musicHelp") },
 	] as const;
 	const isAll = selection.length === 0 || selection.length === options.length;
 	const label = isAll
-		? "All"
+		? t("content.all")
 		: formatContentTypeSelection(selection);
 
 	useEffect(() => {
@@ -139,7 +139,7 @@ export const ContentTypeDropdown = ({
 
 	return (
 		<div className={`liked-video-filter ${!isAll ? "liked-video-filter--active" : ""}`}>
-			<span id={`${menuId}-label`} className="liked-video-filter__label">Type</span>
+			<span id={`${menuId}-label`} className="liked-video-filter__label">{t("filter.type")}</span>
 			<button
 				ref={triggerRef}
 				type="button"
@@ -165,14 +165,14 @@ export const ContentTypeDropdown = ({
 					id={menuId}
 					className="content-type-dropdown__menu"
 					role="menu"
-					aria-label="Content type"
+					aria-label={t("content.type")}
 					style={position}
 					onKeyDown={handleMenuKeyDown}
 				>
-					<div className="content-type-dropdown__heading" role="presentation">Content type</div>
+					<div className="content-type-dropdown__heading" role="presentation">{t("content.type")}</div>
 					<button type="button" role="menuitemcheckbox" aria-checked={isAll} tabIndex={-1} onClick={() => onChange([])}>
 						<Check size={16} aria-hidden="true" />
-						All
+						{t("content.all")}
 					</button>
 					<div className="content-type-dropdown__separator" role="separator" />
 					{options.map((option) => (

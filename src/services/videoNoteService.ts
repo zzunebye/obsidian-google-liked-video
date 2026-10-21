@@ -6,6 +6,7 @@ import type { YouTubeVideo } from 'src/types';
 import { computeExpectedNotePath, generateVideoNoteContent, getExpectedNotePath, getVideoUrl, sanitizeFileName } from 'src/utils/noteUtils';
 import { ensureVideoNoteId, findVideoNote, updateVideoNoteLiked } from 'src/utils/videoNoteUtils';
 import { TemplateService } from './templateService';
+import { t } from '../i18n';
 
 interface VideoNoteResult {
 	file: TFile;
@@ -132,7 +133,7 @@ export class VideoNoteService {
 					if (this.canAcceptRating(videoId, checkpoint)) this.ratings.delete(videoId);
 				}
 				debugLogger.error('[Video note] Could not check YouTube like status', error);
-				new Notice('Geulo: Could not check your YouTube like status. Existing liked properties were kept; reopen the note to retry.');
+				new Notice(t("notes.likeStatusCheckFailed"));
 			}
 		}
 	}
@@ -156,7 +157,7 @@ export class VideoNoteService {
 					debugLogger.error('[Video note] Could not write liked property', target.path, error);
 				}
 			}
-			if (failed) new Notice('Geulo: YouTube like status was confirmed, but a note’s liked property could not be saved. Reopen the note to retry.');
+			if (failed) new Notice(t("notes.likeStatusSaveFailed"));
 		});
 		this.writes.set(videoId, task);
 		try { await task; }

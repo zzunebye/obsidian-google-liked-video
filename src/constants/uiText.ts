@@ -4,7 +4,6 @@ export const UI_TEXT = {
     HEADER_TITLE_USER_PLAYLISTS: 'My Playlists',
 
     // Buttons
-    BTN_REFRESH: 'Refresh',
     BTN_SETTINGS: 'Settings',
     BTN_TOGGLE_SORT_ORDER: 'Toggle sort order',
     BTN_FETCH_ALL: 'Fetch all liked videos',
@@ -26,12 +25,8 @@ export const UI_TEXT = {
     ARIA_TOGGLE_SORT_ORDER: 'Toggle sort order',
 
     // Video count
-    VIDEO_COUNT: (count: number) => `${count} videos`,
     VIDEO_COUNT_WITH_TOTAL: (current: number, total: number) =>
         current === total ? `${current} videos` : `${current} videos (of ${total})`,
-
-    // Empty state
-    NO_VIDEOS_FOUND: 'No videos found',
 
     // Notifications
     NOTICE_NEW_VIDEOS_FETCHED: (count: number) => `Geulo: New liked videos from Youtube are fetched and added - ${count} new videos.`,

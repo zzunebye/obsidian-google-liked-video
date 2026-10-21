@@ -1,7 +1,7 @@
 import type { DurationFilter, PublishedDateFilter, YouTubeVideo } from "src/types";
+import { getFormatLocale, t } from "../i18n";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const languageNames = new Intl.DisplayNames(["en"], { type: "language" });
 
 export function normalizeVideoLanguage(language: unknown): string {
 	if (typeof language !== "string") return "unknown";
@@ -11,9 +11,9 @@ export function normalizeVideoLanguage(language: unknown): string {
 }
 
 export function getVideoLanguageLabel(language: string): string {
-	if (language === "unknown") return "Unknown";
-	if (language === "zxx") return "No linguistic content";
-	return languageNames.of(language) ?? language;
+	if (language === "unknown") return t("filter.unknown");
+	if (language === "zxx") return t("language.noLinguisticContent");
+	return new Intl.DisplayNames([getFormatLocale()], { type: "language" }).of(language) ?? language;
 }
 
 export interface VideoContentClassification {

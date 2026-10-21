@@ -2,6 +2,7 @@ import { Notice } from "obsidian";
 import { ExternalLink, Search } from "lucide-react";
 import { debugLogger } from "src/debug";
 import { usePlugin } from "src/store/pluginContext";
+import { t } from "../i18n";
 
 export const OpenYouTubeButton = ({ query }: { query?: string }) => {
 	const plugin = usePlugin();
@@ -24,12 +25,12 @@ export const OpenYouTubeButton = ({ query }: { query?: string }) => {
 			});
 		} catch (error: unknown) {
 			debugLogger.error("Failed to open YouTube:", error);
-			new Notice("Unable to open YouTube. Please try again.");
+			new Notice(t("youtube.openFailed"));
 		}
 	};
 
 	if (query !== undefined && !query.trim()) return null;
-	const label = query === undefined ? "Open YouTube" : `Search YouTube for “${query.trim()}”`;
+	const label = query === undefined ? t("youtube.open") : `${t("youtube.searchFor")} “${query.trim()}”`;
 
 	return (
 		<button

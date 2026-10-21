@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RefreshCw, Settings, SlidersHorizontal } from 'lucide-react';
+import { t } from '../i18n';
 
 interface Props {
 	speed: number;
@@ -69,20 +70,20 @@ export function SpeechPlaybackOptions({ speed, volume, onSpeedChange, onVolumeCh
 	}, [isOpen]);
 
 	return <>
-		<button ref={triggerRef} type="button" title="Speech playback options" aria-label="Speech playback options" aria-haspopup="dialog"
+		<button ref={triggerRef} type="button" title={t("speech.playbackOptions")} aria-label={t("speech.playbackOptions")} aria-haspopup="dialog"
 			aria-expanded={isOpen} aria-controls={isOpen ? id : undefined} onClick={() => setIsOpen(value => !value)}>
 			<SlidersHorizontal size={16} aria-hidden="true" />
 		</button>
 		{isOpen && triggerRef.current && createPortal(
-			<div ref={popoverRef} id={id} className="geulo-speech-options" role="dialog" aria-label="Speech playback options" style={position}
+			<div ref={popoverRef} id={id} className="geulo-speech-options" role="dialog" aria-label={t("speech.playbackOptions")} style={position}
 				onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setIsOpen(false); }}>
-				<strong>Playback options</strong>
-				<label htmlFor={`${id}-speed`}>Speed
+				<strong>{t("speech.playbackOptions")}</strong>
+				<label htmlFor={`${id}-speed`}>{t("speech.speed")}
 					<select id={`${id}-speed`} value={speed} onChange={event => onSpeedChange(Number(event.target.value))}>
 						{[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map(value => <option key={value} value={value}>{value}×</option>)}
 					</select>
 				</label>
-				<label htmlFor={`${id}-volume`}>Volume <span>{Math.round(volume * 100)}%</span></label>
+				<label htmlFor={`${id}-volume`}>{t("speech.volume")} <span>{Math.round(volume * 100)}%</span></label>
 				<input id={`${id}-volume`} type="range" min="0" max="1" step="0.05" value={volume}
 					aria-valuetext={`${Math.round(volume * 100)}%`} onChange={event => onVolumeChange(Number(event.target.value))} />
 				<div className="geulo-speech-options__regenerate">
@@ -90,12 +91,12 @@ export function SpeechPlaybackOptions({ speed, volume, onSpeedChange, onVolumeCh
 						setIsOpen(false);
 						triggerRef.current?.focus();
 						onRegenerate();
-					}}><RefreshCw size={14} aria-hidden="true" />Regenerate speech</button>
-					<small>Replace saved audio using the current speech model and voice.</small>
+					}}><RefreshCw size={14} aria-hidden="true" />{t("speech.regenerate")}</button>
+					<small>{t("speech.replaceAudioHelp")}</small>
 					<button type="button" onClick={() => {
 						setIsOpen(false);
 						onOpenSettings();
-					}}><Settings size={14} aria-hidden="true" />Speech settings</button>
+					}}><Settings size={14} aria-hidden="true" />{t("speech.settings")}</button>
 				</div>
 			</div>, triggerRef.current.ownerDocument.body,
 		)}

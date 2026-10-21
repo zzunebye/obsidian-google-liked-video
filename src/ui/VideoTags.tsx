@@ -7,6 +7,7 @@ import {
 	useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { t } from "../i18n";
 
 const MAX_CARD_TAGS = 3;
 const TAG_GAP_PX = 4;
@@ -190,7 +191,7 @@ export const ResponsiveVideoTags = ({
 
 	return (
 		<div className="video-tags" ref={containerRef}>
-			<div className="video-tags__row" aria-label="Video tags">
+			<div className="video-tags__row" aria-label={t("videoTags.title")}>
 				{visibleTags.map((tag, index) => (
 					<button
 						key={`${tag}-${index}`}
@@ -209,7 +210,7 @@ export const ResponsiveVideoTags = ({
 						ref={overflowButtonRef}
 						type="button"
 						className="video-tag-chip video-tag-chip--overflow"
-						aria-label={`Show ${hiddenTags.length} more video tags`}
+						aria-label={t("videoTags.showMoreCount", { count: hiddenTags.length })}
 						aria-expanded={isPopoverOpen}
 						aria-haspopup="dialog"
 						draggable={false}
@@ -232,7 +233,7 @@ export const ResponsiveVideoTags = ({
 						ref={popoverRef}
 						className="video-tags__popover"
 						role="dialog"
-						aria-label="More video tags"
+						aria-label={t("videoTags.more")}
 						style={popoverPosition}
 						onClick={(event) => event.stopPropagation()}
 					>
@@ -280,7 +281,7 @@ export const VideoTagChips = ({ tags }: VideoTagChipsProps) => {
 	if (displayTags.length === 0) return null;
 
 	return (
-		<div className="video-tag-list" aria-label="Video tags">
+		<div className="video-tag-list" aria-label={t("videoTags.title")}>
 			{displayTags.map((tag, index) => (
 				<span
 					key={`${tag}-${index}`}

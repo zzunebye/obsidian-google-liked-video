@@ -8,6 +8,7 @@ import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { PlaylistVideosView, PlaylistVideosViewState } from "./PlaylistVideosView";
 import { TranscriptWorkspace } from "src/ui/TranscriptWorkspace";
+import { t } from "../i18n";
 
 interface IPlaylistVideosViewPersistedState {
     playlistSource?: PlaylistSource;
@@ -45,7 +46,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         super.onPaneMenu(menu, source);
 
         menu.addItem((item: MenuItem) => {
-            item.setTitle("Refresh Videos");
+            item.setTitle(t("playlist.refreshVideos"));
             item.setIcon("refresh-cw");
             item.onClick(() => {
                 if (this.plugin?.playlistApi) {
@@ -57,7 +58,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         });
 
         menu.addItem((item: MenuItem) => {
-            item.setTitle("Back to Playlists");
+            item.setTitle(t("playlist.backToPlaylists"));
             item.setIcon("arrow-left");
             item.onClick(() => {
                 void this.plugin?.activatePlaylistsView();
@@ -95,7 +96,7 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         this.root.render(
             <StrictMode>
                 <PluginContext.Provider value={this.plugin}>
-                    <TranscriptWorkspace key={`${this.playlistSource.type}:${this.playlistInfo.id}:${this.viewVersion}`} label="playlist videos">
+                    <TranscriptWorkspace key={`${this.playlistSource.type}:${this.playlistInfo.id}:${this.viewVersion}`} label={t("playlist.videosLabel")}>
                     <PlaylistVideosView
                         playlistSource={this.playlistSource}
                         playlistInfo={this.playlistInfo}
@@ -124,10 +125,10 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
         try {
             const confirmed = await confirmDangerousAction(
                 this.app,
-                `"${this.playlistInfo.title}"\n\nYouTube에서 영구 삭제되며 복구할 수 없음`,
+				`${t("playlists.confirmDelete")}: "${this.playlistInfo.title}"`,
                 {
-                    title: "YouTube 플레이리스트 삭제",
-                    confirmText: "영구 삭제",
+					title: t("playlists.deleteFromYouTube"),
+					confirmText: t("playlists.deletePermanently"),
                 },
             );
 
@@ -136,15 +137,15 @@ export class PlaylistVideosPane extends ItemView implements IPlaylistVideosViewP
             await this.plugin.playlistApi.deletePlaylist(this.playlistInfo.id);
             localStorageService.unpinPlaylist(this.playlistInfo.id);
             localStorageService.removeSavedPlaylist(this.playlistInfo.id);
-            new Notice(`Playlist "${this.playlistInfo.title}" deleted from YouTube.`);
+			new Notice(`${t("playlists.deletedFromYouTube")}: ${this.playlistInfo.title}`);
             this.app.workspace
                 .getLeavesOfType("user-playlists")
                 .forEach((leaf) => leaf.detach());
             this.leaf.detach();
             await this.plugin.activatePlaylistsView();
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Unknown error";
-            new Notice(`Failed to delete playlist: ${message}`);
+			const message = error instanceof Error ? error.message : t("settings.unknownError");
+			new Notice(`${t("playlists.deleteFailed")}: ${message}`);
         } finally {
             this.isDeletingPlaylist = false;
         }

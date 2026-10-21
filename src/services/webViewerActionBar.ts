@@ -96,7 +96,10 @@ export class WebViewerActionBar extends Component {
 				});
 				this.buttons.set(action.id, button);
 			}
-			if (button.getAttribute('aria-label') !== action.label) setTooltip(button, action.label, { placement: 'top' });
+			if (button.getAttribute('aria-label') !== action.label) {
+				setTooltip(button, action.label, { placement: 'top' });
+				button.removeAttribute('title');
+			}
 			if (button.dataset.icon !== action.icon) {
 				setIcon(button, action.icon);
 				button.dataset.icon = action.icon;

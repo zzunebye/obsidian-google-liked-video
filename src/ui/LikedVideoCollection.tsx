@@ -4,6 +4,7 @@ import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import type { Range } from "@tanstack/react-virtual";
 import type { LikedVideoPaginationMode, YouTubeVideo } from "src/types";
 import type { SummarySnapshot } from "./SummarySection";
+import { t } from "src/i18n";
 
 export interface SummaryCardState {
 	readonly summaryExpanded: boolean;
@@ -36,7 +37,7 @@ const PAGE_SIZE = 10;
 const INFINITE_BATCH_SIZE = 50;
 
 export const LikedVideoCollection = forwardRef<LikedVideoCollectionHandle, Props>(function LikedVideoCollection(
-	{ videos, mode, currentPage, onPageChange, resetKey, noteExistenceMap, renderVideo, label = "Liked videos", getVideoKey = getDefaultVideoKey }, ref,
+	{ videos, mode, currentPage, onPageChange, resetKey, noteExistenceMap, renderVideo, label = t("liked.title"), getVideoKey = getDefaultVideoKey }, ref,
 ) {
 	const listLabelId = useId();
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -332,7 +333,7 @@ export const LikedVideoCollection = forwardRef<LikedVideoCollectionHandle, Props
 			<p ref={endRef} className="liked-video-list-end">
 				{exposedCount < videos.length
 					? `${exposedCount} of ${videos.length} videos`
-					: `End of ${videos.length} ${videos.length === 1 ? "video" : "videos"}`}
+					: t("videos.endOfList", { count: videos.length })}
 			</p>
 		)}
 		</>

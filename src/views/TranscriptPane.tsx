@@ -9,6 +9,7 @@ import { PluginContext } from "src/store/pluginContext";
 import type { YouTubeVideo } from "src/types";
 import { VideoTranscriptReader } from "src/ui/VideoTranscriptReader";
 import type { TranscriptReaderMode } from "src/utils/transcriptUtils";
+import { t } from "../i18n";
 
 export const VIEW_TYPE_TRANSCRIPT = "geulo-transcript";
 
@@ -20,7 +21,7 @@ export class TranscriptPane extends ItemView {
 
 	constructor(leaf: WorkspaceLeaf, private readonly plugin: GoogleLikedVideoPlugin) { super(leaf); }
 	getViewType(): string { return VIEW_TYPE_TRANSCRIPT; }
-	getDisplayText(): string { return this.video ? `Transcript: ${this.video.snippet.title}` : "Transcript"; }
+	getDisplayText(): string { return this.video ? `${t("transcript.title")}: ${this.video.snippet.title}` : t("transcript.title"); }
 	getIcon(): string { return "captions"; }
 	async onOpen(): Promise<void> {
 		this.contentEl.addClass("geulo-transcript-host");
@@ -46,7 +47,7 @@ export class TranscriptPane extends ItemView {
 					this.displayMode = mode;
 					this.render();
 					this.app.workspace.requestSaveLayout();
-				}} /> : <p>Select a video's transcript from Geulo.</p>}
+				}} /> : <p>{t("transcript.selectFromGeulo")}</p>}
 		</PluginContext.Provider></StrictMode>);
 	}
 }

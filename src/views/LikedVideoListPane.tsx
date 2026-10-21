@@ -7,6 +7,7 @@ import GoogleLikedVideoPlugin from "../main";
 import { VideosProvider } from "../store/videoContext";
 import { PluginContext } from "../store/pluginContext";
 import { TranscriptWorkspace } from "src/ui/TranscriptWorkspace";
+import { t } from "../i18n";
 interface ILikedVideoListViewPersistedState {
     videos: YouTubeVideo[];
 }
@@ -33,7 +34,7 @@ export class LikedVideoListPane
     onPaneMenu(menu: Menu, source: string): void {
         super.onPaneMenu(menu, source);
         menu.addItem((item: MenuItem) => {
-            item.setTitle("Refresh");
+            item.setTitle(t("common.refresh"));
             item.setIcon("sync");
             item.onClick(() => {
                 void this.onClose();
@@ -47,7 +48,7 @@ export class LikedVideoListPane
     }
 
     getDisplayText(): string {
-        return "Liked videos";
+        return t("liked.title");
     }
 
     getIcon(): string {
@@ -61,7 +62,7 @@ export class LikedVideoListPane
         this.root.render(
             <StrictMode>
                 <PluginContext.Provider value={this.plugin}>
-                    <TranscriptWorkspace label="liked videos"><VideosProvider videos={this.videos} /></TranscriptWorkspace>
+                    <TranscriptWorkspace label={t("liked.title")}><VideosProvider videos={this.videos} /></TranscriptWorkspace>
                 </PluginContext.Provider>
             </StrictMode>
         );

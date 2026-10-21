@@ -1,6 +1,7 @@
 import { Notice, Setting } from 'obsidian';
 import type { ExtraButtonComponent } from 'obsidian';
 import { debugLogger } from 'src/debug';
+import { t } from '../i18n';
 
 export interface MonospaceTextareaOptions {
 	className: string;
@@ -74,7 +75,7 @@ export function addWideTextSetting(
 			copyButton = button;
 			button
 				.setIcon('copy')
-				.setTooltip(`Copy ${options.name}`)
+				.setTooltip(t("settings.copyTooltip").replace("{name}", options.name))
 				.setDisabled(options.value.length === 0)
 				.onClick(async () => {
 					const value = inputEl?.value ?? options.value;
@@ -82,10 +83,10 @@ export function addWideTextSetting(
 
 					try {
 						await navigator.clipboard.writeText(value);
-						new Notice(`${options.name} copied to clipboard.`);
+						new Notice(t("settings.copiedToClipboard").replace("{name}", options.name));
 					} catch (error: unknown) {
 						debugLogger.warn(`[Settings] Failed to copy ${options.name}`, error);
-						new Notice(`Could not copy ${options.name}. Please try again.`);
+						new Notice(t("settings.copyFailed").replace("{name}", options.name));
 					}
 				});
 		});

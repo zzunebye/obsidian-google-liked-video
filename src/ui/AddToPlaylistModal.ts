@@ -2,6 +2,7 @@ import { App, Modal, Notice, SearchComponent, setIcon } from 'obsidian';
 import { PlaylistApi } from 'src/api';
 import { debugLogger } from 'src/debug';
 import { PlaylistInfo } from 'src/types';
+import { t } from '../i18n';
 
 export class AddToPlaylistModal extends Modal {
 	private playlists: PlaylistInfo[] = [];
@@ -19,7 +20,7 @@ export class AddToPlaylistModal extends Modal {
 
 	constructor(app: App, private api: PlaylistApi, private videoId: string, private videoTitle: string) {
 		super(app);
-		this.setTitle('Add to playlist');
+		this.setTitle(t("addToPlaylist.title"));
 	}
 
 	onOpen(): void {
@@ -30,27 +31,27 @@ export class AddToPlaylistModal extends Modal {
 		const video = this.contentEl.createDiv({ cls: 'geulo-add-playlist__video' });
 		setIcon(video.createSpan({ cls: 'geulo-add-playlist__video-icon' }), 'youtube');
 		const videoText = video.createDiv();
-		videoText.createDiv({ text: 'Adding video', cls: 'geulo-add-playlist__eyebrow' });
+		videoText.createDiv({ text: t("addToPlaylist.addingVideo"), cls: 'geulo-add-playlist__eyebrow' });
 		videoText.createDiv({ text: this.videoTitle, cls: 'geulo-add-playlist__video-title' });
 		const search = new SearchComponent(this.contentEl.createDiv({ cls: 'geulo-add-playlist__search' }));
 		this.searchInput = search.inputEl;
-		this.searchInput.setAttribute('aria-label', 'Search playlists');
-		search.setPlaceholder('Search your playlists…').onChange(() => this.filterPlaylists());
+		this.searchInput.setAttribute('aria-label', t("addToPlaylist.search"));
+		search.setPlaceholder(t("addToPlaylist.searchPlaceholder")).onChange(() => this.filterPlaylists());
 		this.statusEl = this.contentEl.createDiv({ cls: 'geulo-add-playlist__status', attr: { role: 'status', 'aria-live': 'polite' } });
-		this.listEl = this.contentEl.createDiv({ cls: 'geulo-add-playlist__list', attr: { role: 'radiogroup', 'aria-label': 'Your playlists' } });
+		this.listEl = this.contentEl.createDiv({ cls: 'geulo-add-playlist__list', attr: { role: 'radiogroup', 'aria-label': t("addToPlaylist.yourPlaylists") } });
 		const footer = this.contentEl.createDiv({ cls: 'geulo-add-playlist__footer' });
-		this.selectionEl = footer.createDiv({ cls: 'geulo-add-playlist__selection', text: 'Choose a playlist to continue' });
+		this.selectionEl = footer.createDiv({ cls: 'geulo-add-playlist__selection', text: t("addToPlaylist.choose") });
 		const actions = footer.createDiv({ cls: 'geulo-add-playlist__actions' });
-		this.retryButton = actions.createEl('button', { text: 'Retry loading' });
+		this.retryButton = actions.createEl('button', { text: t("addToPlaylist.retryLoading") });
 		this.retryButton.addEventListener('click', () => { void this.loadPlaylists(); });
-		const cancelButton = actions.createEl('button', { text: 'Cancel' });
+		const cancelButton = actions.createEl('button', { text: t("settings.cancel") });
 		cancelButton.addEventListener('click', () => this.close());
-		this.addButton = actions.createEl('button', { text: 'Add to playlist', cls: 'mod-cta' });
+		this.addButton = actions.createEl('button', { text: t("addToPlaylist.add"), cls: 'mod-cta' });
 		this.addButton.disabled = true;
 		this.addButton.addEventListener('click', () => { void this.addVideo(); });
 		this.contentEl.createDiv({
 			cls: 'geulo-add-playlist__note',
-			text: '50 units per addition, plus playlist lookup and duplicate checks.',
+			text: t("addToPlaylist.quotaNote"),
 		});
 		void this.loadPlaylists();
 	}
@@ -64,7 +65,7 @@ export class AddToPlaylistModal extends Modal {
 		if (this.busy) return;
 		this.setBusy(true);
 		this.retryButton.hide();
-		this.statusEl.setText('Loading your playlists…');
+		this.statusEl.setText(t("addToPlaylist.loading"));
 		try {
 			const playlists = await this.api.fetchUserPlaylists();
 			if (!this.visible) return;
@@ -74,7 +75,7 @@ export class AddToPlaylistModal extends Modal {
 		} catch (error: unknown) {
 			debugLogger.error('Failed to load playlists for adding a video:', error);
 			if (!this.visible) return;
-			this.statusEl.setText('Could not load your playlists. Please try again.');
+			this.statusEl.setText(t("addToPlaylist.loadFailed"));
 			this.retryButton.show();
 		} finally {
 			if (this.visible) {
@@ -105,11 +106,11 @@ export class AddToPlaylistModal extends Modal {
 			}
 			const info = row.createDiv({ cls: 'geulo-add-playlist__info' });
 			info.createDiv({ text: playlist.title, cls: 'geulo-add-playlist__title' });
-			const metadata = [`${playlist.itemCount} ${playlist.itemCount === 1 ? 'video' : 'videos'}`];
+			const metadata = [t("addToPlaylist.videoCount", { count: playlist.itemCount })];
 			const duplicateTitle = this.playlists.some((other) => other.id !== playlist.id && other.title === playlist.title);
 			if (duplicateTitle && playlist.publishedAt) {
 				const date = new Date(playlist.publishedAt);
-				if (!Number.isNaN(date.getTime())) metadata.push(`Created ${date.toLocaleDateString()}`);
+				if (!Number.isNaN(date.getTime())) metadata.push(`${t("addToPlaylist.created")} ${date.toLocaleDateString()}`);
 			}
 			info.createDiv({ text: metadata.join(' · '), cls: 'geulo-add-playlist__meta' });
 			if (playlist.description) info.createDiv({ text: playlist.description, cls: 'geulo-add-playlist__description' });
@@ -121,20 +122,20 @@ export class AddToPlaylistModal extends Modal {
 				this.updateSelection();
 			});
 		}
-		this.statusEl.setText(`${matches.length} ${matches.length === 1 ? 'playlist' : 'playlists'}`);
+		this.statusEl.setText(t("addToPlaylist.playlistCount", { count: matches.length }));
 		if (matches.length === 0) {
 			const empty = this.listEl.createDiv({ cls: 'geulo-add-playlist__empty' });
 			setIcon(empty.createDiv(), 'list-video');
-			empty.createEl('strong', { text: this.playlists.length === 0 ? 'No playlists yet' : 'No matching playlists' });
+			empty.createEl('strong', { text: this.playlists.length === 0 ? t("addToPlaylist.noneYet") : t("addToPlaylist.noMatch") });
 			empty.createEl('p', { text: this.playlists.length === 0
-				? 'Create a playlist on YouTube, then reopen this window.' : 'Try a different name or clear your search.' });
+				? t("addToPlaylist.createOnYouTube") : t("addToPlaylist.tryDifferentSearch") });
 		}
 		this.updateSelection();
 	}
 
 	private updateSelection(): void {
 		const selected = this.playlists.find((playlist) => playlist.id === this.selectedId);
-		this.selectionEl.setText(selected ? `Selected: ${selected.title}` : 'Choose a playlist to continue');
+		this.selectionEl.setText(selected ? `${t("addToPlaylist.selected")}: ${selected.title}` : t("addToPlaylist.choose"));
 		this.addButton.disabled = this.busy || !selected;
 	}
 
@@ -152,21 +153,21 @@ export class AddToPlaylistModal extends Modal {
 		const playlist = this.playlists.find((item) => item.id === this.selectedId);
 		if (!playlist) return;
 		this.setBusy(true);
-		this.statusEl.setText('Checking and adding video…');
-		this.addButton.setText('Adding…');
+		this.statusEl.setText(t("addToPlaylist.checkingAndAdding"));
+		this.addButton.setText(t("playlists.adding"));
 		try {
 			const result = await this.api.addVideoToPlaylist(playlist.id, this.videoId);
-			new Notice(result === 'added' ? `Added to ${playlist.title}` : `This video is already in ${playlist.title}`);
+			new Notice(`${t(result === 'added' ? "addToPlaylist.added" : "addToPlaylist.alreadyPresent")}: ${playlist.title}`);
 			if (this.visible) this.close();
 		} catch (error: unknown) {
 			debugLogger.error('Failed to add video to playlist:', error);
-			const message = error instanceof Error ? error.message : 'Could not add video to playlist';
-			if (this.visible) this.statusEl.setText(`${message}. You can try again; playlist membership will be checked first.`);
+			const message = error instanceof Error ? error.message : t("addToPlaylist.addFailed");
+			if (this.visible) this.statusEl.setText(`${message}. ${t("addToPlaylist.retryChecksMembership")}`);
 			else new Notice(message);
 		} finally {
 			if (this.visible) {
 				this.setBusy(false);
-				this.addButton.setText('Add to playlist');
+				this.addButton.setText(t("addToPlaylist.add"));
 			}
 		}
 	}

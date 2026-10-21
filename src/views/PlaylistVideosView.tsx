@@ -1,9 +1,9 @@
 import { Menu, Notice } from "obsidian";
+import { t } from "../i18n";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { Play, Search, AlertCircle, RefreshCw, Trash2, Settings, ExternalLink, SlidersHorizontal, ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import type { ContentTypeSelection, DurationFilter, PlaylistInfo, PlaylistSource, PresenceFilter, PublishedDateFilter, YouTubeVideo } from "src/types";
-import { UI_TEXT } from "src/constants/uiText";
 import { localStorageService } from "src/storage";
 import { categoriesService } from "src/categoriesService";
 import { VideoCard } from "src/ui/VideoCard";
@@ -54,16 +54,16 @@ interface PlaylistVideosViewProps {
 }
 
 const SORT_OPTIONS = [
-	{ value: "playlistOrder", label: "Playlist Order" },
-	{ value: "viewCount", label: UI_TEXT.SORT_BY_VIEW_COUNT },
-	{ value: "averageViewsPerDay", label: UI_TEXT.SORT_BY_AVERAGE_VIEWS_PER_DAY },
-	{ value: "likeCount", label: UI_TEXT.SORT_BY_LIKE_COUNT },
-	{ value: "commentCount", label: UI_TEXT.SORT_BY_COMMENT_COUNT },
-	{ value: "likeViewRatio", label: UI_TEXT.SORT_BY_LIKE_VIEW_RATIO },
-	{ value: "date", label: UI_TEXT.SORT_BY_PUBLISHED_DATE },
-	{ value: "title", label: UI_TEXT.SORT_BY_TITLE },
-	{ value: "channelTitle", label: UI_TEXT.SORT_BY_CHANNEL_NAME },
-	{ value: "duration", label: UI_TEXT.SORT_BY_DURATION },
+	{ value: "playlistOrder", label: t("playlist.sortOrder") },
+	{ value: "viewCount", label: t("sort.viewCount") },
+	{ value: "averageViewsPerDay", label: t("sort.averageViewsPerDay") },
+	{ value: "likeCount", label: t("sort.likeCount") },
+	{ value: "commentCount", label: t("sort.commentCount") },
+	{ value: "likeViewRatio", label: t("sort.likeViewRatio") },
+	{ value: "date", label: t("sort.publishedDate") },
+	{ value: "title", label: t("sort.title") },
+	{ value: "channelTitle", label: t("sort.channel") },
+	{ value: "duration", label: t("sort.duration") },
 ] as const;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -73,14 +73,14 @@ const PUBLISHED_DATE_FILTER_OPTIONS: ReadonlyArray<{
 	label: string;
 	activeLabel: string;
 }> = [
-	{ value: "all", label: "Any time", activeLabel: "Any upload date" },
-	{ value: "7d", label: "Past 7 days", activeLabel: "Past 7 days" },
-	{ value: "30d", label: "Past 30 days", activeLabel: "Past 30 days" },
-	{ value: "365d", label: "Past year", activeLabel: "Past year" },
+		{ value: "all", label: t("filter.anyTime"), activeLabel: t("filter.anyUploadDate") },
+		{ value: "7d", label: t("filter.past7Days"), activeLabel: t("filter.past7Days") },
+		{ value: "30d", label: t("filter.past30Days"), activeLabel: t("filter.past30Days") },
+		{ value: "365d", label: t("filter.pastYear"), activeLabel: t("filter.pastYear") },
 ];
 
 const FilterChip = ({ label, onClear }: { label: string; onClear: () => void }) => (
-	<button type="button" className="active-tag-filter__chip" title={`Clear ${label}`} onClick={onClear}>
+	<button type="button" className="active-tag-filter__chip" title={`${t("filter.clearPrefix")} ${label}`} onClick={onClear}>
 		<span className="active-tag-filter__label">{label}</span>
 		<span className="active-tag-filter__remove" aria-hidden="true">×</span>
 	</button>
@@ -148,15 +148,15 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 
 	const openPluginSettings = (): void => {
 		if (!plugin.settingTabRef?.openVideoDisplaySettings()) {
-			new Notice("Unable to open Geulo settings in this Obsidian version.");
+			new Notice(t("playlist.openError"));
 		}
 	};
 
 	const settingsAction = (
 		<button
 			type="button"
-			title={UI_TEXT.BTN_SETTINGS}
-			aria-label={UI_TEXT.BTN_SETTINGS}
+			title={t("common.settings")}
+			aria-label={t("common.settings")}
 			onClick={openPluginSettings}
 		>
 			<Settings size={16} />
@@ -204,7 +204,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		const source: PlaylistSource = playlistId === null ? { type: "liked" } : { type: "playlist", playlistId };
 		const loadVideos = async (): Promise<void> => {
 			if (!plugin.playlistApi) {
-				setError("Playlist API not available");
+				setError(t("playlists.apiUnavailable"));
 				setIsLoading(false);
 				return;
 			}
@@ -233,7 +233,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 			} catch (loadError) {
 				if (cancelled) return;
 				debugLogger.error("Failed to load playlist videos", loadError);
-				const message = `Failed to load videos: ${loadError instanceof Error ? loadError.message : "Unknown error"}`;
+				const message = `${t("playlist.loadVideosFailed")}: ${t("playlists.requestFailed")}`;
 				setError(message);
 				new Notice(message);
 			} finally {
@@ -536,11 +536,11 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		try {
 			await likeVideoAndPersist(plugin.likedVideoApi, video, 0, plugin.videoNotes.captureLikedUpdate());
 			setLikedVideoIds((current) => new Set(current).add(video.id));
-			new Notice(UI_TEXT.NOTICE_VIDEO_LIKED(video.snippet.title));
+			new Notice(`${t("playlist.likedPrefix")} "${video.snippet.title}"`);
 		} catch (likeError) {
 			console.error("Failed to like playlist video:", likeError);
 			new Notice(likeError instanceof CacheOwnershipError
-				? likeError.message : UI_TEXT.NOTICE_LIKE_FAILED);
+				? likeError.message : t("playlist.likeFailed"));
 		} finally {
 			pendingLikeIdsRef.current.delete(video.id);
 			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
@@ -562,8 +562,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				return next;
 			});
 			const fragment = new DocumentFragment();
-			fragment.createSpan({ text: `Unliked "${video.snippet.title}" ` });
-			const undoButton = fragment.createEl("button", { text: "Undo", cls: "geulo-undo-btn" });
+			fragment.createSpan({ text: `${t("liked.unliked")}: "${video.snippet.title}" ` });
+			const undoButton = fragment.createEl("button", { text: t("liked.undo"), cls: "geulo-undo-btn" });
 			const notice = new Notice(fragment, 5000);
 			undoButton.addEventListener("click", () => {
 				if (pendingLikeIdsRef.current.has(video.id)) return;
@@ -583,7 +583,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 					} catch (undoError) {
 						console.error("Failed to undo playlist video unlike:", undoError);
 						new Notice(undoError instanceof CacheOwnershipError
-							? undoError.message : UI_TEXT.NOTICE_LIKE_FAILED);
+							? undoError.message : t("playlist.likeFailed"));
 						undoButton.disabled = false;
 					} finally {
 						pendingLikeIdsRef.current.delete(video.id);
@@ -594,7 +594,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		} catch (unlikeError) {
 			console.error("Failed to unlike playlist video:", unlikeError);
 			new Notice(unlikeError instanceof CacheOwnershipError
-				? unlikeError.message : UI_TEXT.NOTICE_UNLIKE_FAILED);
+				? unlikeError.message : t("playlist.unlikeFailed"));
 		} finally {
 			pendingLikeIdsRef.current.delete(video.id);
 			setPendingLikeIds(new Set(pendingLikeIdsRef.current));
@@ -619,12 +619,12 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 	const openPlaylistAction = (
 		<button
 			type="button"
-			aria-label="Open playlist on YouTube"
+			aria-label={t("common.youtubeOpenPlaylist")}
 			onClick={() => {
 				const url = `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId ?? "LL")}`;
 				void openVideo(url).catch((error: unknown) => {
 					debugLogger.error("Failed to open YouTube playlist:", error);
-					new Notice("Unable to open YouTube playlist. Please try again.");
+					new Notice(t("playlist.openYouTubeFailed"));
 				});
 			}}
 		>
@@ -669,7 +669,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 
 	const openSortMenu = (event: MouseEvent<HTMLButtonElement>): void => {
 		const menu = new Menu().setUseNativeMenu(false);
-		menu.addItem((item) => item.setTitle("Sort by").setIsLabel(true));
+		menu.addItem((item) => item.setTitle(t("liked.sortBy")).setIsLabel(true));
 		SORT_OPTIONS.forEach((option) => {
 			menu.addItem((item) => item
 				.setTitle(option.label)
@@ -678,11 +678,11 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 		});
 		menu.addSeparator();
 		menu.addItem((item) => item
-			.setTitle("Ascending")
+			.setTitle(t("liked.ascending"))
 			.setChecked(sortOrder === "ASC")
 			.onClick(() => setSortOrder("ASC")));
 		menu.addItem((item) => item
-			.setTitle("Descending")
+			.setTitle(t("liked.descending"))
 			.setChecked(sortOrder === "DESC")
 			.onClick(() => setSortOrder("DESC")));
 		const rect = event.currentTarget.getBoundingClientRect();
@@ -731,16 +731,14 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 					<div className="videos-error__icon">
 						<AlertCircle size={48} />
 					</div>
-					<div className="videos-error__title">
-						Failed to load videos
-					</div>
+					<div className="videos-error__title">{t("playlist.failedLoadVideos")}</div>
 					<div className="videos-error__message">{error}</div>
 					<button
 						className="videos-error__retry-button"
 						onClick={handleRefresh}
 					>
 						<RefreshCw size={16} />
-						Try Again
+						{t("common.tryAgain")}
 					</button>
 				</div>
 			</div>
@@ -758,7 +756,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 							className="refresh-button"
 							onClick={handleRefresh}
 							disabled={isLoading}
-							title="Refresh videos"
+							title={t("playlist.refreshVideos")}
 						>
 							<RefreshCw
 								size={16}
@@ -771,8 +769,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 								onClick={() => {
 									void onDeletePlaylist();
 								}}
-								title="Delete playlist"
-								aria-label="Delete playlist"
+								title={t("playlist.delete")}
+								aria-label={t("playlist.delete")}
 							>
 								<Trash2 size={16} />
 							</button>
@@ -797,7 +795,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 						searchTerm={searchTerm}
 						onSearchTermChange={setSearchTerm}
 						escapeClearsSearch
-						ariaLabel="Search playlist videos"
+						ariaLabel={t("playlist.searchVideos")}
 					/>
 				</div>
 				<button
@@ -805,8 +803,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 					className={`filter-toggle-button ${activeFilterCount > 0 ? "filter-toggle-button--active" : ""}`}
 					title={
 						filtersExpanded
-							? UI_TEXT.FILTERS_HIDE
-							: UI_TEXT.FILTERS_SHOW
+							? t("filters.hide")
+							: t("filters.show")
 					}
 					aria-expanded={filtersExpanded}
 					aria-controls={filtersId}
@@ -820,8 +818,8 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				<button
 					type="button"
 					className="sort-menu-button"
-					title={`Sort by: ${selectedSortLabel}, ${sortDirectionLabel}`}
-					aria-label={`Sort videos. Current: ${selectedSortLabel}, ${sortDirectionLabel}`}
+					 title={`${t("sort.sortBy")}: ${selectedSortLabel}, ${sortDirectionLabel}`}
+					 aria-label={`${t("sort.sortVideosCurrent")}: ${selectedSortLabel}, ${sortDirectionLabel}`}
 					aria-haspopup="menu"
 					onClick={openSortMenu}
 				>
@@ -833,117 +831,117 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				</button>
 			</div>
 			{activeFilterCount > 0 && (
-				<div className="active-tag-filter active-filter-list" aria-label="Active filters">
-					{selectedTag && <FilterChip label={`Tag: ${selectedTag}`} onClear={() => setSelectedTag(null)} />}
-					{channelId !== "all" && <FilterChip label={`Channel: ${selectedChannel?.title ?? channelId}`} onClear={() => setChannelId("all")} />}
-					{selectedCategory !== "all" && <FilterChip label={`Category: ${selectedCategoryTitle}`} onClear={() => setSelectedCategory("all")} />}
-					{hasContentTypeFilter && <FilterChip label={`Type: ${contentTypeFilterLabel}`} onClear={() => setContentTypes([])} />}
+				<div className="active-tag-filter active-filter-list" aria-label={t("filter.active")}>
+					{selectedTag && <FilterChip label={`${t("filter.tag")}: ${selectedTag}`} onClear={() => setSelectedTag(null)} />}
+					{channelId !== "all" && <FilterChip label={`${t("filter.channel")}: ${selectedChannel?.title ?? channelId}`} onClear={() => setChannelId("all")} />}
+					{selectedCategory !== "all" && <FilterChip label={`${t("filter.category")}: ${selectedCategoryTitle}`} onClear={() => setSelectedCategory("all")} />}
+					{hasContentTypeFilter && <FilterChip label={`${t("filter.type")}: ${contentTypeFilterLabel}`} onClear={() => setContentTypes([])} />}
 					{aiSummaryFilter !== "all" && (
-						<FilterChip label={`AI summary: ${aiSummaryFilterLabel}`} onClear={() => setAISummaryFilter("all")} />
+						<FilterChip label={`${t("filter.aiSummary")}: ${aiSummaryFilterLabel}`} onClear={() => setAISummaryFilter("all")} />
 					)}
 					{videoNoteFilter !== "all" && (
-						<FilterChip label={videoNoteFilter === "with" ? "Has video note" : "No video note"} onClear={() => setVideoNoteFilter("all")} />
+						<FilterChip label={videoNoteFilter === "with" ? t("filter.hasVideoNote") : t("filter.noVideoNote")} onClear={() => setVideoNoteFilter("all")} />
 					)}
 					{publishedDateFilter !== "all" && (
-						<FilterChip label={`Uploaded: ${publishedDateFilterLabel}`} onClear={() => setPublishedDateFilter("all")} />
+						<FilterChip label={`${t("filter.uploaded")}: ${publishedDateFilterLabel}`} onClear={() => setPublishedDateFilter("all")} />
 					)}
 					{durationFilter !== "all" && (
-						<FilterChip label={`Duration: ${durationFilterLabel}`} onClear={() => setDurationFilter("all")} />
+						<FilterChip label={`${t("filter.duration")}: ${durationFilterLabel}`} onClear={() => setDurationFilter("all")} />
 					)}
 					{audioLanguageFilter !== "all" && (
-						<FilterChip label={`Audio language: ${getVideoLanguageLabel(audioLanguageFilter)}`} onClear={() => setAudioLanguageFilter("all")} />
+						<FilterChip label={`${t("filter.audioLanguage")}: ${getVideoLanguageLabel(audioLanguageFilter)}`} onClear={() => setAudioLanguageFilter("all")} />
 					)}
 					{languageFilter !== "all" && (
-						<FilterChip label={`Language: ${getVideoLanguageLabel(languageFilter)}`} onClear={() => setLanguageFilter("all")} />
+						<FilterChip label={`${t("filter.language")}: ${getVideoLanguageLabel(languageFilter)}`} onClear={() => setLanguageFilter("all")} />
 					)}
-					<button type="button" className="active-filter-list__clear" onClick={clearAllFilters}>Clear all</button>
+					<button type="button" className="active-filter-list__clear" onClick={clearAllFilters}>{t("filter.clearAll")}</button>
 				</div>
 			)}
 
 			{filtersExpanded && (
 				<div id={filtersId} className="filters-container liked-video-filters">
-					<section className="liked-video-filter-group" aria-label="Channel">
-						<h3 className="liked-video-filter-group__title">Channel</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.channel")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.channel")}</h3>
 						<div className="liked-video-filter-group__fields liked-video-filter-group__fields--category">
 							<LikedVideoFilterSelect
-								label="Channel" ariaLabel="Filter by channel" showLabel={false}
+								label={t("filter.channel")} ariaLabel={t("filter.channel")} showLabel={false}
 								value={channelId} onChange={setChannelId}
 								options={[
-									{ value: "all", label: "All channels", count: videos.length },
+									{ value: "all", label: t("playlist.allChannels"), count: videos.length },
 									...channels.map((channel) => ({ value: channel.id, label: channel.title })),
 								]}
 							/>
 						</div>
 					</section>
-					<section className="liked-video-filter-group" aria-label="Category">
-						<h3 className="liked-video-filter-group__title">Category</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.category")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.category")}</h3>
 						<div className="liked-video-filter-group__fields liked-video-filter-group__fields--category">
 							<LikedVideoFilterSelect
-								label="Category" ariaLabel="Filter by category" showLabel={false}
+								label={t("filter.category")} ariaLabel={t("filter.category")} showLabel={false}
 								value={selectedCategory} onChange={setSelectedCategory}
 								disabled={!isCategoriesReady || availableCategories.length === 0}
 								options={[
-									{ value: "all", label: "All", count: videos.length },
+									{ value: "all", label: t("filter.all"), count: videos.length },
 									...availableCategories.map((category) => ({
 										value: category.id, label: category.title, count: categoryCounts[category.id] || 0,
 									})),
-									...(!isCategoriesReady ? [{ value: "loading", label: "Loading categories...", disabled: true }] : []),
+									...(!isCategoriesReady ? [{ value: "loading", label: t("filter.loadingCategories"), disabled: true }] : []),
 								]}
 							/>
 						</div>
 					</section>
-					<section className="liked-video-filter-group" aria-label="Content">
-						<h3 className="liked-video-filter-group__title">Content</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.content")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.content")}</h3>
 						<div className="liked-video-filter-group__fields">
 							<ContentTypeDropdown
 								selection={contentTypes} onChange={setContentTypes}
 								shortVideoMaxDurationSeconds={shortVideoMaxDurationSeconds}
 							/>
 							<LikedVideoFilterSelect
-								label="Upload date" ariaLabel="Filter by upload date"
+								label={t("filter.uploadDate")} ariaLabel={t("filter.uploadDate")}
 								value={publishedDateFilter} options={PUBLISHED_DATE_FILTER_OPTIONS}
 								onChange={(value) => setPublishedDateFilter(value as PublishedDateFilter)}
 							/>
 							<LikedVideoFilterSelect
-								label="Duration" ariaLabel="Filter by duration"
+								label={t("filter.duration")} ariaLabel={t("filter.duration")}
 								value={durationFilter} options={DURATION_FILTER_OPTIONS}
 								onChange={(value) => setDurationFilter(value as DurationFilter)}
 							/>
 						</div>
 					</section>
-					<section className="liked-video-filter-group" aria-label="Language">
-						<h3 className="liked-video-filter-group__title">Language</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.language")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.language")}</h3>
 						<div className="liked-video-filter-group__fields">
 							<LikedVideoFilterSelect
-								label="Title & description" ariaLabel="Filter by language"
-								description="Language of the video's title and description. Videos without language information appear under Unknown."
+								label={t("filter.titleDescription")} ariaLabel={t("filter.filterByLanguage")}
+								description={t("filter.titleDescriptionHelp")}
 								value={languageFilter} onChange={setLanguageFilter}
-								options={[{ value: "all", label: "All", count: videos.length }, ...languageOptions]}
+								options={[{ value: "all", label: t("filter.all"), count: videos.length }, ...languageOptions]}
 							/>
 							<LikedVideoFilterSelect
-								label="Audio" ariaLabel="Filter by audio language"
-								description="Audio language of the default track. Videos without language information appear under Unknown."
+								label={t("filter.audio")} ariaLabel={t("filter.audioLanguage")}
+								description={t("filter.audioHelp")}
 								value={audioLanguageFilter} onChange={setAudioLanguageFilter}
-								options={[{ value: "all", label: "All", count: videos.length }, ...audioLanguageOptions]}
+								options={[{ value: "all", label: t("filter.all"), count: videos.length }, ...audioLanguageOptions]}
 							/>
 						</div>
 					</section>
-					<section className="liked-video-filter-group" aria-label="Saved state">
-						<h3 className="liked-video-filter-group__title">Saved state</h3>
+					<section className="liked-video-filter-group" aria-label={t("filter.savedState")}>
+						<h3 className="liked-video-filter-group__title">{t("filter.savedState")}</h3>
 						<div className="liked-video-filter-group__fields">
 							<LikedVideoFilterSelect
-								label="AI summary" ariaLabel="Filter by AI summary"
+								label={t("filter.filterBySummary")} ariaLabel={t("filter.filterBySummary")}
 								value={aiSummaryFilter} options={AI_SUMMARY_FILTER_OPTIONS}
 								onChange={(value) => setAISummaryFilter(value as PresenceFilter)}
 							/>
 							<LikedVideoFilterSelect
-								label="Video note" ariaLabel="Filter by video note"
+								label={t("filter.videoNote")} ariaLabel={t("filter.videoNote")}
 								value={videoNoteFilter}
 								onChange={(value) => setVideoNoteFilter(value as PresenceFilter)}
 								options={[
-									{ value: "all", label: "All" },
-									{ value: "with", label: "Has note" },
-									{ value: "without", label: "No note" },
+									{ value: "all", label: t("filter.all") },
+									{ value: "with", label: t("filter.hasNote") },
+									{ value: "without", label: t("filter.noNote") },
 								]}
 							/>
 						</div>
@@ -951,23 +949,23 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				</div>
 			)}
 			<div className="liked-video-result-count" aria-live="polite" aria-atomic="true">
-				<span>{filteredVideos.length} of {videos.length} videos</span>
+				<span>{filteredVideos.length} {t("filter.resultRange")} {videos.length} {t("filter.resultCount")}</span>
 				<span aria-hidden="true">·</span>
-				<span className="liked-video-result-sort" aria-label={`Sorted by ${selectedSortLabel}, ${sortDirectionLabel}`}>
+				<span className="liked-video-result-sort" aria-label={`${t("sort.sortedBy")}: ${selectedSortLabel}, ${sortDirectionLabel}`}>
 					{selectedSortLabel} <span aria-hidden="true">{sortOrder === "DESC" ? "↓" : "↑"}</span>
 				</span>
 			</div>
 			{filteredVideos.length === 0 && (
 				<div className="no-videos-found">
 					<Search size={32} aria-hidden="true" />
-					<div className="no-videos-found__title">{hasActiveQuery ? "No matching videos" : "No videos yet"}</div>
+					<div className="no-videos-found__title">{hasActiveQuery ? t("liked.noMatchingVideos") : t("liked.noVideosYet")}</div>
 					<div className="no-videos-found__text">
-						{hasActiveQuery ? "No videos match the active filters." : "This playlist appears to be empty."}
+						{hasActiveQuery ? t("liked.noVideosMatchFilters") : t("playlist.empty")}
 					</div>
 					<OpenYouTubeButton query={searchTerm} />
 					{hasActiveQuery && (
 						<button type="button" className="no-videos-found__clear-button" onClick={clearAllFilters}>
-							Clear search and filters
+							{t("liked.clearSearchAndFilters")}
 						</button>
 					)}
 				</div>
@@ -977,7 +975,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 				Browse playlist videos. Use Up and Down to navigate, Tab to leave the list, F2 for card controls, and Escape to return to the card.
 			</span>
 			<LikedVideoCollection ref={keyboardFocus.collectionRef} videos={sortedVideos} mode="infinite"
-				label="Playlist videos" getVideoKey={getVideoKey} currentPage={1} onPageChange={() => {}}
+				label={t("playlist.videosLabel")} getVideoKey={getVideoKey} currentPage={1} onPageChange={() => {}}
 				noteExistenceMap={noteExistenceMap} resetKey={browsingKey}
 				renderVideo={(video, noteExists, summaryState) => {
 					return (
@@ -1003,7 +1001,7 @@ export const PlaylistVideosView: React.FC<PlaylistVideosViewProps> = ({
 							onAddToDailyNote={async (videoData, file) => {
 								await appendNoteContent(plugin.app, file, { text: `\n${videoData}` });
 								await plugin.app.workspace.openLinkText(file.path, "", false);
-								new Notice(`Added video to ${file.basename} and opened the note`);
+				new Notice(`${t("notes.addedVideoToNote")}: ${file.basename}`);
 							}}
 						/>
 					);

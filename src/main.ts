@@ -13,7 +13,7 @@ import { LikedVideoApi, PlaylistApi } from './api';
 import { getValidAccessToken, refreshAccessToken } from './auth';
 import { localStorageService } from './storage';
 import { debugLogger } from './debug';
-import { UI_TEXT } from './constants/uiText';
+import { t } from './i18n';
 import { categoriesService } from './categoriesService';
 import { FEATURE_ANNOUNCEMENT, LEGACY_ANNOUNCEMENT_ID, FeatureIntroModal } from './components/FeatureIntroModal';
 import { linkToDailyNote } from './utils/noteUtils';
@@ -93,6 +93,14 @@ interface CacheOwnershipContext {
 	assignOwner: (ownerChannelId: string) => Promise<void>;
 }
 
+function translatedCacheLabel(context: CacheOwnershipContext): string {
+	return context.cacheLabel === 'liked videos' ? t("cacheOwnership.likedVideos") : t("cacheOwnership.subscriptions");
+}
+
+function cacheOwnershipText(key: "app.verifyCacheOwnerFailed" | "app.saveCacheOwnerFailed" | "app.linkCacheOwnerFailed" | "app.cacheOwnerMismatch" | "app.cacheOwnerUnconfirmed" | "app.cacheSyncSkipped", context: CacheOwnershipContext): string {
+	return t(key).replace("{cache}", translatedCacheLabel(context));
+}
+
 export default class GoogleLikedVideoPlugin extends Plugin {
 	settings: ObsidianGoogleLikedVideoSettings = { ...DEFAULT_SETTINGS };
 	vault = this.app.vault;
@@ -127,13 +135,13 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		try {
 			await likedVideoStorage.initialize(window.localStorage);
 		} catch (error) {
-			new Notice('Geulo: Could not load liked-videos.json. Existing data was preserved. Check the file and reload the plugin.', 10000);
+			new Notice(t("app.loadLikedDataFailed"), 10000);
 			throw error;
 		}
 		this.likedVideoStorage = likedVideoStorage;
 		localStorageService.initializeLikedVideos(likedVideoStorage, (error) => {
 			debugLogger.error('[LikedVideoStorage] Failed to save liked-videos.json:', error);
-			new Notice('Geulo: Could not save the liked video list. Recent changes are only in memory. Check disk access before closing Obsidian.', 10000);
+			new Notice(t("app.saveLikedDataFailed"), 10000);
 		});
 		const youtubeApiClient = new YouTubeApiClient(
 			() => getValidAccessToken(this.settings.googleClientId),
@@ -162,7 +170,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			await this.subscriptionService.initialize();
 		} catch (error) {
 			debugLogger.error('[SubscriptionStorage] Failed to load subscriptions.json:', error);
-			new Notice('Geulo: Could not load subscriptions.json. The saved file was preserved; use Load subscriptions to replace it.', 10000);
+			new Notice(t("app.loadSubscriptionsFailed"), 10000);
 		}
 		debugLogger.debug('API clients initialized');
 
@@ -261,6 +269,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		});
 
 		this.addCommand({
+			id: 'open-youtube-watch-later-in-web-viewer-right-pane',
+			name: 'Open YouTube Watch Later in Web Viewer (Right Pane)',
+			callback: () => {
+				void this.openWatchLaterInWebViewer(true);
+			}
+		});
+
+		this.addCommand({
 			id: 'show-feature-intro-modal',
 			name: "What's new",
 			callback: () => {
@@ -270,10 +286,10 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'full-fetch-liked-videos',
-			name: 'Full Fetch Liked Videos',
+			name: t("liked.fullFetchCommand"),
 			callback: () => {
 				if (!googleTokenStorageService.getAccessToken()) {
-					new Notice('Geulo: Please authenticate first in plugin settings.');
+					new Notice(t("app.authenticateFirst"));
 					return;
 				}
 				void this.performAutoFetch(true);
@@ -301,8 +317,16 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		await this.app.workspace.revealLeaf(leaf);
 	}
 
-	private async openWatchLaterInWebViewer(): Promise<void> {
+	private async openWatchLaterInWebViewer(rightPane = false): Promise<void> {
 		try {
+			if (rightPane) {
+				await this.app.workspace.ensureSideLeaf('webviewer', 'right', {
+					active: true,
+					reveal: true,
+					state: { url: YOUTUBE_WATCH_LATER_URL, navigate: true },
+				});
+				return;
+			}
 			const leaf = this.app.workspace.getLeaf(
 				this.settings.openWebViewerInSplitPane ? 'split' : 'tab',
 			);
@@ -313,7 +337,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			});
 		} catch (error: unknown) {
 			debugLogger.error('Failed to open YouTube Watch Later in Web Viewer:', error);
-			new Notice('Geulo: Unable to open YouTube Watch Later. Please try again.');
+			new Notice(t("app.openWatchLaterFailed"));
 		}
 	}
 
@@ -328,7 +352,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		this.fetchStatusListeners.clear();
 		void this.likedVideoStorage?.close().catch((error: unknown) => {
 			debugLogger.error('[LikedVideoStorage] Failed to save on unload:', error);
-			new Notice('Geulo: Could not save the liked video list before unloading.', 10000);
+			new Notice(t("app.saveBeforeUnloadFailed"), 10000);
 		});
 
 		// Cleanup API resources
@@ -562,7 +586,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			identity = await this.accountIdentityService.getCurrentIdentity();
 		} catch (error) {
 			debugLogger.error(`[Cache ownership] Could not identify the account for ${context.cacheLabel}:`, error);
-			new Notice(`Geulo: Could not verify which Google account owns the ${context.cacheLabel}. ${error instanceof Error ? error.message : 'Please reconnect and try again.'}`, 10000);
+			new Notice(`${cacheOwnershipText("app.verifyCacheOwnerFailed", context)} ${error instanceof Error ? error.message : t("auth.reconnectAndTryAgain")}`, 10000);
 			return null;
 		}
 
@@ -577,7 +601,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 				return { ownerChannelId: identity.channelId, replaceExisting: false };
 			} catch (error) {
 				debugLogger.error(`[Cache ownership] Could not save the owner for ${context.cacheLabel}:`, error);
-				new Notice(`Geulo: Could not save the Google account for the ${context.cacheLabel}. Existing data was preserved.`, 10000);
+				new Notice(cacheOwnershipText("app.saveCacheOwnerFailed", context), 10000);
 				return null;
 			}
 		}
@@ -605,7 +629,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			return { ownerChannelId: identity.channelId, replaceExisting: false };
 		} catch (error) {
 			debugLogger.error(`[Cache ownership] Could not associate ${context.cacheLabel}:`, error);
-			new Notice(`Geulo: Could not link the existing ${context.cacheLabel} to this Google account. Existing data was preserved.`, 10000);
+			new Notice(cacheOwnershipText("app.linkCacheOwnerFailed", context), 10000);
 			return null;
 		}
 	}
@@ -616,7 +640,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			identity = await this.accountIdentityService.getCurrentIdentity();
 		} catch (error) {
 			throw new CacheOwnershipError(
-				`Could not verify which Google account owns the ${context.cacheLabel}. ${error instanceof Error ? error.message : 'Please reconnect and try again.'}`,
+				`${cacheOwnershipText("app.verifyCacheOwnerFailed", context)} ${error instanceof Error ? error.message : t("auth.reconnectAndTryAgain")}`,
 			);
 		}
 
@@ -627,14 +651,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			} catch (error) {
 				debugLogger.error(`[Cache ownership] Could not save the owner for ${context.cacheLabel}:`, error);
 				throw new CacheOwnershipError(
-					`Could not save the Google account for the ${context.cacheLabel}. No YouTube change was made.`,
+					cacheOwnershipText("app.saveCacheOwnerFailed", context),
 				);
 			}
 			return;
 		}
 		if (context.ownerChannelId !== null) {
 			throw new CacheOwnershipError(
-				`The connected YouTube account does not own the saved ${context.cacheLabel}. Load the ${context.cacheLabel} and confirm replacement before changing them.`,
+				cacheOwnershipText("app.cacheOwnerMismatch", context),
 			);
 		}
 
@@ -647,14 +671,14 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			allowReplace: false,
 		});
 		if (choice !== 'associate') {
-			throw new CacheOwnershipError(`The ${context.cacheLabel} were not changed because their Google account is not confirmed.`);
+			throw new CacheOwnershipError(cacheOwnershipText("app.cacheOwnerUnconfirmed", context));
 		}
 		try {
 			await context.assignOwner(identity.channelId);
 		} catch (error) {
 			debugLogger.error(`[Cache ownership] Could not associate ${context.cacheLabel}:`, error);
 			throw new CacheOwnershipError(
-				`Could not link the existing ${context.cacheLabel} to this Google account. No YouTube change was made.`,
+				cacheOwnershipText("app.linkCacheOwnerFailed", context),
 			);
 		}
 	}
@@ -667,7 +691,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		if (this.ownershipWarnings.has(key)) return;
 		this.ownershipWarnings.add(key);
 		new Notice(
-			`Geulo: Automatic ${context.cacheLabel} sync was skipped because the saved data belongs to an unconfirmed or different Google account. Run it manually to review the change.`,
+			cacheOwnershipText("app.cacheSyncSkipped", context),
 			10000,
 		);
 	}
@@ -688,7 +712,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 			return;
 		}
 		if (!this.likedVideoApi || !googleTokenStorageService.getAccessToken()) {
-			new Notice('Geulo: Connect your Google account before fetching liked videos.');
+			new Notice(t("app.connectBeforeFetch"));
 			return;
 		}
 
@@ -713,7 +737,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 						'⚠️ Full fetch mode enabled - fetching ALL liked videos. ' +
 						'This may consume significant resources.'
 					);
-					new Notice(UI_TEXT.FULL_FETCH_STARTED_NOTICE);
+					new Notice(t("liked.fullFetchStarted"));
 				}
 
 				const likedCheckpoint = this.videoNotes.getLikedStateCheckpoint();
@@ -745,9 +769,9 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 					await this.videoNotes.syncLikedVideos(result.fetchedVideoIds, shouldFetchAllVideos, likedCheckpoint);
 					if (!this.videoNotes.isLikedStateCurrent(likedCheckpoint)) return;
 					if (shouldFetchAllVideos) {
-						new Notice(UI_TEXT.NOTICE_ALL_VIDEOS_SAVED(updatedLikedVideos.length));
+						new Notice(t("liked.allVideosSaved", { count: updatedLikedVideos.length }));
 					} else if (newLikedVideos.length > 0) {
-						new Notice(UI_TEXT.NOTICE_NEW_VIDEOS_FETCHED(newLikedVideos.length));
+						new Notice(t("liked.newVideosFetched", { count: newLikedVideos.length }));
 					} else {
 						debugLogger.autoFetch(`Updated ${updatedCount} existing video(s) with fresh data.`);
 					}
@@ -773,7 +797,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		} catch (error) {
 			debugLogger.error('Auto-fetch failed:', error);
 			console.error('Auto-fetch failed:', error);
-			new Notice(`Geulo: Could not fetch liked videos. ${error instanceof Error ? error.message : 'Please try again.'}`);
+			new Notice(`${t("app.fetchLikedVideosFailed")}: ${error instanceof Error ? error.message : t("common.tryAgain")}`);
 		} finally {
 			debugLogger.timeEnd('auto-fetch');
 			this.setFetchStatus('idle');
@@ -785,12 +809,12 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		try {
 			const { file, created } = await this.videoNotes.getOrCreate(video, undefined, { reuseConfirmedRating: true });
 			if (created) {
-				new Notice(`Created note: ${file.basename}`);
+				new Notice(`${t("videoCard.noteCreated")}: ${file.basename}`);
 				if (this.settings.linkToDailyNote) await linkToDailyNote(this.app, file);
 			}
 		} catch (error) {
 			console.error('Error handling video note automation:', error);
-			new Notice('Failed to create video note automatically. Check console for details.');
+			new Notice(t("app.autoCreateNoteFailed"));
 		}
 	}
 
@@ -901,7 +925,7 @@ export default class GoogleLikedVideoPlugin extends Plugin {
 		} catch (error) {
 			this.settings.lastSeenAnnouncementId = previousId;
 			debugLogger.error('Failed to save announcement state:', error);
-			new Notice('Geulo: Could not save announcement status. It may appear again next time.');
+			new Notice(t("app.announcementSaveFailed"));
 			return false;
 		}
 	}

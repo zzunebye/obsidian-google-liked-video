@@ -1,6 +1,7 @@
 import { Menu } from "obsidian";
 import { AlertCircle, Calendar, Pin, Play, Video } from "lucide-react";
 import { PlaylistInfo } from "src/types";
+import { t } from "../i18n";
 
 interface PlaylistCardProps {
 	playlist: PlaylistInfo;
@@ -20,17 +21,15 @@ export const PlaylistCard = ({
 	isPinned,
 }: PlaylistCardProps) => {
 	const sourceLabel = playlist.isOwnedByUser === true
-		? "Your playlist"
-		: playlist.isOwnedByUser === false ? "Imported" : null;
+		? t("playlists.owned")
+		: playlist.isOwnedByUser === false ? t("playlists.imported") : null;
 	const playlistAction = playlist.isOwnedByUser === true
 		? onDeletePlaylist
 		: playlist.isOwnedByUser === false ? onRemovePlaylist : undefined;
 	const isUnavailable = playlist.isOwnedByUser === false && playlist.isUnavailable === true;
 
 	const formatItemCount = (count: number): string => {
-		if (count === 0) return "Empty";
-		if (count === 1) return "1 video";
-		return `${count} videos`;
+		return t("playlists.itemCount", { count });
 	};
 
 	const formatDate = (dateString: string): string => {
@@ -51,7 +50,7 @@ export const PlaylistCard = ({
 	const createPlaylistMenu = (): Menu => {
 		const menu = new Menu();
 		menu.addItem((item) => {
-			item.setTitle(playlist.isOwnedByUser === true ? "Delete from YouTube" : "Remove from Geulo");
+			item.setTitle(playlist.isOwnedByUser === true ? t("playlists.deleteFromYouTube") : t("playlists.removeFromGeulo"));
 			item.setIcon(playlist.isOwnedByUser === true ? "trash-2" : "list-minus");
 			item.onClick(() => {
 				if (playlistAction) void playlistAction(playlist);
@@ -99,8 +98,8 @@ export const PlaylistCard = ({
 				type="button"
 				className={`playlist-card__pin-button ${isPinned ? "playlist-card__pin-button--pinned" : "playlist-card__pin-button--hover"}`}
 				onClick={handlePinClick}
-				title={isPinned ? "Unpin playlist" : "Pin playlist"}
-				aria-label={isPinned ? "Unpin playlist" : "Pin playlist"}
+				title={isPinned ? t("playlists.unpin") : t("playlists.pin")}
+				aria-label={isPinned ? t("playlists.unpin") : t("playlists.pin")}
 				aria-pressed={isPinned}
 			>
 				<Pin
@@ -115,7 +114,7 @@ export const PlaylistCard = ({
 				{playlist.thumbnailUrl ? (
 					<img
 						src={playlist.thumbnailUrl}
-						alt={`${playlist.title} thumbnail`}
+						alt={`${playlist.title} ${t("playlists.thumbnail")}`}
 						className="playlist-card__thumbnail-img playlist-card__thumbnail-img--fixed"
 						loading="lazy"
 					/>
@@ -138,7 +137,7 @@ export const PlaylistCard = ({
 				{isUnavailable && (
 					<div className="playlist-card__availability">
 						<AlertCircle size={14} aria-hidden="true" />
-						<span>Unavailable on YouTube · Showing saved details</span>
+						<span>{t("playlists.unavailable")}</span>
 					</div>
 				)}
 
@@ -169,7 +168,7 @@ export const PlaylistCard = ({
 
 			<div className="playlist-card__hover-overlay">
 				<div className="playlist-card__hover-text">
-					Click to view videos
+					{t("playlists.clickToViewVideos")}
 				</div>
 			</div>
 		</div>

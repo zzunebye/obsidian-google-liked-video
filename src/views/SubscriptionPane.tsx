@@ -5,6 +5,7 @@ import GoogleLikedVideoPlugin from "../main";
 import { PluginContext } from "../store/pluginContext";
 import { SubscriptionView, SubscriptionViewState } from "./SubscriptionView";
 import { TranscriptWorkspace } from "src/ui/TranscriptWorkspace";
+import { t } from "../i18n";
 
 export const VIEW_TYPE_SUBSCRIPTIONS = "subscriptions";
 
@@ -43,7 +44,7 @@ export class SubscriptionPane extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Subscriptions";
+		return t("subscription.title");
 	}
 
 	getIcon(): string {
@@ -53,7 +54,7 @@ export class SubscriptionPane extends ItemView {
 	onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source);
 		menu.addItem((item: MenuItem) => {
-			item.setTitle("Refresh subscriptions");
+			item.setTitle(t("subscription.refresh"));
 			item.setIcon("refresh-cw");
 			item.onClick(() => this.requestRefresh());
 		});
@@ -90,7 +91,7 @@ export class SubscriptionPane extends ItemView {
 		this.root.render(
 			<StrictMode>
 				<PluginContext.Provider value={this.plugin}>
-					<TranscriptWorkspace label="subscriptions">
+					<TranscriptWorkspace label={t("subscription.title")}>
 					<SubscriptionView
 						initialState={this.viewState}
 						refreshVersion={this.refreshVersion}

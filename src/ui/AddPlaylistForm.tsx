@@ -1,4 +1,5 @@
 import { AlertCircle, Loader2, Plus } from "lucide-react";
+import { t } from "../i18n";
 
 interface AddPlaylistFormProps {
 	resetAddForm: () => void;
@@ -20,13 +21,13 @@ export const AddPlaylistForm = ({
 	return (
 		<div className="add-playlist-form">
 			<div className="add-playlist-form__header">
-				<label>Add a YouTube playlist</label>
+					<label>{t("playlists.addByUrl")}</label>
 			</div>
 
 			<div className="add-playlist-form__content">
 				<div className="add-playlist-form__input-group">
 					<label htmlFor="playlist-id-input">
-						Enter the playlist ID or URL:
+						{t("playlists.enterIdUrl")}
 					</label>
 					<div className="add-playlist-form__input-wrapper">
 						<input
@@ -34,7 +35,7 @@ export const AddPlaylistForm = ({
 							autoFocus
 							type="text"
 							className="add-playlist-form__input"
-							placeholder="PLDDTZzm0d6OE3op3... or the full YouTube URL"
+							placeholder={t("playlists.idUrlPlaceholder")}
 							value={playlistIdInput}
 							onChange={(e) => setPlaylistIdInput(e.target.value)}
 							disabled={isAdding}
@@ -70,12 +71,12 @@ export const AddPlaylistForm = ({
 						{isAdding ? (
 							<>
 								<Loader2 size={16} className="animate-spin" />
-								Adding...
+								{t("playlists.adding")}
 							</>
 						) : (
 							<>
 								<Plus size={16} />
-								Add playlist
+								{t("playlists.addPlaylist")}
 							</>
 						)}
 					</button>
@@ -84,7 +85,7 @@ export const AddPlaylistForm = ({
 						onClick={resetAddForm}
 						disabled={isAdding}
 					>
-						Cancel
+						{t("settings.cancel")}
 					</button>
 				</div>
 			</div>

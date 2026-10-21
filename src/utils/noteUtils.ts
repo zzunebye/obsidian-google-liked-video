@@ -5,6 +5,7 @@ import { getAllDailyNotes, getDailyNote, createDailyNote } from "obsidian-daily-
 import { TemplateService } from "src/services/templateService";
 import { appendNoteContent } from "src/utils/noteEditingUtils";
 import { formatVideoCount, formatVideoDuration, parseDurationToSeconds } from "src/utils/videoUtils";
+import { t } from "../i18n";
 
 export const sanitizeFileName = (title: string): string => {
     return title
@@ -294,10 +295,10 @@ export const linkToDailyNote = async (app: App, file: TFile): Promise<void> => {
         }
         const dataToAdd = `\n- [[${file.basename}]]`;
         await appendNoteContent(app, dailyNoteFile, { text: dataToAdd });
-        new Notice(`Linked ${file.basename} to daily note.`);
+        new Notice(`${t("notes.linkedToDailyNote")}: ${file.basename}`);
     } catch (error) {
         console.error('Error linking to daily note:', error);
-        new Notice('Failed to link to daily note. Check console for details.');
+        new Notice(t("notes.linkDailyFailed"));
     }
 };
 

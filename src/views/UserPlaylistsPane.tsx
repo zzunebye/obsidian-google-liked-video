@@ -18,6 +18,7 @@ import { PluginContext } from "../store/pluginContext";
 import { UserPlaylistsView } from "./UserPlaylistsView";
 import type { UserPlaylistsViewState } from "./UserPlaylistsView";
 import { VIEW_TYPE_PLAYLIST_VIDEOS } from "./PlaylistVideosPane";
+import { t } from "../i18n";
 
 function readBrowsingState(state: unknown): UserPlaylistsViewState {
 	const saved = typeof state === "object" && state !== null
@@ -56,7 +57,7 @@ export class UserPlaylistsPane extends ItemView {
 	onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source);
 		menu.addItem((item: MenuItem) => {
-			item.setTitle("Refresh Playlists");
+			item.setTitle(t("playlists.refresh"));
 			item.setIcon("refresh-cw");
 			item.setDisabled(this.isLoading);
 			item.onClick(() => {
@@ -65,12 +66,12 @@ export class UserPlaylistsPane extends ItemView {
 		});
 
 		menu.addItem((item: MenuItem) => {
-			item.setTitle("Clear Cache");
+			item.setTitle(t("playlists.clearCache"));
 			item.setIcon("trash-2");
 			item.onClick(() => {
 				if (this.plugin?.playlistApi) {
 					this.plugin.playlistApi.clearAllCaches();
-					new Notice("Playlist cache cleared");
+					new Notice(t("playlists.cacheCleared"));
 				}
 			});
 		});
@@ -81,7 +82,7 @@ export class UserPlaylistsPane extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "My Playlists";
+		return t("playlists.title");
 	}
 
 	getIcon(): string {
@@ -126,7 +127,7 @@ export class UserPlaylistsPane extends ItemView {
 		try {
 			this.playlists = this.mergeSavedPlaylists(this.playlists);
 			this.renderView();
-			if (!this.plugin?.playlistApi) throw new Error("Playlist API not available");
+			if (!this.plugin?.playlistApi) throw new Error(t("playlists.apiUnavailable"));
 			const userPlaylists = await this.plugin.playlistApi.fetchUserPlaylists();
 			if (this.activeLoadId !== requestId) return;
 			this.playlists = this.mergeSavedPlaylists(userPlaylists);
@@ -153,13 +154,13 @@ export class UserPlaylistsPane extends ItemView {
 			debugLogger.error("Failed to load playlists:", error);
 			if (error instanceof YouTubeRequestError
 				&& error.reasons.some((reason) => reason === "quotaExceeded" || reason === "dailyLimitExceeded")) {
-				this.error = "YouTube API quota exceeded. Please try again later.";
+				this.error = t("playlists.quotaExceeded");
 			} else if (error instanceof YouTubeRequestError && error.kind === "auth") {
-				this.error = "Authentication expired. Please refresh your login.";
+				this.error = t("playlists.authExpired");
 			} else if (error instanceof YouTubeRequestError && error.status === 403) {
-				this.error = "YouTube did not allow access to these playlists.";
+				this.error = t("playlists.accessDenied");
 			} else {
-				this.error = `${refreshingImported ? "Failed to refresh imported playlists" : "Failed to load playlists"}: ${error instanceof Error ? error.message : "Unknown error"}`;
+				this.error = `${t(refreshingImported ? "playlists.refreshFailed" : "playlists.failedLoad")}: ${t("playlists.requestFailed")}`;
 			}
 			new Notice(this.error);
 		} finally {
@@ -224,10 +225,10 @@ export class UserPlaylistsPane extends ItemView {
 		try {
 			const confirmed = await confirmDangerousAction(
 				this.app,
-				`"${playlist.title}"\n\nYouTube에서 영구 삭제되며 복구할 수 없음`,
+				`${t("playlists.confirmDelete")}: "${playlist.title}"`,
 				{
-					title: "YouTube 플레이리스트 삭제",
-					confirmText: "영구 삭제",
+					title: t("playlists.deleteFromYouTube"),
+					confirmText: t("playlists.deletePermanently"),
 				},
 			);
 
@@ -243,12 +244,12 @@ export class UserPlaylistsPane extends ItemView {
 				(item) => item.id !== playlist.id,
 			);
 			this.renderView();
-			new Notice(`Playlist "${playlist.title}" deleted from YouTube.`);
+			new Notice(`${t("playlists.deletedFromYouTube")}: ${playlist.title}`);
 		} catch (error) {
 			if (this.root !== root) return;
 			const message =
-				error instanceof Error ? error.message : "Unknown error";
-			new Notice(`Failed to delete playlist: ${message}`);
+					error instanceof Error ? error.message : t("settings.unknownError");
+			new Notice(`${t("playlists.deleteFailed")}: ${message}`);
 		} finally {
 			this.isDeletingPlaylist = false;
 		}
@@ -260,20 +261,20 @@ export class UserPlaylistsPane extends ItemView {
 		try {
 			localStorageService.removeSavedPlaylist(playlist.id);
 			localStorageService.unpinPlaylist(playlist.id);
-			new Notice(`Playlist "${playlist.title}" removed from Geulo. No changes were made on YouTube.`);
+			new Notice(`${t("playlists.removedFromGeulo")}: ${playlist.title}`);
 		} catch (error) {
 			debugLogger.error("Failed to remove imported playlist:", error);
-			new Notice(`Failed to remove playlist: ${error instanceof Error ? error.message : "Unknown error"}`);
+			new Notice(`${t("playlists.removeFailed")}: ${error instanceof Error ? error.message : t("settings.unknownError")}`);
 		}
 	}
 
 	private async handleAddPlaylist(input: string): Promise<boolean> {
 		const root = this.root;
 		if (!root) return false;
-		if (!this.plugin?.playlistImports) throw new Error("Playlist import is not available");
+		if (!this.plugin?.playlistImports) throw new Error(t("playlists.importUnavailable"));
 		const result = await this.plugin.playlistImports.importPlaylist(input);
 		if (this.root !== root) return false;
-		if (result.imported) new Notice(`Playlist "${result.playlist.title}" added successfully!`);
+		if (result.imported) new Notice(`${t("playlists.addedSuccessfully")}: ${result.playlist.title}`);
 		return result.imported;
 	}
 
