@@ -31,9 +31,9 @@ export interface GoogleConnectionHealthDependencies {
 }
 
 const STEP_LABELS: Record<GoogleConnectionHealthStepId, TranslationKey> = {
-	credentials: t('googleHealth.credentials'),
-	authorization: t('googleHealth.authorization'),
-	'youtube-api': t('googleHealth.youtubeApi'),
+	credentials: 'googleHealth.credentials',
+	authorization: 'googleHealth.authorization',
+	'youtube-api': 'googleHealth.youtubeApi',
 };
 
 function step(

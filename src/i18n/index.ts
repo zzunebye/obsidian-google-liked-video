@@ -1,9 +1,10 @@
 import { en } from "./en";
 import { ko } from "./ko";
+import { zh } from "./zh";
 import { getLocale } from "./locale";
 import type { Locale, TranslationArgs, TranslationDictionary, TranslationKey } from "./types";
 
-const dictionaries: Readonly<Record<Locale, TranslationDictionary>> = { en, ko };
+const dictionaries: Readonly<Record<Locale, TranslationDictionary>> = { en, ko, zh };
 
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string;
 export function t(key: TranslationKey, params?: TranslationArgs<"videos.count">[0]): string {

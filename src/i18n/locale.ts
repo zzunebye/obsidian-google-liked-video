@@ -2,7 +2,10 @@ import { getLanguage } from "obsidian";
 import type { Locale } from "./types";
 
 export function resolveLocale(language: string): Locale {
-	return language.trim().toLowerCase().split(/[-_]/)[0] === "ko" ? "ko" : "en";
+	const languageCode = language.trim().toLowerCase().split(/[-_]/)[0];
+	if (languageCode === "ko") return "ko";
+	if (languageCode === "zh") return "zh";
+	return "en";
 }
 
 const localeAtPluginLoad = resolveLocale(getLanguage());
@@ -12,5 +15,6 @@ export function getLocale(): Locale {
 }
 
 export function getFormatLocale(): string {
-	return localeAtPluginLoad === "ko" ? "ko-KR" : "en-US";
+	if (localeAtPluginLoad === "ko") return "ko-KR";
+	return localeAtPluginLoad === "zh" ? "zh-CN" : "en-US";
 }

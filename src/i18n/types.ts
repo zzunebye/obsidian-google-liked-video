@@ -1,6 +1,6 @@
 import type { en } from "./en";
 
-export type Locale = "en" | "ko";
+export type Locale = "en" | "ko" | "zh";
 export type TranslationKey = keyof typeof en;
 export type TranslationDictionary = {
 	readonly [K in TranslationKey]: typeof en[K];

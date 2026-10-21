@@ -23,19 +23,21 @@ async function loadI18n(language) {
 	return import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}#${encodeURIComponent(language)}`);
 }
 
-for (const language of ["ko", "ko-KR", " KO_kr ", "en", "ja", ""]) {
+for (const language of ["ko", "ko-KR", " KO_kr ", "zh", "zh-CN", "zh-Hans", "en", "ja", ""]) {
 	const api = await loadI18n(language);
-	const korean = language.trim().toLowerCase().startsWith("ko");
-	assert.equal(api.getLocale(), korean ? "ko" : "en");
-	assert.equal(api.getFormatLocale(), korean ? "ko-KR" : "en-US");
-	assert.equal(api.t("common.refresh"), korean ? "새로고침" : "Refresh");
-	assert.equal(api.t("settings.videoDisplay"), korean ? "영상 표시" : "Video display");
-	assert.equal(api.t("videos.empty"), korean ? "영상을 찾을 수 없습니다" : "No videos found");
+	const normalizedLanguage = language.trim().toLowerCase();
+	const korean = normalizedLanguage.startsWith("ko");
+	const chinese = normalizedLanguage.startsWith("zh");
+	assert.equal(api.getLocale(), korean ? "ko" : chinese ? "zh" : "en");
+	assert.equal(api.getFormatLocale(), korean ? "ko-KR" : chinese ? "zh-CN" : "en-US");
+	assert.equal(api.t("common.refresh"), korean ? "새로고침" : chinese ? "刷新" : "Refresh");
+	assert.equal(api.t("settings.videoDisplay"), korean ? "영상 표시" : chinese ? "视频显示" : "Video display");
+	assert.equal(api.t("videos.empty"), korean ? "영상을 찾을 수 없습니다" : chinese ? "未找到视频" : "No videos found");
 	for (const count of [0, 1, 12]) {
-		assert.equal(api.t("videos.count", { count }), korean ? `영상 ${count}개` : `${count} videos`);
+		assert.equal(api.t("videos.count", { count }), korean ? `영상 ${count}개` : chinese ? `${count} 个视频` : `${count} videos`);
 	}
 	globalThis.geuloTestLanguage = korean ? "en" : "ko";
-	assert.equal(api.getLocale(), korean ? "ko" : "en", "Language stays fixed until plugin reload");
+	assert.equal(api.getLocale(), korean ? "ko" : chinese ? "zh" : "en", "Language stays fixed until plugin reload");
 }
 
 delete globalThis.geuloTestLanguage;
