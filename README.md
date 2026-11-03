@@ -4,6 +4,12 @@
 [![Obsidian 1.13.0+](https://img.shields.io/badge/Obsidian-1.13.0%2B-7C3AED?logo=obsidian)](https://obsidian.md/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+<p align="center">
+  <strong>English</strong> |
+  <a href="./README.es.md">Español</a> |
+  <a href="./README.ko.md">한국어</a>
+</p>
+
 **Your YouTube library, connected to your Obsidian notes.**
 
 Geulo helps you consume YouTube content more intentionally. YouTube is designed to keep you watching more and more content, rather than helping you revisit what you've already watched and review it with your own notes.
